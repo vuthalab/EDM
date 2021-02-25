@@ -2,14 +2,14 @@ import telnetlib
 import time
 
 try:
-    tn = telnetlib.Telnet("192.168.0.104",23)
+    tn = telnetlib.Telnet("192.168.0.107",23)
     print("Success")
 except:
     print("Failure")
 
 try:
-    var = "getOutput"
-    #var = "{}.value?".format("coll")
+    #var = "getOutput"
+    var = "{}.value?".format("srb45k")
     command = var+"\n"
     try:
         tn.write(command.encode("ascii"))
