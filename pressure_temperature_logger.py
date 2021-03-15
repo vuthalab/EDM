@@ -6,7 +6,7 @@ import time
 import numpy as np
 
 os.chdir("/home/vuthalab/gdrive/code/edm_control/headers")
-from headers.zmq_client_socket import zmq_client_socket
+from zmq_client_socket import zmq_client_socket
 
 
 ## create timestamped data folder
@@ -38,30 +38,29 @@ def get_save_folder(root_dir):
 
 ## connect
 
-pause_time = 2 # seconds
-# connection_settings = {'ip_addr': 'localhost',  # ip address
-#                        'port': 5558,            # our open port
-#                        'topic': 'FRG730'}       # device
-# pressure_socket = zmq_client_socket(connection_settings)
-# pressure_socket.make_connection()
+connection_settings = {'ip_addr': 'localhost',  # ip address
+                       'port': 5553,            # our open port
+                       'topic': 'FRG730'}       # device
+pressure1_socket = zmq_client_socket(connection_settings)
+pressure1_socket.make_connection()
 
 connection_settings = {'ip_addr': 'localhost',  # ip address
                        'port': 5550,            # our open port
                        'topic': 'IGM401'}       # device
-pressure1_socket = zmq_client_socket(connection_settings)
-pressure1_socket.make_connection()
-
-# connection_settings = {'ip_addr': 'localhost',  # ip address
-#                        'port': 5551,            # our open port
-#                        'topic': 'CTC100_1'}       # device
-# temperature1_socket = zmq_client_socket(connection_settings)
-# temperature1_socket.make_connection()
+pressure2_socket = zmq_client_socket(connection_settings)
+pressure2_socket.make_connection()
 
 connection_settings = {'ip_addr': 'localhost',  # ip address
-                       'port': 5552,            # our open port
-                       'topic': 'CTC100_2'}       # device
-temperature2_socket = zmq_client_socket(connection_settings)
-temperature2_socket.make_connection()
+                       'port': 5551,            # our open port
+                       'topic': 'CTC_100'}       # device
+temperature1_socket = zmq_client_socket(connection_settings)
+temperature1_socket.make_connection()
+
+# connection_settings = {'ip_addr': 'localhost',  # ip address
+#                        'port': 5552,            # our open port
+#                        'topic': 'CTC100_2'}       # device
+# temperature2_socket = zmq_client_socket(connection_settings)
+# temperature2_socket.make_connection()
 
 
 ## set up log file
@@ -81,21 +80,21 @@ print('Logging to folder ' + logfile_path)
 try:
     while True:
         current_time = time.time()
-        # pressure = pressure_socket.read_on_demand()[1]['pressure']
-        # temperatures1 = temperature1_socket.read_on_demand()[1]['temperatures']
-        temperatures2 = temperature2_socket.read_on_demand()[1]['temperatures']
         pressure1 = pressure1_socket.read_on_demand()[1]['pressure']
-        pdvoltage = pressure1_socket.read_on_demand()[1]['voltage']
+        temperatures1 = temperature1_socket.read_on_demand()[1]['temperatures']
+        heaters = temperature1_socket.read_on_demand()[1]['heaters']
+#temperatures2 = temperature2_socket.read_on_demand()[1]['temperatures']
+        pressure2 = pressure2_socket.read_on_demand()[1]['pressure']
+        pdvoltage = pressure2_socket.read_on_demand()[1]['voltage']
 
         if pressure1 > 1e-12: #correcting against ocassional bugs in reading
-            # data = f'{current_time} \t {pdvoltage} \t {pressure1} \t {temperatures1[0]} \t {temperatures1[1]} \t {temperatures1[2]} \t {temperatures1[3]} \t {temperatures2[0]} \t {temperatures2[1]} \t {temperatures2[2]} \t {temperatures2[3]} \n'
-            data = f'{current_time} \t {pdvoltage} \t {pressure1} \t {temperatures2[0]} \t {temperatures2[1]} \t {temperatures2[2]} \t {temperatures2[3]} \n'
+            data = f'{current_time} \t {pressure1} \t {pressure2} \t {pdvoltage[0]} \t {pdvoltage[1]} \t {heaters[0]} \t {heaters[1]} \t {heaters[2]} \t {heaters[3]} \t {temperatures1[0]} \t {temperatures1[1]} \t {temperatures1[2]} \t {temperatures1[3]} \t {temperatures1[4]} \t {temperatures1[5]} \t {temperatures1[6]} \t {temperatures1[7]} \n'
+
 
             with open(logfile_path, 'a') as logfile:
                 logfile.write(data)
 
             print(data)
-            time.sleep(pause_time)
 
 except KeyboardInterrupt:
     print("logging ended")

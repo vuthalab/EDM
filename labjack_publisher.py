@@ -1,9 +1,10 @@
 # publisher for Hornet ion gauge
 
 from labjack import ljm
+import time
 import os
 os.chdir('/home/vuthalab/gdrive/code/edm_control/headers')
-from headers.zmq_server_socket import zmq_server_socket
+from zmq_server_socket import zmq_server_socket
 
 labjack_serial = 470022275   # device serial number
 
@@ -20,7 +21,7 @@ while not load_success:
 
 port= 5550              # If port is in use, enter a different 4 digit port number
 topic = "IGM401"        # Change this to whatever device you're going to use. Here it is set to the ion gauage we hope to interface using the labjack
-delay_time = 0.5        #s, between measurements
+delay_time = 0.1        #s, between measurements
 
 
 # create a publisher for this topic and port
@@ -41,12 +42,14 @@ while True:
                 time.sleep(delay_time)
                 voltage2 = ljm.eReadAddress(labjack_handle,2,3)
                 time.sleep(delay_time)
+                voltage3 = ljm.eReadAddress(labjack_handle,4,3)
+                time.sleep(delay_time)
                 read_success = True
             except:
                 time.sleep(delay_time)
                 print("read barfed")
         pressure = voltage_to_pressure(voltage)
-        data_dict = {'pressure' : pressure, 'voltage' : voltage2}
+        data_dict = {'pressure' : pressure, 'voltage' : [voltage2, voltage3]}
         publisher.send(data_dict)
         time.sleep(delay_time)
         # change time.sleep to determine upload speed

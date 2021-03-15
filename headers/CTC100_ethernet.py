@@ -35,7 +35,6 @@ class CTC100:
         Write a command to the CTC100 over serial, then wait for the
         response.
         """
-        print(command)
         self.device.write((command+"\n").encode()) # \n terminates commands
 
         # The response to a command is always terminated by a
@@ -119,8 +118,6 @@ class CTC100:
             return float(match.group())
         else:
             raise RuntimeError("Unable to read from channel {}".format(channel))
-            
-        time.sleep(0.1)
         
     def enable_PID(self, channel, temp):
 

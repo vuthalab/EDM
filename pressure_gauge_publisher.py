@@ -8,13 +8,15 @@
 import os
 import time
 os.chdir('/home/vuthalab/gdrive/code/edm_control/headers')
-from headers.zmq_server_socket import zmq_server_socket
-from headers.FRG730_ion_gauge_header import FRG730
+#from headers.zmq_server_socket import zmq_server_socket
+#from headers.FRG730_ion_gauge_header import FRG730
+from zmq_server_socket import zmq_server_socket
+from FRG730_ion_gauge_header import FRG730
 
 topic = "FRG730"                        # Change this to whatever device you're going to use.
 port = 5553                             # If port is in use, enter a different 4 digit port number.
 
-delay_time = 1.0 #s, between measurements
+delay_time = 0.1 #s, between measurements
 
 # initialize device
 topic_device = FRG730('/dev/agilent_pressure_gauge')   # Change this to whatever device you want to connect with the zmq socket.
