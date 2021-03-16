@@ -12,7 +12,7 @@ from headers.zmq_client_socket import zmq_client_socket
 ## create timestamped data folder
 def get_save_folder(root_dir):
     # Create a folder inside folder root_dir to save all recorded data, labelled by the date. Returns the full path to the folder
-
+    #Add a pointless comment.
     #Determine the current date for saved data
     day = time.strftime("%d")
     month = time.strftime("%m")
