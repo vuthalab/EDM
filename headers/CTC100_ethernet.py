@@ -119,10 +119,12 @@ class CTC100:
         else:
             raise RuntimeError("Unable to read from channel {}".format(channel))
         
-    def enable_PID(self, channel, temp):
+    def ramp_temperature(self, channel, temp=0.0, rate=0.1):
 
-        self.set_variable("{}.PID.mode".format(channel), "on")
-        self.set_variable("{}.PID.setpoint".format(channel), str(temp)) 
+        self.set_variable("{}.PID.mode".format(channel), "off") #This should reset the ramp temperature to the current temperature.
+        self.set_variable("{}.PID.Ramp".format(channel), str(rate))
+        self.set_variable("{}.PID.setpoint".format(channel), str(temp))
+        self.set_variable("{}.PID.mode".format(channel), "on") 
         
     def disable_PID(self, channel):
         
