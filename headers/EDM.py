@@ -1,6 +1,9 @@
 #Attempt 1 to create EDM_experiement class
 # class to inherit: MFC() from the MFC_Control.py, CTC100() from CTC100_ethernet.py, PulseTube() from pulsetube_compressor.py,
 #methods to incorperate: take temperature, take presure liveplot, log data
+
+#TEST COMMENT
+
 from zmq_server_socket import zmq_server_socket
 from zmq_client_socket import zmq_client_socket
 from FRG730_ion_gauge_header import FRG730
