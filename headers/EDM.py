@@ -11,7 +11,7 @@ from headers.FRG730_ion_gauge_header import FRG730
 from headers.CTC100_ethernet import CTC100
 from pulsetube_compressor import PulseTube
 import os, sys
-#sys.path.append("/home/vuthalab/gdrive/code/edm_control")
+sys.path.append("/home/vuthalab/gdrive/code/edm_control")
 
 
 
