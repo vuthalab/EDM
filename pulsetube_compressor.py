@@ -3,6 +3,7 @@ import datetime
 import time
 import os
 os.chdir('/home/vuthalab/gdrive/code/edm_control/headers')
+#os.chdir('C:/Users/camil/Documents/Github/EDM/headers')
 from zmq_server_socket import zmq_server_socket
 
 from pymodbus.client.sync import ModbusTcpClient
