@@ -4,18 +4,13 @@ To set up MFC for different gases, see MKS MFC Web Browser Tutorial.
 Initialization sometimes works, sometimes doesn't. Maybe reinstall labjack_ljm_software newer version.
 '''
 
-from labjack import ljm
-import time
-import matplotlib.pyplot as plt
-import numpy as np
+from headers.Labjack import Labjack
 
 #%% SETUP MASS FLOW CONTROLLER 470021124
 
-class MFC():
-    def __init__(self):
-        self.handle = ljm.openS("T7", "Ethernet", "470017292")# for test: string "-2" opens fake device. "ANY" opens any T7.
-        #470021124 other lab jack
-        self.verbose = False
+class MFC(Labjack):
+    def __init__(self, serial_number):
+        self.handle = Labjack(serial_number)
 
     def get_flow_rate_cell(self):
         val = ljm.eReadName(self.handle, "AIN0")

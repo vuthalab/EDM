@@ -29,6 +29,8 @@ class CTC100:
         """
 
         self.device = telnetlib.Telnet(ip_address, port = 23, timeout = 2)
+        self.thermometer_names = []
+        self.heater_names = []
 
     def write(self, command):
         """
