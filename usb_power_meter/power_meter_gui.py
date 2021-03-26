@@ -35,7 +35,7 @@ import tkinter as tk
 from tkinter import font
 import numpy as np
 
-os.chdir('/home/vuthalab/Downloads')
+os.chdir('/home/vuthalab/gdrive/code/edm_control/usb_power_meter/')
 from zmqPublisher import zmqPublisher
 #os.chdir('/home/labuser/Insync/electric.atoms@gmail.com/GoogleDrive/calcium/code/calcium_control/thorlabs_power_meter')
 
