@@ -1,11 +1,12 @@
 import re
-import serial
+import telnetlib
 import time
 
 class CTC100:
     """
     An extremely simple class to read values from the CTC100
-    Prorammable Temperature Controller.
+    Prorammable Temperature Controller. Use ethernet rather 
+    than a serial port.
 
     How to use::
 
@@ -16,34 +17,30 @@ class CTC100:
 
     Author: Wesley Cassidy
     Date: 26 April 2018
+    
+    Modified by: Rhys Anderson
+    Date: February 25, 2020
     """
 
-    def __init__(self, address):
+    def __init__(self, ip_address):
         """
         Pass the USB Serial port the CTC100 is attached to (usually of
         the form /dev/ttyACM*).
         """
 
-        self.device = serial.Serial(address, timeout=0)
+        self.device = telnetlib.Telnet(ip_address, port = 23, timeout = 2)
 
     def write(self, command):
         """
         Write a command to the CTC100 over serial, then wait for the
         response.
         """
-
         self.device.write((command+"\n").encode()) # \n terminates commands
 
         # The response to a command is always terminated by a
         # \r\n, so keep polling the input buffer until we read
         # one.
-        t1 = time.time()
-        response = self.device.read()
-        while len(response) == 1 or response[-2:] != "\r\n":
-            response += self.device.read()
-            t2 = time.time()
-            if (t2 - t1) > 0.1:
-                break
+        response = self.device.read_until(b"\r\n",0.5)
         return response
         
     def get_variable(self, var):
@@ -99,7 +96,7 @@ class CTC100:
         if not isinstance(channel, str): #Sets string for channel
             channel = "In{}".format(channel)
         
-        repsonse = response = self.set_variable("{}.alarm.mode".format(channel), "Off") # Turns alarm off
+        repsonse = self.set_variable("{}.alarm.mode".format(channel), "Off") # Turns alarm off
     
     def read(self, channel):
         """
@@ -121,5 +118,24 @@ class CTC100:
             return float(match.group())
         else:
             raise RuntimeError("Unable to read from channel {}".format(channel))
-            
-        time.sleep(0.1)
+        
+    def ramp_temperature(self, channel, temp=0.0, rate=0.1):
+
+        self.set_variable("{}.PID.mode".format(channel), "off") #This should reset the ramp temperature to the current temperature.
+        self.set_variable("{}.PID.Ramp".format(channel), str(rate))
+        self.set_variable("{}.PID.setpoint".format(channel), str(temp))
+        self.set_variable("{}.PID.mode".format(channel), "on") 
+        
+    def disable_PID(self, channel):
+        
+        self.set_variable("{}.PID.mode".format(channel), "off")
+        self.set_variable("{}.value".format(channel),"0")
+        self.write("{}.Off".format(channel))
+        
+    def enable_output(self):
+        
+        self.set_variable("outputEnable", "on")
+        
+    def disable_output(self):
+        
+        self.set_variable("outputEnable", "off")
