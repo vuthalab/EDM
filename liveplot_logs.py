@@ -27,8 +27,8 @@ locator = mpdates.AutoDateLocator()
 formatter = mpdates.ConciseDateFormatter(locator)
 
 num_fields = len(data)-1    # number of plots to show
-field_names = ["time", "$p$ [torr]", "$p$ [torr]","$V$ [volts]","$V$ [volts]","$Q_1$","$Q_2$","$Q_3$","$Q_4$","$T_1$ [K]","$T_2$ [K]","$T_3$ [K]","$T_4$ [K]","$T_5$ [K]","$T_6$ [K]","$T_7$ [K]","$T_8$ [K]"]
-labels=["","agilent","hornet","pd","trans","saph heat", "coll heat", "45K heat", "4K heat", "sapphire mount","collimator","bottom hs","buffer cell","4K sorb","45K sorb","45K plate","4K plate"]
+field_names = ["time", "$p$ [torr]", "f [sccm]", "f [sccm", "$V$ [volts]","$V$ [volts]","$Q_1$","$Q_2$","$Q_3$","$Q_4$","$T_1$ [K]","$T_2$ [K]","$T_3$ [K]","$T_4$ [K]","$T_5$ [K]","$T_6$ [K]","$T_7$ [K]","$T_8$ [K]"]
+labels=["","agilent","buff","neon","refl","trans","saph heat", "coll heat", "45K heat", "4K heat", "sapphire mount","collimator","bottom hs","buffer cell","4K sorb","45K sorb","45K plate","4K plate"]
 # labels=["","","","north HS", "buffer cell", "45k plate", "4k plate"]
 traces = [0]*(num_fields)
 fig, axes = plt.subplots(nrows=num_fields,sharex=True,figsize=(10,8))

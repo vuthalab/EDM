@@ -37,31 +37,11 @@ def get_save_folder(root_dir):
     return savefolder
 
 ## connect
-
-connection_settings = {'ip_addr': 'localhost',  # ip address
-                       'port': 5553,            # our open port
-                       'topic': 'FRG730'}       # device
-pressure1_socket = zmq_client_socket(connection_settings)
-pressure1_socket.make_connection()
-
 connection_settings = {'ip_addr': 'localhost',  # ip address
                        'port': 5550,            # our open port
-                       'topic': 'IGM401'}       # device
-pressure2_socket = zmq_client_socket(connection_settings)
-pressure2_socket.make_connection()
-
-connection_settings = {'ip_addr': 'localhost',  # ip address
-                       'port': 5551,            # our open port
-                       'topic': 'CTC_100'}       # device
-temperature1_socket = zmq_client_socket(connection_settings)
-temperature1_socket.make_connection()
-
-# connection_settings = {'ip_addr': 'localhost',  # ip address
-#                        'port': 5552,            # our open port
-#                        'topic': 'CTC100_2'}       # device
-# temperature2_socket = zmq_client_socket(connection_settings)
-# temperature2_socket.make_connection()
-
+                       'topic': 'EDM_monitor'}       # device
+monitor_socket = zmq_client_socket(connection_settings)
+monitor_socket.make_connection()
 
 ## set up log file
 root_dir = "/home/vuthalab/Desktop/edm_data/logs/full_system/"
@@ -71,7 +51,7 @@ logfile_path = folder + "system_log.txt"
 
 mode = 'a' if os.path.exists(logfile_path) else 'w'
 with open(logfile_path, mode) as logfile:
-    logfile.write("# unix time [s]  \t pressure [torr] \t temperatures [K] \n")
+    logfile.write("# unix time [s]  \t pressure [torr] \t flow [sccm] \t flow [sccm] \t voltage [V] \t voltage [V] \t power [W] \t power [W] \t power [W] \t power [W] \t temperatures [K] \t temperatures [K] \t temperatures [K] \t temperatures [K] \t temperatures [K] \t temperatures [K] \t temperatures [K] \t temperatures [K] \n")
 
 print('Logging to folder ' + logfile_path)
 
@@ -80,16 +60,14 @@ print('Logging to folder ' + logfile_path)
 try:
     while True:
         current_time = time.time()
-        pressure1 = pressure1_socket.read_on_demand()[1]['pressure']
-        temperatures1 = temperature1_socket.read_on_demand()[1]['temperatures']
-        heaters = temperature1_socket.read_on_demand()[1]['heaters']
-#temperatures2 = temperature2_socket.read_on_demand()[1]['temperatures']
-        pressure2 = pressure2_socket.read_on_demand()[1]['pressure']
-        pdvoltage = pressure2_socket.read_on_demand()[1]['voltage']
+        pressures = monitor_socket.read_on_demand()[1]['pressures']
+        temperatures = monitor_socket.read_on_demand()[1]['temperatures']
+        heaters = monitor_socket.read_on_demand()[1]['heaters']
+        voltages = monitor_socket.read_on_demand()[1]['voltages']
+        flows = monitor_socket.read_on_demand()[1]['flows']
 
-        if pressure1 > 1e-12: #correcting against ocassional bugs in reading
-            data = f'{current_time} \t {pressure1} \t {pressure2} \t {pdvoltage[0]} \t {pdvoltage[1]} \t {heaters[0]} \t {heaters[1]} \t {heaters[2]} \t {heaters[3]} \t {temperatures1[0]} \t {temperatures1[1]} \t {temperatures1[2]} \t {temperatures1[3]} \t {temperatures1[4]} \t {temperatures1[5]} \t {temperatures1[6]} \t {temperatures1[7]} \n'
-
+        if pressures > 1e-12: #correcting against ocassional bugs in reading
+            data = f'{current_time} \t {pressures} \t {flows[0]} \t {flows[1]} \t {voltages[0]} \t {voltages[1]} \t {heaters[0]} \t {heaters[1]} \t {heaters[2]} \t {heaters[3]} \t {temperatures[0]} \t {temperatures[1]} \t {temperatures[2]} \t {temperatures[3]} \t {temperatures[4]} \t {temperatures[5]} \t {temperatures[6]} \t {temperatures[7]} \n'
 
             with open(logfile_path, 'a') as logfile:
                 logfile.write(data)
