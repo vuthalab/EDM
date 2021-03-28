@@ -66,7 +66,7 @@ def Melt(low_temp,high_temp,heat_rate,cool_rate,hold_time,wait_time):
     Publish(hold_time)
     T1.ramp_temperature('heat saph', low_temp, cool_rate)
     final_temp = T1.read('saph')
-    cool_time = (final_temp - initial_temp) / cool_rate
+    cool_time = (final_temp - low_temp) / cool_rate
     print('Beginning cooldown. Time is', time.asctime(time.localtime()), '. Ramping from', final_temp, 'K to', low_temp, 'K in', cool_time, 's.\n')
     Publish(cool_time)
     print('Cooling complete. Time is', time.asctime(time.localtime()), '. Holding for', wait_time, 's.\n')
