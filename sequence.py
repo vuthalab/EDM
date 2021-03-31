@@ -86,6 +86,7 @@ def Grow(buffer_rate,neon_line_rate,growth_time):
 def Log_Parameters(root_dir, sequence_dict):
     #Create a folder inside folder root_dir to save the required parameters, labelled by the date.
     #Determine the current date for saved data
+    print(sequence_dict)
     day = time.strftime("%d")
     month = time.strftime("%m")
     monthName = time.strftime("%B")
@@ -151,32 +152,44 @@ try:
     params_dict = {'purpose': 'melt_test',
         'start_time' : time.asctime(time.localtime()),
         'end_time' : time.asctime(time.localtime()),
-        'slow_heat_rate' :  0.025,
-        'slow_cool_rate' : 0.025,
-        'fast_heat_rate' : 1.0,
-        'fast_cool_rate' : 1.0,
+        'heat_rate' :  0.1,
+        'cool_rate' : 0.1,
         'hold_time' : 5.0,
-        'wait_time' : 120.0,
+        'wait_time' : 300.0,
         'low_temp' : 8.0,
         'high_temp' : 25.0,
         'buffer_flow' : 0.0,
         'neon_flow' : 2.0,
-        'growth_time' : 120.0*60.0}
-    fast_rates = np.array([5.0, 2.0, 1.0, 0.7, 0.5, 0.2, 0.1, 0.05])
+        'growth_time' : 120.0*60.0,
+        'post_growth_time' : 5.0*60.0}
+    rates = np.array([5.0, 2.0, 1.0, 0.7, 0.5, 0.2, 0.1, 0.07, 0.05])
+    np.random.shuffle(rates) #Randomize the rates, to remove time correlations.
 
     Publish(10.0)
 
     #Perform individual sequences.
-    for rate in fast_rates:
+    for r in rates:
         params_dict['start_time'] = time.asctime(time.localtime())
-        params_dict['fast_heat_rate'] = rate
-        params_dict['fast_cool_rate'] = rate
-        Melt(params_dict['low_temp'],params_dict['high_temp'],params_dict['slow_heat_rate'],params_dict['slow_cool_rate'],params_dict['hold_time'],params_dict['wait_time'])
-        Melt(params_dict['low_temp'],params_dict['high_temp'],params_dict['fast_heat_rate'],params_dict['fast_cool_rate'],params_dict['hold_time'],params_dict['wait_time'])
+        params_dict['heat_rate'] = r
+        params_dict['cool_rate'] = r
+        Melt(params_dict['low_temp'],params_dict['high_temp'],params_dict['heat_rate'],params_dict['cool_rate'],params_dict['hold_time'],params_dict['wait_time'])
         Grow(params_dict['buffer_flow'],params_dict['neon_flow'],params_dict['growth_time'])
-        Publish(60.0)
+        Publish(params_dict['post_growth_time'])
         params_dict['end_time'] = time.asctime(time.localtime())
+        print(params_dict)
         Log_Parameters(root_dir, params_dict)
+
+    # #Perform individual sequences.
+    # for rate in fast_rates:
+    #     params_dict['start_time'] = time.asctime(time.localtime())
+    #     params_dict['fast_heat_rate'] = rate
+    #     params_dict['fast_cool_rate'] = rate
+    #     Melt(params_dict['low_temp'],params_dict['high_temp'],params_dict['slow_heat_rate'],params_dict['slow_cool_rate'],params_dict['hold_time'],params_dict['wait_time'])
+    #     Melt(params_dict['low_temp'],params_dict['high_temp'],params_dict['fast_heat_rate'],params_dict['fast_cool_rate'],params_dict['hold_time'],params_dict['wait_time'])
+    #     Grow(params_dict['buffer_flow'],params_dict['neon_flow'],params_dict['growth_time'])
+    #     Publish(60.0)
+    #     params_dict['end_time'] = time.asctime(time.localtime())
+    #     Log_Parameters(root_dir, params_dict)
 
     #End of the sequence.
     print('Sequence complete. Time is', time.asctime(time.localtime()), '.\n')
