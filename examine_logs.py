@@ -18,7 +18,7 @@ root_window.destroy()
 logfile = directory+"/system_log.txt"
 
 ## plot log file
-num_points = 200000
+num_points = 1000000
 plot_every = 1        # plot one out of every .. points
 data = np.loadtxt(logfile,unpack=True)
 data[0] = mpdates.epoch2num(data[0])   # convert to convenient matplotlib format
