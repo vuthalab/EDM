@@ -5,8 +5,9 @@ import zmq
 import time
 import numpy as np
 
-os.chdir("/home/vuthalab/gdrive/code/edm_control/headers")
-from zmq_client_socket import zmq_client_socket
+os.chdir("/home/vuthalab/gdrive/code/edm_control/")
+#from zmq_client_socket import zmq_client_socket
+from headers.zmq_client_socket import zmq_client_socket
 
 
 ## create timestamped data folder
