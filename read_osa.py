@@ -28,6 +28,9 @@ def open_connection(port: str, gpib_addr: int):
     send_command(f'++addr {gpib_addr}')
     send_command('++read_tmo_ms 30')
 
+    # Clear existing output
+    send_command('++read')
+
     # Query OSA model
     model = query('*idn?')
     print('OSA Model:', model)
@@ -49,7 +52,7 @@ def read_array(command):
     """Read a float array from the GPIB device."""
     entries = query(command).split(',')
     n = int(entries[0])
-    data = np.array([float(x) for x in entries[1:]])
+    data = np.array([float(x.strip()) for x in entries[1:]])
     assert len(data) == n
     return data
 
@@ -72,7 +75,7 @@ if __name__ == '__main__':
     wavelengths, levels = get_spectrum('A')
 
     # Plot data
-    plt.plot(wavelengths, levels)
+    plt.plot(wavelengths, levels, label=f'Trace {trace}')
     plt.xlabel('Wavelength (nm)')
     plt.ylabel('Power (dBm)')
     plt.title(f'Ambient Spectrum')
