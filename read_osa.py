@@ -7,10 +7,14 @@ class OSA:
     # Current serial connection
     _ser = None
 
-    def __init__(self, serial_port, gpib_addr: int, baut: int = 19200):
+    def __init__(self,
+            serial_port: str , 
+            gpib_addr: int,
+            baud: int = 19200
+        ):
         # Open the serial connection
-        print(f'Opening serial connection on {port}...', end=' ', flush=True)
-        self._ser = serial.Serial(port, baud, timeout=2)
+        print(f'Opening serial connection on {serial_port}...', end=' ', flush=True)
+        self._ser = serial.Serial(serial_port, baud, timeout=2)
         self._ser.reset_input_buffer()
         self._ser.reset_output_buffer()
         print('Done.')
