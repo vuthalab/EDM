@@ -31,24 +31,24 @@ class OSA:
         model = self.query('*idn?')
         print('OSA Model:', model)
 
-    def stop():
+    def stop(self):
         """Closes the serial connection."""
         self._ser.close()
 
 
     ##### Utility Functions #####
-    def send_command(command: str) -> None:
+    def send_command(self, command: str) -> None:
         """Send a command to the GPIB device."""
         self._ser.write((command + '\n').encode('utf-8'))
         time.sleep(0.5)
 
-    def query(command: str) -> str:
+    def query(self, command: str) -> str:
         """Send a command to the GPIB device, and return its response."""
         self.send_command(command)
         response = self._ser.readline().strip()
         return response.decode('utf-8')
 
-    def read_array(command: str):
+    def read_array(self, command: str):
         """Read a float array from the GPIB device."""
         entries = self.query(command).split(',')
         n = int(entries[0])
@@ -58,24 +58,24 @@ class OSA:
 
 
     ##### Data Reading #####
-    def get_wavelengths(trace: str):
+    def get_wavelengths(self, trace: str):
         """Retrieves the wavelength data (nm) from the specified trace."""
         print('Retrieving wavelengths (nm)...')
         return self.read_array(f'WDAT{trace}')
 
-    def get_levels(trace: str):
+    def get_levels(self, trace: str):
         """Retrieves the level data (dBm) from the specified trace."""
         print('Retrieving levels (dBm)...')
         return self.read_array(f'LDAT{trace}')
 
-    def get_spectrum(trace: str):
+    def get_spectrum(self, trace: str):
         """Retrieves the specified trace from the OSA."""
         return self.get_wavelengths(trace), self.get_levels(trace)
 
 
 if __name__ == '__main__':
     # OSA Port + Address
-    SERIAL_PORT = '/dev/ttyUSB2' # Run dmesg | grep "FTDI" to locate port
+    SERIAL_PORT = '/dev/ttyUSB1' # Run dmesg | grep "FTDI" to locate port
     GPIB_ADDRESS = 1 # Configurable on the OSA
 
     osa = OSA(SERIAL_PORT, GPIB_ADDRESS)
