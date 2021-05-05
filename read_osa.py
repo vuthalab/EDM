@@ -84,7 +84,7 @@ if __name__ == '__main__':
     wavelengths, levels = osa.get_spectrum('A')
 
     # Plot data
-    plt.plot(wavelengths, levels, label=f'Trace {trace}')
+    plt.plot(wavelengths, levels)
     plt.xlabel('Wavelength (nm)')
     plt.ylabel('Power (dBm)')
     plt.title(f'Ambient Spectrum')
