@@ -24,9 +24,6 @@ class OSA:
         self.send_command(f'++addr {gpib_addr}')
         self.send_command('++read_tmo_ms 30')
 
-        # Clear existing output
-        self.send_command('++read')
-
         # Query OSA model
         model = self.query('*idn?')
         print('OSA Model:', model)
