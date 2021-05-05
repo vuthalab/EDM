@@ -40,7 +40,7 @@ class OSA:
     def send_command(self, command: str) -> None:
         """Send a command to the GPIB device."""
         self._ser.write((command + '\n').encode('utf-8'))
-        time.sleep(0.5)
+        time.sleep(1.0)
 
     def query(self, command: str) -> str:
         """Send a command to the GPIB device, and return its response."""
