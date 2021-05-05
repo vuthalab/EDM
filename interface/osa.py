@@ -1,9 +1,10 @@
 import numpy as np
 
-from interface.gpib import GPIB
+from interface.gpib import GPIB 
 
 
 class OSA(GPIB):
+    """GPIB interface for ANDO AQ6317 optical spectrum analyzer"""
     SERIAL_PORT = '/dev/serial/by-id/usb-Prologix_Prologix_GPIB-USB_Controller_PX96QTQY-if00-port0'
 
     def __init__(self, gpib_addr: int):
