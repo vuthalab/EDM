@@ -1,18 +1,17 @@
-import matplotlib.pyplot as plt
+from headers.ando_aq6317 import AndoAQ6317
 
-from interface.osa import OSA
-
+serial_port = '/dev/ttyUSB0' # TODO remap the serial port to something human-readable
 gpib_address = 1 # Configurable on the OSA
-osa = OSA(gpib_address)
 
-# Get sample spectrum from OSA
-wavelengths, levels = osa.get_spectrum('A')
+# Initialize connection
+osa = AndoAQ6317(serial_port, gpib_address)
+print(osa)
+print()
 
-# Plot data
-plt.plot(wavelengths, levels)
-plt.xlabel('Wavelength (nm)')
-plt.ylabel('Power (dBm)')
-plt.title(f'Ambient Spectrum')
-plt.show()
+# Trigger OSA and plot trace
+osa.active_trace = 'A'
+osa.range = (800, 890)
+osa.trigger()
+osa.quick_plot()
 
 osa.stop()
