@@ -1,6 +1,9 @@
-import matplotlib.pyplot as plt
+from headers.rigol_ds1102e import RigolDS1102e
 
-from interface.oscilloscope import Oscilloscope
+ip_address = '192.168.0.131'
 
-scope = Oscilloscope()
-scope.stop()
+# Initialize connection
+scope = RigolDS1102e(ip_address)
+print(scope)
+
+#scope.stop()
