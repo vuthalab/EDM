@@ -40,14 +40,20 @@ from zmqPublisher import zmqPublisher
 #os.chdir('/home/labuser/Insync/electric.atoms@gmail.com/GoogleDrive/calcium/code/calcium_control/thorlabs_power_meter')
 os.chdir('/home/vuthalab/gdrive/code/edm_control/usb_power_meter/')
 
+
 class USBTMC:
     """
     Simple implememntation of a USBTMC device driver, in the style of
-    visa.hg
+    visa.h
     """
+    def __init__(self, device):
+        self.device = device
+        self.FILE = os.open(device, os.O_RDWR)
+
+        # TODO: Test that the file opened
 
     def write(self, command):
-        os.write(self.FILE, command.encode());gi
+        os.write(self.FILE, command.encode());
 
     def read(self, length = 4000):
         return os.read(self.FILE, length).decode("utf-8")
@@ -71,15 +77,6 @@ class PM16(USBTMC):
     Simple interface to the Thorlabs PM16 power meter.
     """
 
-   # def __init__(self, device):
-        #super().__init__(device)
-       # super().__init__(self) #originaL CODE
-        #object.__init__(self)
-        #time.sleep(1)
-        #print(self.set_auto_range())
-        #print("Current wavelength: {:.0f} nm".format(self.get_wavelength()))
-
-        #self.publisher_started = False
     def __init__(self, device):
         super().__init__(device)
         time.sleep(1)
@@ -93,6 +90,29 @@ class PM16(USBTMC):
         """Read the power from the meter in Watts."""
         return float(self.query("Read?"))
 
+    def stream(self, samples=None, duration=None, delay=0.1):
+        """
+        Continuously poll the power meter and print the results.
+
+        samples: the number of samples to read before stopping. Optional, default infinite.
+        duration: the length of time to poll for. Optional, default infinite.
+        delay: the time between samples, in seconds. Optional, default 0.5 s
+        If neither samples or duration are provided to limit the poll, this method will keep reading until keyboard interrupt. At any time, keyboard interrupt will cleanly stop the poll.
+
+        """
+        log = []
+        poll_start = time.time()
+        while (samples is None and duration is None) or (samples is not None and len(log) < samples) or (duration is not None and time.time() - poll_start < duration):
+            try:
+                val = self.power()
+                #print("{} mW".format(val*1e3))
+                print("%.6f mW"%(val*1e3))
+                #log.append(val)
+                time.sleep(delay)
+            except KeyboardInterrupt:
+                break
+
+        #return log
 
     def set_wavelength(self, wavelength):
         """
@@ -133,9 +153,139 @@ class PM16(USBTMC):
         #self.publisher = zmqPublisher(5556,'power_meter')
         self.publisher.publish_data(data)
 
+   # def launch_gui(self,publish=False):
+    #    gui = PowerMeterGUI(self,publish)
     def launch_gui(self):
         gui = PowerMeterGUI(self)
 
+
+#class PowerMeterGUI():
+ #   def __init__(self,power_meter,publish=False):
+  #      self.pm = power_meter
+   #     self.publish = publish
+    #    self.open_display()
+
+    #def open_display(self):
+     #   #self.root = tk.Tk()
+      #  #self.root.title("Power Meter")
+      #  #self.window = tk.Frame(width=20,height=10)
+       # ##self.window.grid_propagate(False)
+       # #self.window.pack()
+       # #tk.Label(self.window,text='Wavelength: %i nm'%self.pm.get_wavelength(),font=("Arial Bold", 20)).pack()
+
+      #  #self.power_font = ("Arial Bold", 60)
+      #  #start_power = 1e3*self.pm.power()
+      #  #self.power_label = tk.Label(self.window,text='%.6f mW'%start_power,font=self.power_font)
+      #  #self.power_font = font.Font(size=100)
+      #  #self.power_label.pack()
+
+     #   #self.create_font_size_array()
+
+     #   #self.root.after(100, self.refresh_power)
+     #   #self.root.after(1000,self.stream_publish_power)
+     #   #self.root.bind("<Configure>",self.font_resize)
+     #   #self.root.mainloop()
+
+
+      #  self.window = tk.Frame(width=20,height=10)
+        #self.window.grid_propagate(False)
+       # self.window.pack()
+
+       # self.wavelength_label_text = tk.StringVar()
+        #self.wavelength_label_text.set('Wavelength: %i nm'%self.pm.get_wavelength())
+        #self.wavelength_label=tk.Label(self.window,textvariable=self.wavelength_label_text,font=("Arial Bold", 20))
+        #self.wavelength_label.pack()
+
+        #self.power_font = ("Arial Bold", 60)
+        #start_power = 1e3*self.pm.power()
+        #self.power_label = tk.Label(self.window,text='%.6f mW'%start_power,font=self.power_font)
+        #self.power_font = font.Font(size=100)
+        #self.power_label.pack()
+
+
+        #self.wavelength_frame = tk.Frame()
+        #tk.Label(self.wavelength_frame,text="Enter wavelength in nm").pack()
+
+        #self.wavelength = tk.StringVar()
+
+        #tk.Entry(self.wavelength_frame,textvariable = self.wavelength).pack()
+        #tk.Button(self.wavelength_frame,text="Change Wavelength",command=self.handle_wavelength_button_click).pack()
+
+        #tk.Checkbutton(self.wavelength_frame,text="Publish values?",var=self.publish).pack()
+
+
+        #self.wavelength_frame.pack()
+
+        #self.create_font_size_array()
+
+        #self.root.after(100, self.refresh_power)
+        #self.root.after(1000,self.stream_publish_power)
+        #self.root.bind("<Configure>",self.font_resize)
+        #self.root.mainloop()
+
+#    def handle_wavelength_button_click(self):
+#        new_wavelength = float(self.wavelength.get())
+#        self.pm.set_wavelength(new_wavelength)
+#        self.wavelength_label_text.set('Wavelength: %i nm'%new_wavelength)
+#        self.wavelength.set("")
+
+
+#    def refresh_power(self):
+#        new_power = 1e3*self.pm.power()
+#        self.power_label.config(text='%.6f mW'%new_power)
+#        self.root.after(100, self.refresh_power)
+
+#   def stream_publish_power(self):
+#        if self.publish:
+#            self.pm.publish_data(1e3*self.pm.power())
+#        self.root.after(1000,self.stream_publish_power)
+
+#   def create_font_size_array(self):
+#        font_size_array = np.linspace(200,1,num=50,dtype=int)
+#        self.font_obj_list = [font.Font(size=i) for i in font_size_array]
+#        placeholder_text = '500.000000 mW'
+#        self.text_widths = [i.measure(placeholder_text) for i in self.font_obj_list]#
+
+
+    #def calc_best_font_size(self,x):
+
+     #   diff_array = [(x-i) for i in self.text_widths]
+      #  item_index = diff_array.index(np.min([n for n in diff_array if n>0]))
+       # self.power_font = self.font_obj_list[item_index]
+        #print(self.power_font['size'])
+
+  #  def font_resize(self,event=None):
+   #     x = self.root.winfo_width()
+   #     y = self.root.winfo_height()
+   #     xp = self.power_label.winfo_width()
+   #     yp = self.power_label.winfo_height()
+   #     #print('root: %i x %i, label: %i x %i'%(x,y,xp,yp))
+#
+ #       self.calc_best_font_size(x)
+  #      self.power_label.config(font=self.power_font)
+
+
+        #new_font_size = int(np.round(0.8*y))
+        #self.power_font = font.Font(size=new_font_size)
+        #placeholder_text = '500.000000 mW'
+        #text_width = self.power_font.measure(placeholder_text)
+        #print('text width: %i'%text_width)
+
+        #if(text_width<x):
+        #    self.power_label.config(font=self.power_font)
+
+        # if(x-xp>10):
+        #     new_font_size = int(np.round(0.8*y))
+        #     self.power_font = font.Font(size=new_font_size)
+        #     self.power_label.config(font=self.power_font)
+
+       #   if (np.abs(self.power_font['size']-y)>0.3*y) and (x/y>9):
+        #      #stops some crazy recursive behaviour
+        #     new_font_size = int(np.round(0.8*y))
+        #     self.power_font = font.Font(size=new_font_size)
+        #     #self.power_label.config(font=self.power_font)
+        # else:
+        #     pass
 
 
 class PowerMeterGUI():
@@ -231,10 +381,11 @@ class PowerMeterGUI():
         self.calc_best_font_size(x)
         self.power_label.config(font=self.power_font)
 
+
+
 if __name__=='__main__':
     pm = PM16('/dev/usbtmc1')
     pm.launch_gui()
-
 """
 Other commands: SENS:CORR:POW:PDI:RESP? returns a number
                 SENS:CORR:COLL:ZERO:STATE? returns 0 or 1
