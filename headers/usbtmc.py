@@ -122,7 +122,12 @@ class USBTMCDevice:
 
         time.sleep(delay)
         if self._mode == 'ethernet':
-            response = self._conn.read_all()
+            for tries in itertools.count(1):
+                response = self._conn.read_very_eager()
+                if response: break
+                if tries % 10 == 0:
+                    print(f'Stuck querying {command}: try {tries}')
+                time.sleep(0.2)
 
         if self._mode == 'direct':
             # We use os.read to prevent blocking.
@@ -133,7 +138,8 @@ class USBTMCDevice:
             # we wait explicitly for input.
             for tries in itertools.count(1):
                 if self._conn.in_waiting: break
-                if tries % 10 == 0: print(f'Stuck querying {command}: try {tries}')
+                if tries % 10 == 0:
+                    print(f'Stuck querying {command}: try {tries}')
                 time.sleep(0.2)
 
             response = self._conn.readline()

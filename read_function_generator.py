@@ -6,4 +6,4 @@ ip_address = '192.168.0.131'
 scope = RigolDG4162(ip_address)
 print(scope)
 
-#scope.stop()
+scope.stop()
