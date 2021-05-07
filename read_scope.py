@@ -12,6 +12,7 @@ scope.time_offset = 0
 
 # Set trigger settings
 scope.trigger_direction = 'rising'
+scope.trigger_source = 'ch1'
 scope.trigger_level = 0.2 # V
 
 # Display configuration

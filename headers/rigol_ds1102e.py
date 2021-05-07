@@ -1,7 +1,12 @@
+from typing import Union, Literal, List
+
 import numpy as np
 import matplotlib.pyplot as plt
 
 from headers.usbtmc import USBTMCDevice
+
+Channel = Union[Literal[1], Literal[2]]
+Array = List[float]
 
 
 TRIGGER_MODES = ['edge', 'pulse', 'video', 'scope', 'pattern', 'duration', 'alternation']
@@ -11,23 +16,29 @@ class RigolDS1102e(USBTMCDevice):
     """USBMTC interface for DS1102e oscilloscope."""
 
     # Currently active channel (emulated, not on scope)
-    active_channel = 1
+    active_channel: Channel = 1
 
     # Number of garbage points at start of trace
-    _garbage_points = 10
+    _garbage_points: int = 10
+
 
     def __init__(self):
+        """Initialize a connection to the scope and start acquisition."""
         super().__init__('/dev/usbtmc0', mode='direct')
         self.send_command(':RUN')
 
-    def stop(self):
+
+    def stop(self) -> None:
+        """Stop acquisition and close the connection."""
         self.send_command(':STOP')
         super().stop()
 
-    def __str__(self):
+
+    def __str__(self) -> str:
         trigger_mode = self.trigger_mode
         if trigger_mode == 'edge':
             trigger_mode = f'{self.trigger_direction} edge @ {self.trigger_level:.2f} V'
+        trigger_mode = f'{trigger_mode} on {self.trigger_source}'
         return '\n'.join([
             f'Model: {self.name}',
             f'Active Channel: {self.active_channel}',
@@ -37,17 +48,21 @@ class RigolDS1102e(USBTMCDevice):
             f'Trigger: {trigger_mode}'
         ])
 
+
     ##### Virtual Properties #####
     @property
     def probe_attenuation(self) -> float:
+        """Return the currently configured attenuation factor for the scope probe."""
         return float(self.query(f':CHAN{self.active_channel}:PROB?'))
 
     @probe_attenuation.setter
     def probe_attenuation(self, attenuation: float) -> None:
         self.send_command(f':CHAN{self.active_channel}:PROB {attenuation}')
 
+
     @property
     def voltage_offset(self) -> float:
+        """Return the vertical offset of the currently active trace (V)."""
         return float(self.query(f':CHAN{self.active_channel}:OFFS?'))
 
     @voltage_offset.setter
@@ -58,13 +73,15 @@ class RigolDS1102e(USBTMCDevice):
             assert abs(offset) <= 40
         self.send_command(f':CHAN{self.active_channel}:OFFS {offset:.2g}')
 
+
     @property
     def voltage_scale(self) -> float:
+        """Return the voltage scale (V/div) of the currently active trace."""
         return float(self.query(f':CHAN{self.active_channel}:SCAL?'))
 
     @voltage_scale.setter
     def voltage_scale(self, scale: float) -> None:
-        """Set the voltage scale (V/div)."""
+        """Set the voltage scale (V/div) of the currently active trace."""
         assert 2e-3 <= scale <= 10000
 
         # Locate smallest safe probe attenuation setting
@@ -75,22 +92,42 @@ class RigolDS1102e(USBTMCDevice):
         self.probe_attenuation = attenuation
         self.send_command(f':CHAN{self.active_channel}:SCAL {scale:.3g}')
 
+
     @property
-    def time_offset(self) -> float: return float(self.query(':TIM:OFFS?'))
+    def time_offset(self) -> float:
+        """Return the horizontal time offset (s)."""
+        return float(self.query(':TIM:OFFS?'))
 
     @time_offset.setter
     def time_offset(self, offset: float) -> None:
         assert abs(offset) <= 6 * self.time_scale
         self.send_command(f':TIM:OFFS {offset:.3g}')
 
+
     @property
-    def time_scale(self) -> float: return float(self.query(':TIM:SCAL?'))
+    def time_scale(self) -> float:
+        """Return the horizontal time scale (s/div)."""
+        return float(self.query(':TIM:SCAL?'))
 
     @time_scale.setter
     def time_scale(self, scale: float) -> None:
-        """Set the time scale (seconds/div)."""
+        """Set the time scale (s/div)."""
         assert 2e-9 <= scale <= 50
         self.send_command(f':TIM:SCAL {scale:.3g}')
+
+
+    @property
+    def trigger_source(self) -> str:
+        """Return the current edge trigger source."""
+        return query(':TRIG:EDGE:SOUR?').lower()
+
+    @trigger_source
+    def trigger_source(self, source: str) -> None:
+        """Set the current edge trigger source."""
+        allowed_sources = ['ch1', 'ch2', 'ext', 'acline'] + [f'd{i}' for i in range(16)]
+        assert source.lower() in allowed_sources
+        self.send_command(':TRIG:EDGE:SOUR? {source.upper()}')
+
 
     @property
     def trigger_mode(self) -> str:
@@ -100,6 +137,7 @@ class RigolDS1102e(USBTMCDevice):
     def trigger_mode(self, mode: str) -> None:
         assert mode.lower() in TRIGGER_MODES
         self.send_command(f':TRIG:MODE {mode.upper()}')
+
 
     @property
     def trigger_level(self) -> float:
@@ -111,8 +149,10 @@ class RigolDS1102e(USBTMCDevice):
         assert abs(level) <= 6 * self.voltage_scale
         self.send_command(f':TRIG:EDGE:LEV {level:.2f}')
 
+
     @property
     def trigger_direction(self) -> str:
+        """Return the trigger direction (rising/falling) for the edge trigger."""
         return {
             'positive': 'rising',
             'negative': 'falling'
@@ -129,14 +169,15 @@ class RigolDS1102e(USBTMCDevice):
 
 
     @property
-    def times(self):
+    def times(self) -> Array:
         """Return times along the horizontal axis."""
         offset, scale = self.time_offset, self.time_scale
         N = 610
         return offset + 6 * np.linspace(-scale, scale, N)[self._garbage_points:]
 
     @property
-    def trace(self):
+    def trace(self) -> Array:
+        """Return the array of voltage readings for the currently active trace."""
         # Get raw trace bytes
         raw_data = self.query(f':WAV:DATA? CHAN{self.active_channel}', raw=True, delay=0.5)
 
@@ -146,6 +187,7 @@ class RigolDS1102e(USBTMCDevice):
 
     ##### Convenience Functions #####
     def quick_plot(self):
+        """Show a plot of the current trace."""
         plt.plot(self.times, self.trace)
         plt.xlabel('Time (s)')
         plt.ylabel('Voltage (V)')

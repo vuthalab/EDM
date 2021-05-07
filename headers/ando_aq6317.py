@@ -1,9 +1,12 @@
-from typing import Tuple
+from typing import Tuple, List
 
 import numpy as np
 import matplotlib.pyplot as plt
 
 from headers.gpib_device import GPIBDevice
+
+
+Array = List[float]
 
 
 SWEEP_MODES = ['stop', 'single', 'repeat', 'auto', 'segment_measure']
@@ -13,10 +16,8 @@ SPEED_OF_LIGHT = 299792.458 # in nm Thz
 class AndoAQ6317(GPIBDevice):
     """GPIB interface for the Ando AQ6317 optical spectrum analyzer."""
 
-    def __init__(self, serial_port: str, gpib_addr: int):
-        super().__init__(serial_port, gpib_addr)
 
-    def _read_array(self, command: str):
+    def _read_array(self, command: str) -> Array:
         """Read a float array from the GPIB device."""
         entries = self.query(command).split(',')
         n = int(entries[0])
@@ -24,10 +25,11 @@ class AndoAQ6317(GPIBDevice):
         assert len(data) == n
         return data
 
+
     def __str__(self) -> str:
         return '\n'.join([
             f'OSA Model: {self.name}',
-#            f'Active Trace: {self.active_trace}',
+            f'Active Trace: {self.active_trace}',
             f'Sweep Mode: {self.sweep_mode}',
             f'Range: {self.lower_wavelength:.2f}-{self.upper_wavelength:.2f} nm',
             f'Resolution: {self.resolution:.2f} nm',
@@ -39,6 +41,7 @@ class AndoAQ6317(GPIBDevice):
         """Trigger a single sweep."""
         print('Triggering sweep.')
         self.send_command('SGL')
+
 
     def center(self) -> None:
         """Center the OSA range around the signal peak."""
@@ -57,6 +60,7 @@ class AndoAQ6317(GPIBDevice):
         trace_num = 'ABC'.index(trace.upper())
         self.send_command(f'ACTV{trace_num}')
 
+
     @property
     def sweep_mode(self) -> str:
         return SWEEP_MODES[int(self.query('SWEEP?'))]
@@ -72,17 +76,20 @@ class AndoAQ6317(GPIBDevice):
         }[mode.lower()]
         self.send_command(command)
 
+
     @property
-    def wavelengths(self):
+    def wavelengths(self) -> Array:
         """Retrieves the wavelength data (nm) from the currently active trace."""
         print('Retrieving wavelengths (nm)...')
         return self._read_array(f'WDAT{self.active_trace}')
 
+
     @property
-    def levels(self):
+    def levels(self) -> Array:
         """Retrieves the level data from the currently active trace."""
         print('Retrieving levels...')
         return self._read_array(f'LDAT{self.active_trace}')
+
 
     @property
     def lower_frequency(self) -> float: return float(self.query('STAF?'))
@@ -93,25 +100,19 @@ class AndoAQ6317(GPIBDevice):
     @lower_frequency.setter
     def lower_frequency(self, frequency: float) -> None:
         assert 1 <= frequency <= 499.5
-        # For some reason the setting command on the OSA
-        # also returns the value
         self.send_command(f'STAF{frequency:07.3f}')
 
     @upper_frequency.setter
     def upper_frequency(self, frequency: float) -> None:
         assert 171.5 <= frequency <= 674.5
-        # For some reason the setting command on the OSA
-        # also returns the value
         self.send_command(f'STPF{frequency:07.3f}')
 
 
     @property
-    def lower_wavelength(self) -> float:
-        return SPEED_OF_LIGHT/self.upper_frequency
+    def lower_wavelength(self) -> float: return SPEED_OF_LIGHT/self.upper_frequency
 
     @property
-    def upper_wavelength(self) -> float:
-        return SPEED_OF_LIGHT/self.lower_frequency
+    def upper_wavelength(self) -> float: return SPEED_OF_LIGHT/self.lower_frequency
 
     @lower_wavelength.setter
     def lower_wavelength(self, wavelength: float) -> None:
@@ -121,17 +122,20 @@ class AndoAQ6317(GPIBDevice):
     def upper_wavelength(self, wavelength: float) -> None:
         self.lower_frequency = SPEED_OF_LIGHT/wavelength
 
+
     @property
     def range(self) -> Tuple[float, float]:
+        """Return the currently specified horizontal range (nm)."""
         return self.lower_wavelength, self.upper_wavelength
 
     @range.setter
     def range(self, wavelength_bounds: Tuple[float, float]) -> None:
         self.lower_wavelength, self.upper_wavelength = wavelength_bounds
 
+
     @property
     def scale(self) -> str:
-        """Return the currently configured scale (log/linear)."""
+        """Return the currently configured scale type (log/linear)."""
         return ['log', 'linear'][int(self.query('PMUNT?'))]
 
     @scale.setter
@@ -140,18 +144,21 @@ class AndoAQ6317(GPIBDevice):
         unit_num = ['log', 'linear'].index(scale.lower())
         self.send_command(f'PMUNT{unit_num}')
 
+
     @property
     def unit(self) -> str:
+        """Get the current unit for the vertical axis, according to the scale type."""
         return {'log': 'dBm', 'linear': 'W'}[self.scale]
+
 
     @property
     def resolution(self) -> float:
-        """Return the current resolution (nm)."""
+        """Return the current horizontal resolution (nm)."""
         return float(self.query('RESLN?'))
 
     @resolution.setter
     def resolution(self, resolution: float) -> None:
-        """Return the current resolution (nm)."""
+        """Set the horizontal resolution (nm). Only certain values are allowed."""
         ghz = round(resolution * 200)
         valid_ghz = [2, 4, 10, 20, 40, 100, 200, 400]
         if ghz not in valid_ghz:
@@ -162,9 +169,10 @@ class AndoAQ6317(GPIBDevice):
             )
         self.send_command(f'RESLNF{ghz:03d}')
 
+
     ##### Convenience Functions #####
     def quick_plot(self):
-        """Plots the currently active trace."""
+        """Shows a plot of the currently active trace."""
         plt.plot(self.wavelengths, self.levels)
         plt.xlabel('Wavelength (nm)')
         plt.ylabel(f'Power ({self.unit})')
@@ -173,6 +181,6 @@ class AndoAQ6317(GPIBDevice):
 
 
     @property
-    def spectrum(self):
-        """Retrieves the currently active trace from the OSA."""
+    def spectrum(self) -> Tuple[Array, Array]:
+        """Retrieves data for the currently active trace from the OSA."""
         return self.wavelengths, self.levels
