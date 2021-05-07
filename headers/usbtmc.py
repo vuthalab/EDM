@@ -1,68 +1,85 @@
-import serial, time, telnetlib, itertools
+import serial, time, telnetlib, itertools, os
 
 class USBTMCDevice:
-    # Current serial connection
-    _ser = None
-    _ethernet = False
+    # Current connection
+    _conn = None
+    _mode = None
     _name = None
 
     def __init__(self,
-            serial_port: str,
+            resource_path: str,
             baud: int = 19200,
-            use_ethernet: bool = False,
-            tcp_port: int = 23,
+
+            tcp_port: int = 23, # For ethernet connections
+            mode: str = 'serial' # One of serial, ethernet, or direct (file)
         ):
-        self._ethernet = use_ethernet
+        self._mode = mode 
 
-        # Open the serial connection
-        print(f'Opening serial connection on {serial_port}...')
-        if use_ethernet:
-            self._ser = telnetlib.Telnet(serial_port, port=tcp_port, timeout=2)
-        else:
-            self._ser = serial.Serial(serial_port, baud, timeout=2)
-        time.sleep(0.1)
-        assert use_ethernet or self._ser.is_open
+        # Open the connection
+        if mode == 'ethernet':
+            print(f'Opening LAN connection on {resource_path}:{tcp_port}...')
+            self._conn = telnetlib.Telnet(resource_path, port=tcp_port, timeout=2)
+
+        if mode == 'serial':
+            print(f'Opening serial connection on {resource_path}...')
+            self._conn = serial.Serial(resource_path, baud, timeout=2)
+
+        if mode == 'direct':
+            print(f'Opening USBTMC connection on {resource_path}...')
+            self._conn = open(resource_path, 'r+b')
 
         time.sleep(0.1)
-        self._name = self.query('*idn?')
+        if mode == 'serial': assert self._conn.is_open
+
+        time.sleep(0.1)
+        self._name = self.query('*IDN?')
         print(f'Connected to {self.name}')
 
     @property
     def name(self): return self._name
 
     def stop(self):
-        """Closes the serial connection."""
-        self._ser.close()
+        """Closes the connection."""
+        self._conn.close()
 
     def __str__(self) -> str:
         return self.name
 
 
     ##### Utility Functions #####
+    def _clear_output(self):
+        if self._mode != 'serial': return
+        while self._conn.in_waiting > 0:
+            print('Extra Output:', self._conn.readline())
+
     def send_command(self, command: str) -> None:
         """Send a command to the device."""
-        while not self._ethernet and self._ser.in_waiting > 0:
-            print('Extra Output:', self._ser.readline())
-
         print('\t>>>', command)
-        self._ser.write((command + '\n').encode('utf-8'))
 
-        if not self._ethernet: self._ser.flush()
+        self._clear_output()
+        self._conn.write((command + '\n').encode('utf-8'))
 
-    def query(self, command: str) -> str:
+        if self._mode in ['serial', 'direct']: self._conn.flush()
+
+    def query(self, command: str, raw: bool = False) -> str:
         """Send a command to the device, and return its response."""
         self.send_command(command)
 
-        if self._ethernet:
-            time.sleep(0.3)
-            return self._ser.read_all().decode('utf-8').strip()
+        time.sleep(0.3)
+        if self._mode == 'ethernet':
+            response = self._conn.read_all()
 
-        for tries in itertools.count(1):
-            if self._ser.in_waiting: break
+        if self._mode == 'direct':
+            response = os.read(self._conn.fileno(), 2048)
 
-            if tries % 10 == 0:
-                print(f'Stuck querying {command}: try {tries}')
-            time.sleep(0.2)
+        if self._mode == 'serial':
+            for tries in itertools.count(1):
+                if self._conn.in_waiting: break
 
-        response = self._ser.readline()
-        return response.decode('utf-8').strip()
+                if tries % 10 == 0:
+                    print(f'Stuck querying {command}: try {tries}')
+                time.sleep(0.2)
+
+            response = self._conn.readline()
+
+        return response if raw else response.decode('utf-8').strip()

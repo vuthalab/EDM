@@ -30,4 +30,4 @@ class GPIBDevice(USBTMCDevice):
 
         # Clear existing output
         self.send_command('++read')
-        while self._ser.read(): pass
+        self._clear_output()

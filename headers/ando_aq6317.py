@@ -127,8 +127,7 @@ class AndoAQ6317(GPIBDevice):
 
     @range.setter
     def range(self, wavelength_bounds: Tuple[float, float]) -> None:
-        self.lower_wavelength = wavelength_bounds[0]
-        self.upper_wavelength = wavelength_bounds[1]
+        self.lower_wavelength, self.upper_wavelength = wavelength_bounds
 
     @property
     def scale(self) -> str:

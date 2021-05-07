@@ -2,7 +2,7 @@ import time
 
 from headers.ando_aq6317 import AndoAQ6317
 
-serial_port = '/dev/ttyUSB0' # TODO remap the serial port to something human-readable
+serial_port = '/dev/ttyUSB1' # TODO remap the serial port to something human-readable
 gpib_address = 1 # Configurable on the OSA
 
 # Initialize connection
