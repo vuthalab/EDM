@@ -121,7 +121,7 @@ class RigolDS1102e(USBTMCDevice):
         """Return the current edge trigger source."""
         return query(':TRIG:EDGE:SOUR?').lower()
 
-    @trigger_source
+    @trigger_source.setter
     def trigger_source(self, source: str) -> None:
         """Set the current edge trigger source."""
         allowed_sources = ['ch1', 'ch2', 'ext', 'acline'] + [f'd{i}' for i in range(16)]
