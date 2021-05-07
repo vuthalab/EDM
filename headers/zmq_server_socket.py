@@ -69,7 +69,7 @@ class zmq_server_socket:
         """
         self.pub_socket = self.zmq_context.socket(zmq.PUB)  #initialized to be a publishing socket
         self.pub_socket.bind("tcp://*:%s" % self.port) #binds this zmq to the open port.
-        print('Broadcasting on port {0} with topic {1}'.format(self.port, self.topic))
+        print('Broadcasting on port {0} with topic {1}.\n'.format(self.port, self.topic))
         
     def close(self):
         """This method is used to close and destroy the publishing
