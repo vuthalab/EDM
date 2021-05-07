@@ -54,18 +54,18 @@ class USBTMCDevice:
 
     def send_command(self, command: str) -> None:
         """Send a command to the device."""
-        print('\t>>>', command)
+        print(' >', command)
 
         self._clear_output()
         self._conn.write((command + '\n').encode('utf-8'))
 
         if self._mode in ['serial', 'direct']: self._conn.flush()
 
-    def query(self, command: str, raw: bool = False) -> str:
+    def query(self, command: str, raw: bool = False, delay: float = 0.1) -> str:
         """Send a command to the device, and return its response."""
         self.send_command(command)
 
-        time.sleep(0.3)
+        time.sleep(delay)
         if self._mode == 'ethernet':
             response = self._conn.read_all()
 
