@@ -48,17 +48,13 @@ try:
     while True:
         current_time = time.time()
 
-        print(current_time)
-
         data = monitor_socket.read_on_demand()[1]
-        
+
         pressures = data['pressures']
         temperatures = data['temperatures']
         heaters = data['heaters']
         voltages = data['voltages']
         flows = data['flows']
-
-        print(current_time)
 
         if pressures > 1e-12: #correcting against ocassional bugs in reading
             data = f'{current_time} \t {pressures} \t {flows[0]} \t {flows[1]} \t {voltages[0]} \t {voltages[1]} \t {heaters[0]} \t {heaters[1]} \t {heaters[2]} \t {heaters[3]} \t {temperatures[0]} \t {temperatures[1]} \t {temperatures[2]} \t {temperatures[3]} \t {temperatures[4]} \t {temperatures[5]} \t {temperatures[6]} \t {temperatures[7]} \n'

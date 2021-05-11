@@ -9,6 +9,7 @@ from headers.zmq_server_socket import zmq_server_socket
 from pymodbus.client.sync import ModbusTcpClient
 from struct import unpack
 
+
 class PulseTube:
     def __init__(self,address='192.168.0.101'):
         self.device = ModbusTcpClient(address)

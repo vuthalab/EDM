@@ -47,6 +47,10 @@ class AndoAQ6317(GPIBDevice):
         """Center the OSA range around the signal peak."""
         self.send_command('CTR=P')
 
+    def stop(self) -> None:
+        self.sweep_mode = 'stop'
+        super().stop()
+
 
     ##### Virtual Properties #####
     @property
@@ -130,7 +134,8 @@ class AndoAQ6317(GPIBDevice):
 
     @range.setter
     def range(self, wavelength_bounds: Tuple[float, float]) -> None:
-        self.lower_wavelength, self.upper_wavelength = wavelength_bounds
+        self.upper_wavelength = wavelength_bounds[1]
+        self.lower_wavelength = wavelength_bounds[0]
 
 
     @property

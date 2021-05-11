@@ -137,12 +137,16 @@ class USBTMCDevice:
             # To avoid blocking and improve debugging,
             # we wait explicitly for input.
             for tries in itertools.count(1):
+                time.sleep(0.2)
                 if self._conn.in_waiting: break
                 if tries % 10 == 0:
                     print(f'Stuck querying {command}: try {tries}')
-                time.sleep(0.2)
 
             response = self._conn.readline()
 
         # Decode the response to a Python string if raw == False.
         return response if raw else response.decode('utf-8').strip()
+
+    ##### Context Manager Magic Methods #####
+    def __enter__(self): return self
+    def __exit__(self, exception_type, exception_value, traceback): self.stop()
