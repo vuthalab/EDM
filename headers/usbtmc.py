@@ -48,21 +48,24 @@ class USBTMCDevice:
         self._mode = mode 
 
         # Open the connection
-        if mode == 'ethernet':
-            print(f'Opening LAN connection on {resource_path}:{tcp_port}...')
-            self._conn = telnetlib.Telnet(resource_path, port=tcp_port, timeout=2)
+        try:
+            if mode == 'ethernet':
+                print(f'Opening LAN connection on {resource_path}:{tcp_port}...')
+                self._conn = telnetlib.Telnet(resource_path, port=tcp_port, timeout=2)
 
-        if mode == 'serial':
-            print(f'Opening serial connection on {resource_path}...')
-            baud = 19200
-            self._conn = serial.Serial(resource_path, baud, timeout=2)
+            if mode == 'serial':
+                print(f'Opening serial connection on {resource_path}...')
+                baud = 19200
+                self._conn = serial.Serial(resource_path, baud, timeout=2)
 
-        if mode == 'direct':
-            print(f'Opening USBTMC connection on {resource_path}...')
-            self._conn = open(resource_path, 'r+b')
+            if mode == 'direct':
+                print(f'Opening USBTMC connection on {resource_path}...')
+                self._conn = open(resource_path, 'r+b')
 
-        time.sleep(0.1)
-        if mode == 'serial': assert self._conn.is_open
+            time.sleep(0.1)
+            if mode == 'serial': assert self._conn.is_open
+        except:
+            self._conn = None
 
         time.sleep(0.1)
         self._name = self.query('*IDN?')
@@ -73,7 +76,7 @@ class USBTMCDevice:
     def name(self) -> str: return self._name
 
 
-    def stop(self) -> None:
+    def close(self) -> None:
         """
         Closes the connection.
         Subclasses may override this to add additional cleanup behavior.
@@ -96,7 +99,8 @@ class USBTMCDevice:
 
     def send_command(self, command: str) -> None:
         """Send a command to the device."""
-        print(' >', command)
+        #print(' >', command)
+        if self._conn is None: return
 
         self._clear_output()
         self._conn.write((command + '\n').encode('utf-8'))
@@ -104,7 +108,7 @@ class USBTMCDevice:
         if self._mode in ['serial', 'direct']: self._conn.flush()
 
 
-    def query(self, command: str, raw: bool = False, delay: float = 0.1) -> Union[str, bytes]:
+    def query(self, command: str, raw: bool = False, delay: float = 0.07) -> Union[str, bytes]:
         """
         Send a command to the device, and return its response.
 
@@ -118,6 +122,8 @@ class USBTMCDevice:
             Delay between writing the command and reading the response.
             Increase the delay for commands that return large amounts of data.
         """
+        if self._conn is None: return None
+
         self.send_command(command)
 
         time.sleep(delay)
@@ -125,9 +131,8 @@ class USBTMCDevice:
             for tries in itertools.count(1):
                 response = self._conn.read_very_eager()
                 if response: break
-                if tries % 10 == 0:
-                    print(f'Stuck querying {command}: try {tries}')
                 time.sleep(0.2)
+                if tries > 30: return None
 
         if self._mode == 'direct':
             # We use os.read to prevent blocking.
@@ -139,8 +144,7 @@ class USBTMCDevice:
             for tries in itertools.count(1):
                 time.sleep(0.2)
                 if self._conn.in_waiting: break
-                if tries % 10 == 0:
-                    print(f'Stuck querying {command}: try {tries}')
+                if tries > 30: return None
 
             response = self._conn.readline()
 
@@ -149,4 +153,4 @@ class USBTMCDevice:
 
     ##### Context Manager Magic Methods #####
     def __enter__(self): return self
-    def __exit__(self, exception_type, exception_value, traceback): self.stop()
+    def __exit__(self, exception_type, exception_value, traceback): self.close()

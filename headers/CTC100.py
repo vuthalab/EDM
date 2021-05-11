@@ -3,8 +3,10 @@ import re
 import telnetlib
 import time
 
+from headers.usbtmc import USBTMCDevice
 
-class CTC100:
+
+class CTC100(USBTMCDevice):
     """
     An extremely simple class to read values from the CTC100
     Prorammable Temperature Controller. Use ethernet rather 
@@ -28,27 +30,9 @@ class CTC100:
     """
 
     def __init__(self, ip_address):
-        """
-        Pass the IP address of the CTC100.
-        """
+        """Connect to the the CTC100."""
+        super().__init__(ip_address, tcp_port=23, mode='ethernet')
 
-        self.device = telnetlib.Telnet(ip_address, port = 23, timeout = 2)
-        self.thermometer_names = []
-        self.heater_names = []
-
-
-    def _write(self, command):
-        """
-        Write a command to the CTC100 over serial, then wait for the
-        response.
-        """
-        self.device.write((command+"\n").encode()) # \n terminates commands
-
-        # The response to a command is always terminated by a
-        # \r\n, so keep polling the input buffer until we read
-        # one.
-        response = self.device.read_until(b"\r\n",0.5).decode('utf-8')
-        return response
         
     def _get_variable(self, var):
         """
@@ -58,7 +42,7 @@ class CTC100:
         """
         
         var = var.replace(" ", "") # Remove spaces from the variable name. They're optional and can potentially cause problems
-        return self._write(f"{var}?")
+        return self.query(f"{var}?")
         
     def _set_variable(self, var, val):
         """
@@ -69,7 +53,7 @@ class CTC100:
         
         var = var.replace(" ", "") # Remove spaces from the variable name. They're optional and can potentially cause problems
         val = "({})".format(val) # Wrap argument in parentheses, just in case. This prevents an argument containing a space from causing unexpected issues
-        return self._write("{} = {}".format(var, val))
+        return self.query("{} = {}".format(var, val))
         
     def _increment_variable(self, var, val):
         """
@@ -80,7 +64,7 @@ class CTC100:
         
         var = var.replace(" ", "") # Remove spaces from the variable name. They're optional and can potentially cause problems
         val = "({})".format(val) # Wrap argument in parentheses, just in case. This prevents an argument containing a space from causing unexpected issues
-        return self._write("{} += {}".format(var, val))
+        return self.query("{} += {}".format(var, val))
 
     def setAlarm(self, channel, Tmin, Tmax):
         """Enables alarm with 4 beeps on a channel for a given range."""
@@ -115,6 +99,7 @@ class CTC100:
             channel = f"In{channel}"
             
         response = self._get_variable(f"{channel}.value")
+        if response is None: return None
    
         # Extract the response using a regex in case verbose mode is on
         match = re.search(r"[-+]?\d*\.\d+", response)
@@ -130,7 +115,7 @@ class CTC100:
     def disable_PID(self, channel):
         self._set_variable(f"{channel}.PID.mode", "off")
         self._set_variable(f"{channel}.value","0")
-        self._write(f"{channel}.Off")
+        self.query(f"{channel}.Off")
         
     def enable_output(self): self._set_variable("outputEnable", "on")
         
@@ -139,4 +124,4 @@ class CTC100:
 
     @property
     def channels(self) -> List[str]:
-        return self._write('getOutput.names').split(',')
+        return self.query('getOutput.names').split(',')

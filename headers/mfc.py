@@ -4,7 +4,7 @@ To set up MFC for different gases, see MKS MFC Web Browser Tutorial.
 Initialization sometimes works, sometimes doesn't. Maybe reinstall labjack_ljm_software newer version.
 '''
 
-from labjack_device import Labjack
+from headers.labjack_device import Labjack
 import time
 
 #%% SETUP MASS FLOW CONTROLLER 470021124
@@ -12,36 +12,37 @@ import time
 class MFC():
     def __init__(self, serial_number):
         self.handle = Labjack(serial_number)
-        self.calibration = 10.0/5.0 #How many sccm per volt?
+        self._calibration = 10.0/5.0 #How many sccm per volt?
 
-    def get_flow_rate_cell(self):
-        val = self.handle.read("AIN0")
-        FlowRate = val*self.calibration
-        return FlowRate
+    def _get_flow_rate(self, channel):
+        val = self.handle.read(f'AIN{channel}')
+        return val * self._calibration
 
-    def set_flow_rate_cell(self,flowrate):             #0.0V = flow is off; 5.0V = open valve
-        self.handle.write("DAC0", flowrate/self.calibration)   #MFC flow is off (0 to 5 VDC givs 0 to 10 sccm)
+    def _set_flow_rate(self, flowrate, channel): #0.0V = flow is off; 5.0V = open valve
+        self.handle.write(f'DAC{channel}', flowrate/self._calibration)   #MFC flow is off (0 to 5 VDC givs 0 to 10 sccm)
         time.sleep(0.5) #Takes about 0.5s to ramp up the flow.
-        val = self.get_flow_rate_cell()
-        print ("Flow setpoint = {:3f}, Current flow rate = {:3f}".format(flowrate,val)+'sccm.\n')
+        val = self._get_flow_rate(channel)
+        print(f'Flow setpoint = {flowrate:3f}, Current flow rate = {val:3f} sccm.')
 
-    def get_flow_rate_neon_line(self):
-        val = self.handle.read("AIN1")
-        FlowRate = val*self.calibration
-        return FlowRate
 
-    def set_flow_rate_neon_line(self,flowrate):        #0.0V = flow is off; 5.0V = open valve
-        self.handle.write("DAC1", flowrate/self.calibration)   #MFC flow is off (0 to 5 VDC givs 0 to 10 sccm)
-        time.sleep(0.5) #Takes about 0.5s to ramp up the flow.
-        val = self.get_flow_rate_neon_line()
-        print ("Flow setpoint = {:3f}, Current flow rate = {:3f}".format(flowrate,val)+'sccm.\n')
+    @property
+    def flow_rate_cell(self): return self._get_flow_rate(0)
+
+    @flow_rate_cell.setter
+    def flow_rate_cell(self, flowrate): self._set_flow_rate(flowrate, 0)
+    
+    @property
+    def flow_rate_neon_line(self): return self._get_flow_rate(1)
+
+    @flow_rate_neon_line.setter
+    def flow_rate_neon_line(self, flowrate): self._set_flow_rate(flowrate, 0)
 
     def close(self):
-        self.set_flow_rate_neon_line(0.0)
-        self.set_flow_rate_cell(0.0)
+        self.flow_rate_neon_line = 0
+        self.flow_rate_cell = 0
         self.handle.close()
         print('MFC LabJack Closed.\n')
 
     def off(self):
-        self.set_flow_rate_neon_line(0.0)
-        self.set_flow_rate_cell(0.0)
+        self.flow_rate_neon_line = 0
+        self.flow_rate_cell = 0

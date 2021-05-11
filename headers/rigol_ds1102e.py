@@ -1,5 +1,7 @@
 from typing import Union, Literal, List
 
+import time
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -26,9 +28,10 @@ class RigolDS1102e(USBTMCDevice):
         """Initialize a connection to the scope and start acquisition."""
         super().__init__('/dev/usbtmc0', mode='direct')
         self.send_command(':RUN')
+        self.send_command(':KEY:LOCK DISABLE')
 
 
-    def stop(self) -> None:
+    def close(self) -> None:
         """Stop acquisition and close the connection."""
         self.send_command(':STOP')
         super().stop()
@@ -186,10 +189,28 @@ class RigolDS1102e(USBTMCDevice):
         return self.voltage_scale * (decoded - 130)/25 - self.voltage_offset
 
     ##### Convenience Functions #####
+    def _create_plot(self):
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        ax.set_xlabel('Time (s)')
+        ax.set_ylabel('Voltage (V)')
+        ax.set_title(f'Channel {self.active_channel}')
+        return fig.canvas, ax.plot(self.times, self.trace)[0]
+
     def quick_plot(self):
         """Show a plot of the current trace."""
-        plt.plot(self.times, self.trace)
-        plt.xlabel('Time (s)')
-        plt.ylabel('Voltage (V)')
-        plt.title(f'Channel {self.active_channel}')
+        self._create_plot()
         plt.show()
+
+    def live_plot(self):
+        """Show a live plot of the current trace."""
+        plt.ion()
+        canvas, line = self._create_plot()
+        try:
+            while True:
+                line.set_ydata(self.trace)
+                canvas.draw()
+                canvas.flush_events()
+                time.sleep(0.5)
+        except KeyboardInterrupt:
+            plt.ioff()

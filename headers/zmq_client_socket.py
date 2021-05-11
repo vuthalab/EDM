@@ -45,16 +45,29 @@ class zmq_client_socket:
         @type self: zmq_client_socket
         @rtype: None
         """
-        if self.made_socket is True:
-            try:
-                received_data = self.socket.recv(flags=zmq.NOBLOCK)
-                self.received_first_data = True
-                print(received_data)
-            except zmq.ZMQError:
-                if self.received_first_data is False:
-                    return
-                print("Data Grab failed, no information was retrieved.")
+        assert self.made_socket
+        try:
+            received_data = self.socket.recv(flags=zmq.NOBLOCK)
+            self.received_first_data = True
+            print(received_data)
+        except zmq.ZMQError:
+            if self.received_first_data is False:
                 return
+            print("Data Grab failed, no information was retrieved.")
+            return
+
+    def _decode(self, packet):
+        out = packet.decode("utf-8").split(' ')
+        topic, time = out[:2]
+        messagedata = ast.literal_eval(' '.join(out[2:]))
+        timestamp = float(time)
+        return (timestamp, messagedata)
+
+
+    def blocking_read(self):
+        assert self.made_socket
+        return self._decode(self.socket.recv())
+
             
     def read_on_demand(self):
         """
@@ -68,22 +81,12 @@ class zmq_client_socket:
         @type self: zmq_client_socket
         @rtype: None
         """
-        done = False
-        num_tries = 0
-        while not done:
-            try:
-                string = self.socket.recv(flags=zmq.NOBLOCK)
-                num_tries += 1
-            except zmq.ZMQError:
-                if num_tries > 0:
-                    done = True
-    
-        out = string.decode("utf-8").split(' ')
-        topic, time = out[:2]
-        messagedata = ast.literal_eval(' '.join(out[2:]))
-    
-        timestamp = float(time)
-        return (timestamp, messagedata)
+        try:
+            string = self.socket.recv(flags=zmq.NOBLOCK)
+        except zmq.ZMQError:
+            return None
+
+        return self._decode(string)
 
 
     def load_settings(self, connection_settings):

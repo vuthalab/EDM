@@ -1,5 +1,7 @@
 from typing import Tuple, List
 
+import time
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -47,7 +49,7 @@ class AndoAQ6317(GPIBDevice):
         """Center the OSA range around the signal peak."""
         self.send_command('CTR=P')
 
-    def stop(self) -> None:
+    def close(self) -> None:
         self.sweep_mode = 'stop'
         super().stop()
 
@@ -92,7 +94,7 @@ class AndoAQ6317(GPIBDevice):
     def levels(self) -> Array:
         """Retrieves the level data from the currently active trace."""
         print('Retrieving levels...')
-        return self._read_array(f'LDAT{self.active_trace}')
+        return np.maximum(self._read_array(f'LDAT{self.active_trace}'), -80)
 
 
     @property
@@ -176,14 +178,31 @@ class AndoAQ6317(GPIBDevice):
 
 
     ##### Convenience Functions #####
+    def _create_plot(self):
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        ax.set_xlabel('Wavelength (nm)')
+        ax.set_ylabel(f'Power ({self.unit})')
+        ax.set_title(f'Trace {self.active_trace}')
+        return fig.canvas, ax.plot(*self.spectrum)[0]
+
     def quick_plot(self):
         """Shows a plot of the currently active trace."""
-        plt.plot(self.wavelengths, self.levels)
-        plt.xlabel('Wavelength (nm)')
-        plt.ylabel(f'Power ({self.unit})')
-        plt.title(f'Trace {self.active_trace}')
+        self._create_plot()
         plt.show()
 
+    def live_plot(self):
+        """Shows a live plot of the current trace."""
+        plt.ion()
+        canvas, line = self._create_plot()
+        try:
+            while True:
+                line.set_ydata(self.levels)
+                canvas.draw()
+                canvas.flush_events()
+                time.sleep(0.5)
+        except KeyboardInterrupt:
+            plt.ioff()
 
     @property
     def spectrum(self) -> Tuple[Array, Array]:
