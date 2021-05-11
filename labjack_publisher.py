@@ -1,10 +1,13 @@
 # publisher for Hornet ion gauge
 
-from labjack import ljm
 import time
 import os
-os.chdir('/home/vuthalab/gdrive/code/edm_control/headers')
-from zmq_server_socket import zmq_server_socket
+import itertools
+
+from headers.labjack import ljm
+
+os.chdir('/home/vuthalab/gdrive/code/edm_control')
+from headers.zmq_server_socket import zmq_server_socket
 
 labjack_serial = 470022275   # device serial number
 
@@ -24,39 +27,30 @@ topic = "IGM401"        # Change this to whatever device you're going to use. He
 delay_time = 0.1        #s, between measurements
 
 
+# from Hornet ion gauge manual, section 7
+def voltage_to_pressure(V): return 10**(V-10)
+
 # create a publisher for this topic and port
-publisher = zmq_server_socket(port, topic)
-counter = 0
+with zmq_server_socket(port, topic) as publisher:
+    for iteration in itertools.count():
+        try:
+            voltage = ljm.eReadAddress(labjack_handle,0,3)
+            time.sleep(delay_time)
 
-def voltage_to_pressure(V):
-    p = 10**(V-10) # from Hornet ion gauge manual, section 7
-    return p
+            voltage2 = ljm.eReadAddress(labjack_handle,2,3)
+            time.sleep(delay_time)
 
-while True:
-    try:
-        read_success = False
-        while not read_success:  # IT SEEMS LIKE BOTH THE TRY AND THE EXCEPT ALWAYS RUN??? WHY V wierd
-            try:
-            #voltage = ljm.eReadName(labjack_handle,"AIN0")
-                voltage = ljm.eReadAddress(labjack_handle,0,3)
-                time.sleep(delay_time)
-                voltage2 = ljm.eReadAddress(labjack_handle,2,3)
-                time.sleep(delay_time)
-                voltage3 = ljm.eReadAddress(labjack_handle,4,3)
-                time.sleep(delay_time)
-                read_success = True
-            except:
-                time.sleep(delay_time)
-                print("read barfed")
+            voltage3 = ljm.eReadAddress(labjack_handle,4,3)
+        except:
+            print("read barfed")
+            continue
+
         pressure = voltage_to_pressure(voltage)
         data_dict = {'pressure' : pressure, 'voltage' : [voltage2, voltage3]}
+
         publisher.send(data_dict)
         time.sleep(delay_time)
         # change time.sleep to determine upload speed
 
-        counter +=1
-        if counter % 10 == 0:
+        if iteration % 10 == 0:
             print(publisher.current_data)
-
-    except KeyboardInterrupt: break
-publisher.close()

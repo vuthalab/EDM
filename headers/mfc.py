@@ -4,7 +4,7 @@ To set up MFC for different gases, see MKS MFC Web Browser Tutorial.
 Initialization sometimes works, sometimes doesn't. Maybe reinstall labjack_ljm_software newer version.
 '''
 
-from Labjack import Labjack
+from labjack_device import Labjack
 import time
 
 #%% SETUP MASS FLOW CONTROLLER 470021124
