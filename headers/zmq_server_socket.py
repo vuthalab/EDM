@@ -110,4 +110,8 @@ class zmq_server_socket:
         self.close()
         self.host()
 
+    ##### Context Manager Magic Methods #####
+    def __enter__(self): return self
+    def __exit__(self, exception_type, exception_value, traceback):
+        self.close()
         

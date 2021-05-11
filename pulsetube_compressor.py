@@ -2,9 +2,9 @@ import numpy as np
 import datetime
 import time
 import os
-os.chdir('/home/vuthalab/gdrive/code/edm_control/headers')
-#os.chdir('C:/Users/camil/Documents/Github/EDM/headers')
-from zmq_server_socket import zmq_server_socket
+
+os.chdir('/home/vuthalab/gdrive/code/edm_control')
+from headers.zmq_server_socket import zmq_server_socket
 
 from pymodbus.client.sync import ModbusTcpClient
 from struct import unpack
@@ -14,35 +14,38 @@ class PulseTube:
         self.device = ModbusTcpClient(address)
         if self.device.connect(): print(f"connected to pulse tube @ {address} \n")
 
-        self.status_dict = {(0,0): "idling ‐ ready to start",
-                        (0,2): "starting",
-                        (0,3): "running",
-                        (0,5): "stopping",
-                        (0,6): "error lockout",
-                        (0,7): "error",
-                        (0,8): "helium cool down",
-                        (0,9): "power related error",
-                        (0,15): "recovered from error",
+        self.status_dict = {
+            (0,0): "idling ‐ ready to start",
+            (0,2): "starting",
+            (0,3): "running",
+            (0,5): "stopping",
+            (0,6): "error lockout",
+            (0,7): "error",
+            (0,8): "helium cool down",
+            (0,9): "power related error",
+            (0,15): "recovered from error",
 
-                        (1,0): "compressor not energized",
-                        (1,1): "compressor energized",
-                        }
+            (1,0): "compressor not energized",
+            (1,1): "compressor energized",
+        }
 
         #               'variable': (starting_register_number, value)
-        self.variables = {'coolant in temp [C]': (6,0),
-                        'coolant out temp [C]': (8,0),
-                        'oil temp [C]': (10,0),
-                        'helium temp [C]': (12,0),
-                        'low pressure [psi]': (16,0),
-                        'high pressure [psi]': (20,0),
-                        'motor current [A]': (24,0),
-                        'hours': (26,0)}
+        self.variables = {
+            'coolant in temp [C]': (6,0),
+            'coolant out temp [C]': (8,0),
+            'oil temp [C]': (10,0),
+            'helium temp [C]': (12,0),
+            'low pressure [psi]': (16,0),
+            'high pressure [psi]': (20,0),
+            'motor current [A]': (24,0),
+            'hours': (26,0)
+        }
 
-        # initial status
-        print("initial status:")
+        print('Initial Status:')
         self.status()
 
-    def modbus_to_float(self,num1,num2):
+
+    def _modbus_to_float(self,num1,num2):
         a = num1.to_bytes(2,'big')
         b = num2.to_bytes(2,'big')
         X = np.asarray( [a[1].to_bytes(1,'big'),
@@ -52,12 +55,11 @@ class PulseTube:
         # print(X)
         return unpack('f',X)[0]
 
+
     def status(self):
         status = self.device.read_input_registers(0x01,count=40)
         regs = status.registers
-        # print(regs,end='\n\n')
-        self.parse_status(regs)
-        # return regs
+        self._parse_status(regs)
 
     def off(self):
         self.device.write_register(0x01,0x00FF)
@@ -68,7 +70,7 @@ class PulseTube:
     def close(self):
         self.device.close()
 
-    def parse_status(self,regs):
+    def _parse_status(self, regs):
         # qualitative diagnostics
         for i in range(2):
             print(self.status_dict[(i,regs[i])])
@@ -78,7 +80,7 @@ class PulseTube:
             regnum,value = self.variables[k]
             # convert each returned value into a sensible float
             # using the stupid modbus encoding: 2 ints, each of 2 bytes --> 1 float, 4 bytes
-            value = self.modbus_to_float(regs[regnum],regs[regnum+1])
+            value = self._modbus_to_float(regs[regnum],regs[regnum+1])
 
             # update value in variables dictionary
             self.variables[k] = (regnum,value)
@@ -106,7 +108,8 @@ class PulseTube:
 
 # ---------------------------------
 
-pt = PulseTube()
+if __name__ == '__main__':
+    pt = PulseTube()
 # pt.keep_logging(2000)
 
 

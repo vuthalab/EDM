@@ -7,49 +7,57 @@
 
 import os
 import time
+import itertools
+
 os.chdir("/home/vuthalab/gdrive/code/edm_control/")
 from headers.zmq_server_socket import zmq_server_socket
-from headers.CTC100_ethernet import CTC100
+from headers.CTC100 import CTC100
 
-topic = "CTC_100"                        # Change this to whatever device you're going to use.
-port = 5551                             # If port is in use, enter a different 4 digit port number.
+topic = 'CTC_100' # Change this to whatever device you're going to use.
+port = 5551 # If port is in use, enter a different 4 digit port number.
 
-delay_time = 0.1 #s, between measurements
+delay_time = 0.1 # s, between measurements
 
 # initialize devices
-thermometer_1 = CTC100('192.168.0.104')
-thermometer_2 = CTC100('192.168.0.107')
+thermometers = [
+    CTC100('192.168.0.104'),
+    CTC100('192.168.0.107'),
+]
 
-if thermometer_1 is None:
-    print("Thermometer 1 was not loaded.")
-    if thermometer_2 is None:
-        print("Thermometer 2 was not loaded.")
-    exit()
+for i, thermometer in enumerate(thermometers):
+    if thermometer is None:
+        print(f'Thermometer {i+1} was not loaded.')
+        exit()
+
+channel_names = [
+    ['saph', 'coll', 'bott hs', 'cell'],
+    ['srb4k', 'srb45k', '45k plate', '4k plate']
+]
+heater_names = [
+    ['heat saph', 'heat coll'],
+    ['srb45k out', 'srb4k out'],
+]
 
 # create a publisher for this topic and port
-publisher = zmq_server_socket(port, topic)
-counter = 0
-channel_names_1 = ['saph','coll','bott hs','cell']
-channel_names_2 = ['srb4k', 'srb45k', '45k plate', '4k plate']
-heater_names_1 = ['heat saph', 'heat coll']
-heater_names_2 = ['srb45k out', 'srb4k out']
+with zmq_server_socket(port, topic) as publisher:
+    for iteration in itertools.count():
+        temperatures = [
+            thermometer.read(channel) for channel in channel_names[i]
+            for i, thermometer in enumerate(thermometers)
+        ]
+        heaters = [
+            thermometer.read(heater) for heater in heater_names[i]
+            for i, thermometer in enumerate(thermometers)
+        ]
 
-while True:
-    try:
-        temperatures_1 = [thermometer_1.read(channel_names_1[i]) for i in [0,1,2,3]]
-        temperatures_2 = [thermometer_2.read(channel_names_2[i]) for i in [0,1,2,3]]
-        heater_out_1 = [thermometer_1.read(heater_names_1[i]) for i in [0,1]]
-        heater_out_2 = [thermometer_2.read(heater_names_2[i]) for i in [0,1]]
-        temperatures = temperatures_1 + temperatures_2
-        heater_outputs = heater_out_1 + heater_out_2
-        data_dict = {'temperatures' : temperatures, 'heaters' : heater_outputs}
+        data_dict = {
+            'temperatures': temperatures,
+            'heaters': heaters
+        }
         publisher.send(data_dict)
+
         time.sleep(delay_time)
         # change time.sleep to determine upload speed
 
-        counter +=1
-        if counter % 10 == 0:
+        if iteration % 10 == 0:
             print(publisher.current_data)
-
-    except KeyboardInterrupt: break
-publisher.close()

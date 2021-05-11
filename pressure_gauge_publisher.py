@@ -7,11 +7,12 @@
 
 import os
 import time
-os.chdir('/home/vuthalab/gdrive/code/edm_control/headers')
-#from headers.zmq_server_socket import zmq_server_socket
-#from headers.FRG730_ion_gauge_header import FRG730
-from zmq_server_socket import zmq_server_socket
-from FRG730_ion_gauge_header import FRG730
+import itertools
+
+os.chdir('/home/vuthalab/gdrive/code/edm_control')
+from headers.zmq_server_socket import zmq_server_socket
+from headers.FRG730 import FRG730
+
 
 topic = "FRG730"                        # Change this to whatever device you're going to use.
 port = 5553                             # If port is in use, enter a different 4 digit port number.
@@ -26,20 +27,14 @@ if topic_device is None:
     exit()
 
 # create a publisher for this topic and port
-publisher = zmq_server_socket(port, topic)
-counter = 0
-
-while True:
-    try:
+with zmq_server_socket(port, topic) as publisher:
+    for iteration in itertools.count():
         pressure = topic_device.read_pressure_torr()
         data_dict = {'pressure' : pressure}
+
         publisher.send(data_dict)
         time.sleep(delay_time)
         # change time.sleep to determine upload speed
 
-        counter +=1
-        if counter % 10 == 0:
-            print(f'{float(publisher.current_data[38:-1])}')
-
-    except KeyboardInterrupt: break
-publisher.close()
+        if iteration % 10 == 0:
+            print(publisher.current_data)
