@@ -31,7 +31,8 @@ class CTC100(USBTMCDevice):
 
     def __init__(self, ip_address):
         """Connect to the the CTC100."""
-        super().__init__(ip_address, tcp_port=23, mode='ethernet')
+        #super().__init__(ip_address, tcp_port=23, mode='ethernet') # direct connection
+        super().__init__(ip_address, mode='multiplexed') # multiplexed connection. here 'ip_address' is actually a local port number.
 
         
     def _get_variable(self, var):

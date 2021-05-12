@@ -12,11 +12,11 @@ def run_publisher():
     print('Initializing devices...')
     pressure_gauge = FRG730('/dev/agilent_pressure_gauge')
     thermometers = [
-        (CTC100('192.168.0.104'), ['saph', 'coll', 'bott hs', 'cell'], ['heat saph', 'heat coll']),
-        (CTC100('192.168.0.107'), ['srb4k', 'srb45k', '45k plate', '4k plate'], ['srb45k out', 'srb4k out'])
+        (CTC100(31415), ['saph', 'coll', 'bott hs', 'cell'], ['heat saph', 'heat coll']),
+        (CTC100(31416), ['srb4k', 'srb45k', '45k plate', '4k plate'], ['srb45k out', 'srb4k out'])
     ]
     labjack = Labjack('470022275')
-    mfc = MFC('470017292')
+    mfc = MFC(31417)
 
 
     print('Starting publisher')
@@ -67,7 +67,7 @@ def run_publisher():
                 mfc.off()
                 raise ValueError('Pressure too high! Turning off heaters and mfcs.')
 
-            time.sleep(0.5)
+            time.sleep(0.1)
 
 if __name__ == '__main__':
     # TODO error handling

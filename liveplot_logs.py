@@ -42,20 +42,17 @@ fields = {
     ('45K plate', 'K'): ('temperatures', '45k plate'),
 }
 
-#field_names = ["time", "Torr", "sccm", "sccm", "$V$" ,"$V$", "W", "W", "W", "W","K","K","K","K","K","K","K","K"]
-#labels=["","pressure","buffer flow","neon flow","refl","trans","saph heat", "coll heat", "45K heat", "4K heat", "sapphire mount","collimator","bottom hs","buffer cell","4K sorb","45K sorb","45K plate","4K plate"]
 
 ##### BEGIN CODE #####
 # pick the directory containing the log file
 print('Opening file dialog...')
-if False:
-    root_window = tk.Tk()
-    filepath = filedialog.askopenfile(
-        title="Pick file to log",
-        initialdir="/home/vuthalab/Desktop/edm_data/logs/system_logs/",
-        parent=root_window
-    ).name
-    root_window.destroy()
+root_window = tk.Tk()
+filepath = filedialog.askopenfile(
+    title="Pick file to log",
+    initialdir="/home/vuthalab/Desktop/edm_data/logs/system_logs/",
+    parent=root_window
+).name
+root_window.destroy()
 filepath = '/home/vuthalab/Desktop/edm_data/logs/system_logs/2021-05-11.txt'
 print('Logging', filepath)
 

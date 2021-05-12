@@ -1,8 +1,10 @@
 from typing import Optional, Literal, Union
-import serial, time, telnetlib, itertools, os
+import serial, time, telnetlib, itertools, os, socket
 
 
 ModeString = Union[Literal['serial'], Literal['ethernet'], Literal['direct']]
+
+DEBUG = True
 
 
 class USBTMCDevice:
@@ -34,7 +36,7 @@ class USBTMCDevice:
             Only used for ethernet connections. The port on which to connect to the device.
 
         mode: str
-            Must be one of 'serial', 'ethernet', or 'direct'.
+            Must be one of 'serial', 'ethernet', 'direct', or 'multiplexed'.
             Controls which connection method to use.
             
             'serial' should be used for serial devices (generally /dev/ttyUSB*), such as
@@ -62,10 +64,19 @@ class USBTMCDevice:
                 print(f'Opening USBTMC connection on {resource_path}...')
                 self._conn = open(resource_path, 'r+b')
 
+            if mode == 'multiplexed':
+                try:
+                    print(f'Connecting to multiplexer server on port {resource_path}...')
+                    self._conn = socket.socket()
+                    self._conn.connect(('127.0.0.1', resource_path))
+                except:
+                    print('Please start the multiplexer server!')
+                    self._conn = None
+
             time.sleep(0.1)
-            if mode == 'serial': assert self._conn.is_open
         except:
             self._conn = None
+            print('Failed to connect to device', resource_path)
 
         time.sleep(0.1)
         self._name = self.query('*IDN?')
@@ -81,6 +92,7 @@ class USBTMCDevice:
         Closes the connection.
         Subclasses may override this to add additional cleanup behavior.
         """
+        if self._mode == 'multiplexed': self._conn.send(b'unlock')
         self._conn.close()
 
 
@@ -99,8 +111,13 @@ class USBTMCDevice:
 
     def send_command(self, command: str) -> None:
         """Send a command to the device."""
-        #print(' >', command)
+        if DEBUG: print(' >', command)
+
         if self._conn is None: return
+
+        if self._mode == 'multiplexed':
+            self._conn.send((command + '\n').encode('utf-8'))
+            return
 
         self._clear_output()
         self._conn.write((command + '\n').encode('utf-8'))
@@ -124,9 +141,10 @@ class USBTMCDevice:
         """
         if self._conn is None: return None
 
-        self.send_command(command)
+        if self._mode != 'multiplexed':
+            self.send_command(command)
+            time.sleep(delay)
 
-        time.sleep(delay)
         if self._mode == 'ethernet':
             for tries in itertools.count(1):
                 response = self._conn.read_very_eager()
@@ -147,6 +165,18 @@ class USBTMCDevice:
                 if tries > 30: return None
 
             response = self._conn.readline()
+
+        if self._mode == 'multiplexed':
+            self._conn.send(b'lock')
+            self._conn.recv(1024)
+            time.sleep(0.01)
+            self.send_command(command)
+            time.sleep(0.01)
+            self._conn.send(b'read')
+            time.sleep(delay)
+            response = self._conn.recv(1024)
+            self._conn.send(b'unlock')
+            self._conn.recv(1024)
 
         # Decode the response to a Python string if raw == False.
         return response if raw else response.decode('utf-8').strip()
