@@ -17,6 +17,7 @@ class MFC(USBTMCDevice):
 
     def _get_flow_rate(self, channel):
         val = self.query(f'AIN{channel}')
+        if val is None: return None
         return float(val) * self._calibration
 
     def _set_flow_rate(self, flowrate, channel): #0.0V = flow is off; 5.0V = open valve

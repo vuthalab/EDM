@@ -120,7 +120,7 @@ class USBTMCDevice:
         if self._mode in ['serial', 'direct']: self._conn.flush()
 
 
-    def query(self, command: str, raw: bool = False, delay: float = 0.08) -> Union[str, bytes]:
+    def query(self, command: str, raw: bool = False, delay: float = 0.1) -> Union[str, bytes]:
         """
         Send a command to the device, and return its response.
 

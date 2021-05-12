@@ -81,7 +81,7 @@ class PM16(USBTMC):
 
         #self.publisher_started = False
     def __init__(self, device):
-        super().__init__(device)
+        super().__init__()
         time.sleep(1)
         print(self.set_auto_range())
         print("Current wavelength: {:.0f} nm".format(self.get_wavelength()))

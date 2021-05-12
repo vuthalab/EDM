@@ -51,7 +51,7 @@ class AndoAQ6317(GPIBDevice):
 
     def close(self) -> None:
         self.sweep_mode = 'stop'
-        super().stop()
+        super().close()
 
 
     ##### Virtual Properties #####

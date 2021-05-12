@@ -1,6 +1,7 @@
-from typing import Union, Literal, List
+from typing import Union, Literal, List, Tuple
 
 import time
+from collections import defaultdict
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -23,6 +24,9 @@ class RigolDS1102e(USBTMCDevice):
     # Number of garbage points at start of trace
     _garbage_points: int = 10
 
+    # Cached properties
+    _cache = {channel: defaultdict(lambda x: None) for channel in [1, 2]}
+
 
     def __init__(self):
         """Initialize a connection to the scope and start acquisition."""
@@ -34,7 +38,7 @@ class RigolDS1102e(USBTMCDevice):
     def close(self) -> None:
         """Stop acquisition and close the connection."""
         self.send_command(':STOP')
-        super().stop()
+        super().close()
 
 
     def __str__(self) -> str:
@@ -66,6 +70,8 @@ class RigolDS1102e(USBTMCDevice):
     @property
     def voltage_offset(self) -> float:
         """Return the vertical offset of the currently active trace (V)."""
+        cached = self._cache[self.active_channel]['voltage_offset']
+        if cached is not None: return cached
         return float(self.query(f':CHAN{self.active_channel}:OFFS?'))
 
     @voltage_offset.setter
@@ -75,11 +81,14 @@ class RigolDS1102e(USBTMCDevice):
         else:
             assert abs(offset) <= 40
         self.send_command(f':CHAN{self.active_channel}:OFFS {offset:.2g}')
+        self._cache[self.active_channel]['voltage_offset'] = offset
 
 
     @property
     def voltage_scale(self) -> float:
         """Return the voltage scale (V/div) of the currently active trace."""
+        cached = self._cache[self.active_channel]['voltage_scale']
+        if cached is not None: return cached
         return float(self.query(f':CHAN{self.active_channel}:SCAL?'))
 
     @voltage_scale.setter
@@ -94,6 +103,7 @@ class RigolDS1102e(USBTMCDevice):
                 break
         self.probe_attenuation = attenuation
         self.send_command(f':CHAN{self.active_channel}:SCAL {scale:.3g}')
+        self._cache[self.active_channel]['voltage_scale'] = scale
 
 
     @property
@@ -129,7 +139,7 @@ class RigolDS1102e(USBTMCDevice):
         """Set the current edge trigger source."""
         allowed_sources = ['ch1', 'ch2', 'ext', 'acline'] + [f'd{i}' for i in range(16)]
         assert source.lower() in allowed_sources
-        self.send_command(':TRIG:EDGE:SOUR? {source.upper()}')
+        self.send_command(f':TRIG:EDGE:SOUR? {source.upper()}')
 
 
     @property
@@ -182,11 +192,18 @@ class RigolDS1102e(USBTMCDevice):
     def trace(self) -> Array:
         """Return the array of voltage readings for the currently active trace."""
         # Get raw trace bytes
-        raw_data = self.query(f':WAV:DATA? CHAN{self.active_channel}', raw=True, delay=0.5)
+        raw_data = self.query(f':WAV:DATA? CHAN{self.active_channel}', raw=True, delay=0.2)
 
         # Decode bytes (first 10 are garbage)
         decoded = (~np.frombuffer(raw_data, 'B')[self._garbage_points:]).astype(float)
         return self.voltage_scale * (decoded - 130)/25 - self.voltage_offset
+
+    @property
+    def voltage_range(self) -> Tuple[float, float]:
+        """Return the voltage range of the active trace."""
+        center = -self.voltage_offset
+        scale = self.voltage_scale
+        return (center - 6*scale, center + 6*scale)
 
     ##### Convenience Functions #####
     def _create_plot(self):

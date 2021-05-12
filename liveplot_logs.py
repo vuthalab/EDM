@@ -15,7 +15,7 @@ import tkinter as tk
 
 ##### PARAMETERS #####
 # number of past points to plot
-num_points = 1500
+num_points = 250#1500
 
 # Map from plot labels (name, unit) to paths in data
 fields = {
@@ -59,11 +59,12 @@ axis_labels = [
 # pick the directory containing the log file
 print('Opening file dialog...')
 root_window = tk.Tk()
-filepath = filedialog.askopenfile(
+filepath = filedialog.askopenfilename(
     title="Pick file to log",
     initialdir="/home/vuthalab/Desktop/edm_data/logs/system_logs/",
+    filetypes=[('Text Files', '*.txt')],
     parent=root_window
-).name
+)
 root_window.destroy()
 print('Logging', filepath)
 
@@ -112,6 +113,8 @@ last = 0
 for i, line in enumerate(tail('-n', num_points, '-f', filepath, _iter=True)):
     timestamp, raw_data = line.split(']')
     timestamp = datetime.datetime.strptime(timestamp[1:], '%Y-%m-%d %H:%M:%S')
+    timestamp += datetime.timedelta(hours=4) # fix timezone (correct in logs, wrong on plot?)
+
     raw_data = json.loads(raw_data)
 
     # Filter out relevant fields
