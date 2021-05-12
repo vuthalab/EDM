@@ -15,7 +15,7 @@ import tkinter as tk
 
 ##### PARAMETERS #####
 # number of past points to plot
-num_points = 1000
+num_points = 500
 
 # Map from plot labels (name, unit) to paths in data
 fields = {
@@ -53,7 +53,6 @@ filepath = filedialog.askopenfile(
     parent=root_window
 ).name
 root_window.destroy()
-filepath = '/home/vuthalab/Desktop/edm_data/logs/system_logs/2021-05-11.txt'
 print('Logging', filepath)
 
 ###### initial plot #####
