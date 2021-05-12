@@ -82,7 +82,8 @@ class ClientThread(threading.Thread):
                 self.multiplexer._handler(self.multiplexer, self.client_socket, msg)
         finally:
             self.client_socket.close()
-            self.multiplexer.lock.release()
+            if self.multiplexer.lock.locked():
+                self.multiplexer.lock.release()
             print(f'{self.addr} closed')
 
 
