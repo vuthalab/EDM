@@ -1,5 +1,5 @@
 from typing import Optional, Literal, Union
-import serial, time, telnetlib, itertools, os, socket
+import serial, time, telnetlib, itertools, os, socket, select
 
 
 ModeString = Union[Literal['serial'], Literal['ethernet'], Literal['direct']]
@@ -119,7 +119,7 @@ class USBTMCDevice:
         if self._mode in ['serial', 'direct']: self._conn.flush()
 
 
-    def query(self, command: str, raw: bool = False, delay: float = 0.07) -> Union[str, bytes]:
+    def query(self, command: str, raw: bool = False, delay: float = 0.05) -> Union[str, bytes]:
         """
         Send a command to the device, and return its response.
 
@@ -164,9 +164,12 @@ class USBTMCDevice:
             time.sleep(0.01)
             self.send_command(command)
             time.sleep(0.01)
+
             self._conn.send(b'read')
             time.sleep(delay)
-            response = self._conn.recv(1024)
+
+            ready = select.select([self._conn], [], [], 2.0)
+            response = self._conn.recv(1024) if ready[0] else None
             self._conn.send(b'unlock')
             self._conn.recv(1024)
 

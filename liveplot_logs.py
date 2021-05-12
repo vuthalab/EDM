@@ -25,24 +25,34 @@ fields = {
     ('neon flow', 'sccm'): ('flows', 'neon'),
 
     ('reflection', 'V'): ('voltages', 'AIN1'),
-    ('transmission', 'V'): ('voltages', 'AIN2'),
+
+    ('transmission', 'V '): ('voltages', 'AIN2'),
 
     ('saph heat', 'W'): ('heaters', 'heat saph'),
     ('collimator heat', 'W'): ('heaters', 'heat coll'),
     ('45K heat', 'W'): ('heaters', 'srb45k out'),
     ('4K heat', 'W'): ('heaters', 'srb4k out'),
 
-    ('sapphire mount', 'K'): ('temperatures', 'saph'),
-    ('collimator', 'K'): ('temperatures', 'coll'),
     ('bottom hs', 'K'): ('temperatures', 'bott hs'),
     ('buffer cell', 'K'): ('temperatures', 'cell'),
-    ('4K sorb', 'K'): ('temperatures', 'srb4k'),
     ('45K sorb', 'K'): ('temperatures', 'srb45k'),
-    ('4K plate', 'K'): ('temperatures', '4k plate'),
     ('45K plate', 'K'): ('temperatures', '45k plate'),
+
+    ('sapphire mount', 'K '): ('temperatures', 'saph'),
+    ('collimator', 'K '): ('temperatures', 'coll'),
+    ('4K sorb', 'K '): ('temperatures', 'srb4k'),
+    ('4K plate', 'K '): ('temperatures', '4k plate'),
 }
 
-axis_labels = ['torr', 'sccm', 'V', 'W', 'K']
+axis_labels = [
+    'torr',
+    'sccm', 
+    'V',
+    'V ',
+    'W',
+    'K',
+    'K '
+]
 
 
 ##### BEGIN CODE #####
@@ -62,7 +72,7 @@ plt.ion()
 fig = plt.figure(figsize=(10,8))
 gs = fig.add_gridspec(
     len(axis_labels),
-    hspace=0.5,
+    hspace=0.1,
     left=0.1, right=0.95, top=0.95, bottom=0.05)
 axes = gs.subplots(sharex=True, sharey=False)
 
@@ -116,11 +126,8 @@ for i, line in enumerate(tail('-n', num_points, '-f', filepath, _iter=True)):
     times.append(timestamp)
     data.append(processed_data)
 
-    # Don't show plot until initial points are loaded
-    if i < num_points: continue
-
     # Avoid plot bottlenecking data read
-    if time.time() - last < 3: continue
+    if time.time() - last < 2: continue
 
     # Plot data
     x_padding = [datetime.datetime.now()] * (num_points - len(data))
@@ -139,4 +146,4 @@ for i, line in enumerate(tail('-n', num_points, '-f', filepath, _iter=True)):
     fig.canvas.draw()
     fig.canvas.flush_events()
     last = time.time()
-    time.sleep(0.01)
+    time.sleep(0.03)

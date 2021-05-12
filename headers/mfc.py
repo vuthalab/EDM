@@ -36,7 +36,7 @@ class MFC(USBTMCDevice):
     def flow_rate_neon_line(self): return self._get_flow_rate(1)
 
     @flow_rate_neon_line.setter
-    def flow_rate_neon_line(self, flowrate): self._set_flow_rate(flowrate, 0)
+    def flow_rate_neon_line(self, flowrate): self._set_flow_rate(flowrate, 1)
 
     def close(self):
         self.flow_rate_neon_line = 0
