@@ -68,6 +68,7 @@ class USBTMCDevice:
                 print(f'Connecting to multiplexer server on port {resource_path}...')
                 self._conn = socket.socket()
                 self._conn.connect(('127.0.0.1', resource_path))
+                self._conn.settimeout(2)
             except:
                 print('Please start the multiplexer server!')
                 self._conn = None
@@ -119,7 +120,7 @@ class USBTMCDevice:
         if self._mode in ['serial', 'direct']: self._conn.flush()
 
 
-    def query(self, command: str, raw: bool = False, delay: float = 0.05) -> Union[str, bytes]:
+    def query(self, command: str, raw: bool = False, delay: float = 0.03) -> Union[str, bytes]:
         """
         Send a command to the device, and return its response.
 
@@ -159,19 +160,24 @@ class USBTMCDevice:
             response = self._conn.readline()
 
         if self._mode == 'multiplexed':
-            self._conn.send(b'lock')
-            self._conn.recv(1024)
-            time.sleep(0.01)
-            self.send_command(command)
-            time.sleep(0.01)
+            try:
+                self._conn.send(b'lock\n')
+                time.sleep(0.01)
+                self._conn.recv(1024)
+                time.sleep(0.01)
+                self.send_command(command)
+                time.sleep(0.01)
 
-            self._conn.send(b'read')
-            time.sleep(delay)
+                self._conn.send(b'read\n')
+                time.sleep(delay)
 
-            ready = select.select([self._conn], [], [], 2.0)
-            response = self._conn.recv(1024) if ready[0] else None
-            self._conn.send(b'unlock')
-            self._conn.recv(1024)
+                response = self._conn.recv(1024)
+
+                self._conn.send(b'unlock\n')
+                time.sleep(0.01)
+                self._conn.recv(1024)
+            except:
+                return None
 
         # Decode the response to a Python string if raw == False.
         return response if raw else response.decode('utf-8').strip()

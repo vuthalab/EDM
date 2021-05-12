@@ -74,6 +74,7 @@ class ClientThread(threading.Thread):
                     self.multiplexer.lock.acquire()
                     self.client_socket.send(b'ok')
                     continue
+
                 if msg == b'unlock':
                     self.multiplexer.lock.release()
                     self.client_socket.send(b'ok')
@@ -90,9 +91,9 @@ class ClientThread(threading.Thread):
 ##### Connection Handlers #####
 def telnet_handler(multiplexer, client_socket, msg):
     if msg == b'read':
-        response = multiplexer.conn.read_until(b'\n')
+        response = multiplexer.conn.read_very_eager()
         print(multiplexer.name, '>', response)
-        client_socket.send(response)
+        client_socket.send(response or b'\r\n')
     else:
         multiplexer.conn.write(msg + b'\n')
 

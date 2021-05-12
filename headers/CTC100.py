@@ -54,7 +54,7 @@ class CTC100(USBTMCDevice):
         
         var = var.replace(" ", "") # Remove spaces from the variable name. They're optional and can potentially cause problems
         val = "({})".format(val) # Wrap argument in parentheses, just in case. This prevents an argument containing a space from causing unexpected issues
-        return self.query("{} = {}".format(var, val))
+        return self.query(f"{var} = {val}")
         
     def _increment_variable(self, var, val):
         """
