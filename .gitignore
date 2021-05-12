@@ -1,4 +1,4 @@
 **/*.pyc
-*.pyc
 sequence.py
 temp.py
+**/*.swp
