@@ -15,7 +15,7 @@ import tkinter as tk
 
 ##### PARAMETERS #####
 # number of past points to plot
-num_points = 500
+num_points = 1500
 
 # Map from plot labels (name, unit) to paths in data
 fields = {
@@ -42,6 +42,8 @@ fields = {
     ('45K plate', 'K'): ('temperatures', '45k plate'),
 }
 
+axis_labels = ['torr', 'sccm', 'V', 'W', 'K']
+
 
 ##### BEGIN CODE #####
 # pick the directory containing the log file
@@ -58,24 +60,32 @@ print('Logging', filepath)
 ###### initial plot #####
 plt.ion()
 fig = plt.figure(figsize=(10,8))
-gs = fig.add_gridspec(len(fields), hspace=0.5, left=0.1, right=0.95, top=0.95, bottom=0.05)
+gs = fig.add_gridspec(
+    len(axis_labels),
+    hspace=0.5,
+    left=0.1, right=0.95, top=0.95, bottom=0.05)
 axes = gs.subplots(sharex=True, sharey=False)
 
-# initialize empty plots
+# Initialize empty plots
 graphs = []
-for i, field in enumerate(fields):
-    name, units = field
+for field in fields:
+    name, unit = field
+
+    i = axis_labels.index(unit)
     graph = axes[i].plot_date(
         num_points * [None], num_points * [None],
-        color=f'C{i}',
         linestyle='solid', lw=2,
         marker=None,
         label=name
     )[0]
-    axes[i].set_ylabel(units)
-    axes[i].legend(loc='upper left')
-    axes[i].margins(0,0.1)
     graphs.append(graph)
+
+# Subplot tweaks
+for axis, label in zip(axes, axis_labels):
+    axis.legend(loc='upper left')
+    axis.margins(0,0.1)
+    axis.set_ylabel(label)
+
 
 # set data formatter
 locator = mpdates.AutoDateLocator()
@@ -121,9 +131,10 @@ for i, line in enumerate(tail('-n', num_points, '-f', filepath, _iter=True)):
 
         graph.set_xdata(xdata)
         graph.set_ydata(ydata)
-
-        axes[j].relim()
-        axes[j].autoscale_view()
+    
+    for axis in axes:
+        axis.relim()
+        axis.autoscale_view()
 
     fig.canvas.draw()
     fig.canvas.flush_events()

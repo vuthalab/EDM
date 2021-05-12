@@ -50,33 +50,29 @@ class USBTMCDevice:
         self._mode = mode 
 
         # Open the connection
-        try:
-            if mode == 'ethernet':
-                print(f'Opening LAN connection on {resource_path}:{tcp_port}...')
-                self._conn = telnetlib.Telnet(resource_path, port=tcp_port, timeout=2)
+        if mode == 'ethernet':
+            print(f'Opening LAN connection on {resource_path}:{tcp_port}...')
+            self._conn = telnetlib.Telnet(resource_path, port=tcp_port, timeout=2)
 
-            if mode == 'serial':
-                print(f'Opening serial connection on {resource_path}...')
-                baud = 19200
-                self._conn = serial.Serial(resource_path, baud, timeout=2)
+        if mode == 'serial':
+            print(f'Opening serial connection on {resource_path}...')
+            baud = 19200
+            self._conn = serial.Serial(resource_path, baud, timeout=2)
 
-            if mode == 'direct':
-                print(f'Opening USBTMC connection on {resource_path}...')
-                self._conn = open(resource_path, 'r+b')
+        if mode == 'direct':
+            print(f'Opening USBTMC connection on {resource_path}...')
+            self._conn = open(resource_path, 'r+b')
 
-            if mode == 'multiplexed':
-                try:
-                    print(f'Connecting to multiplexer server on port {resource_path}...')
-                    self._conn = socket.socket()
-                    self._conn.connect(('127.0.0.1', resource_path))
-                except:
-                    print('Please start the multiplexer server!')
-                    self._conn = None
+        if mode == 'multiplexed':
+            try:
+                print(f'Connecting to multiplexer server on port {resource_path}...')
+                self._conn = socket.socket()
+                self._conn.connect(('127.0.0.1', resource_path))
+            except:
+                print('Please start the multiplexer server!')
+                self._conn = None
 
-            time.sleep(0.1)
-        except:
-            self._conn = None
-            print('Failed to connect to device', resource_path)
+        time.sleep(0.1)
 
         time.sleep(0.1)
         self._name = self.query('*IDN?')
@@ -113,8 +109,6 @@ class USBTMCDevice:
         """Send a command to the device."""
         if DEBUG: print(' >', command)
 
-        if self._conn is None: return
-
         if self._mode == 'multiplexed':
             self._conn.send((command + '\n').encode('utf-8'))
             return
@@ -139,8 +133,6 @@ class USBTMCDevice:
             Delay between writing the command and reading the response.
             Increase the delay for commands that return large amounts of data.
         """
-        if self._conn is None: return None
-
         if self._mode != 'multiplexed':
             self.send_command(command)
             time.sleep(delay)

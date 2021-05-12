@@ -37,6 +37,9 @@ class FRG730:
             pressure = 10**((output_string[4]*256+output_string[5])/4000 - 12.625) #Conversion from manual
         except IndexError: return None
 
+        # Avoid occasional bugs
+        if pressure < 5e-12: return self._last_reading[0]
+
         self._last_reading = (pressure, time.time())
         return pressure
 
