@@ -6,11 +6,15 @@ import matplotlib.pyplot as plt
 
 from headers.rigol_ds1102e import RigolDS1102e
 
-root_dir = Path('/home/vuthalab/Desktop/edm_data/logs/scope/')
+##### Parameters #####
+root_dir = Path('~/Desktop/edm_data/logs/scope/').expanduser()
 log_file = root_dir / (time.strftime('%Y-%m-%d %H꞉%M꞉%S') + '.txt')
 
 N_AVERAGE = 16 # How many traces to average over
 
+ENABLE_LOGGING = False
+
+##### Main Program #####
 # Initialize connection
 with RigolDS1102e() as scope:
     # Set scope 2
@@ -33,7 +37,7 @@ with RigolDS1102e() as scope:
     photodiode_offset = np.mean(scope.trace)
 
     # Set scale + offset of signal trace
-    scope.voltage_scale = 0.02 # V/div
+    scope.voltage_scale = 0.1 # V/div
     scope.voltage_offset = -photodiode_offset
 
     # Fine-tune the offset
@@ -76,7 +80,8 @@ with RigolDS1102e() as scope:
                 fig.canvas.draw()
                 fig.canvas.flush_events()
 
-                print(time.time(), ' '.join(f'{x:.5f}' for x in acq), file=f)
+                if ENABLE_LOGGING:
+                    print(time.time(), ' '.join(f'{x:.5f}' for x in acq), file=f)
 
     except KeyboardInterrupt:
         plt.ioff()

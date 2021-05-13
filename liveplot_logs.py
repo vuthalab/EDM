@@ -68,7 +68,9 @@ filepath = filedialog.askopenfilename(
 root_window.destroy()
 print('Logging', filepath)
 
+
 ###### initial plot #####
+print(f'Showing last {num_points} points.')
 plt.ion()
 fig = plt.figure(figsize=(10,8))
 gs = fig.add_gridspec(
@@ -130,7 +132,7 @@ for i, line in enumerate(tail('-n', num_points, '-f', filepath, _iter=True)):
     data.append(processed_data)
 
     # Avoid plot bottlenecking data read
-    if time.time() - last < 2: continue
+    if time.time() - last < 1.5: continue
 
     # Plot data
     x_padding = [datetime.datetime.now()] * (num_points - len(data))
@@ -149,4 +151,4 @@ for i, line in enumerate(tail('-n', num_points, '-f', filepath, _iter=True)):
     fig.canvas.draw()
     fig.canvas.flush_events()
     last = time.time()
-    time.sleep(0.03)
+    time.sleep(0.05)

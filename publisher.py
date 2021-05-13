@@ -7,6 +7,8 @@ from headers.labjack_device import Labjack
 from headers.mfc import MFC
 from headers.zmq_server_socket import zmq_server_socket
 
+MAX_RATE = 2 # Hertz
+
 
 def run_publisher():
     print('Initializing devices...')
@@ -22,6 +24,8 @@ def run_publisher():
     print('Starting publisher')
     printer = pprint.PrettyPrinter(indent=2)
     with zmq_server_socket(5551, 'edm-monitor') as publisher:
+        last = time.time()
+
         while True:
             pressures = {
                 'chamber': pressure_gauge.pressure
@@ -61,13 +65,17 @@ def run_publisher():
             printer.pprint(data_dict)
 
             # Can include some software interlocks here. Not sure that this is a great implementation.
-            if pressures['chamber'] > 0.1:
+            if pressures['chamber'] is not None and pressures['chamber'] > 0.1:
                 for thermometer, _, _ in thermometers:
                     thermometer.disable_output()
                 mfc.off()
-                raise ValueError('Pressure too high! Turning off heaters and mfcs.')
+                
+                # TODO send email
 
-            time.sleep(0.1)
+            # Limit publishing speed
+            dt = time.time() - last
+            last = time.time()
+            time.sleep(max(1/MAX_RATE - dt, 0))
 
 if __name__ == '__main__':
     # TODO error handling

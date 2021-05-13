@@ -120,7 +120,7 @@ class USBTMCDevice:
         if self._mode in ['serial', 'direct']: self._conn.flush()
 
 
-    def query(self, command: str, raw: bool = False, delay: float = 0.1) -> Union[str, bytes]:
+    def query(self, command: str, raw: bool = False, delay: float = 0.07) -> Union[str, bytes]:
         """
         Send a command to the device, and return its response.
 
@@ -164,19 +164,19 @@ class USBTMCDevice:
                 self._conn.send(b'lock\n')
                 time.sleep(0.01)
                 self._conn.recv(1024)
-                time.sleep(0.01)
-                self.send_command(command)
-                time.sleep(0.01)
 
-                self._conn.send(b'read\n')
+                self.send_command(command)
                 time.sleep(delay)
 
+                self._conn.send(b'read\n')
+                time.sleep(0.01)
                 response = self._conn.recv(1024)
 
                 self._conn.send(b'unlock\n')
                 time.sleep(0.01)
                 self._conn.recv(1024)
-            except:
+            except Exception as e:
+                print(e)
                 return None
 
         # Decode the response to a Python string if raw == False.

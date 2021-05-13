@@ -76,11 +76,15 @@ class ClientThread(threading.Thread):
                     continue
 
                 if msg == b'unlock':
-                    self.multiplexer.lock.release()
-                    self.client_socket.send(b'ok')
-                    continue
+                    try:
+                        self.multiplexer.lock.release()
+                    finally:
+                        self.client_socket.send(b'ok')
+                        continue
 
                 self.multiplexer._handler(self.multiplexer, self.client_socket, msg)
+        except Exception as e:
+            print(e)
         finally:
             self.client_socket.close()
             if self.multiplexer.lock.locked():
@@ -109,9 +113,6 @@ def labjack_handler(multiplexer, client_socket, msg):
         channel, rate = msg.split(b' ')
         rate = float(rate.decode('utf-8'))
         multiplexer.conn.write(channel.decode('utf-8'), rate)
-
-    if msg == b'close':
-        multiplexer.conn.close()
 
 
 

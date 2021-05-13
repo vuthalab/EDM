@@ -117,6 +117,10 @@ class CTC100(USBTMCDevice):
         self._set_variable(f"{channel}.PID.mode", "off")
         self._set_variable(f"{channel}.value","0")
         self.query(f"{channel}.Off")
+
+    @property
+    def output_enabled(self):
+        return self._get_variable('outputEnable') == 'on'
         
     def enable_output(self): self._set_variable("outputEnable", "on")
         
