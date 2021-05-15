@@ -12,7 +12,7 @@ log_file = root_dir / (time.strftime('%Y-%m-%d %H꞉%M꞉%S') + '.txt')
 
 N_AVERAGE = 16 # How many traces to average over
 
-ENABLE_LOGGING = False
+ENABLE_LOGGING = True
 
 ##### Main Program #####
 # Initialize connection
@@ -37,7 +37,7 @@ with RigolDS1102e() as scope:
     photodiode_offset = np.mean(scope.trace)
 
     # Set scale + offset of signal trace
-    scope.voltage_scale = 0.1 # V/div
+    scope.voltage_scale = 2.0 # V/div
     scope.voltage_offset = -photodiode_offset
 
     # Fine-tune the offset

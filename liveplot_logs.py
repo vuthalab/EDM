@@ -14,8 +14,14 @@ import tkinter as tk
 
 
 ##### PARAMETERS #####
-# number of past points to plot
-num_points = 250#1500
+# number of past points to plot.
+# 500 works well
+num_points = 2000
+
+# skip every x points
+# 5 works well. probably shouldn't set this above 15
+# because then the plot freezes up
+skip_points = 5
 
 # Map from plot labels (name, unit) to paths in data
 fields = {
@@ -46,7 +52,7 @@ fields = {
 
 axis_labels = [
     'torr',
-    'sccm', 
+    'sccm',
     'V',
     'V ',
     'W',
@@ -68,9 +74,11 @@ filepath = filedialog.askopenfilename(
 root_window.destroy()
 print('Logging', filepath)
 
+#filepath = '/home/vuthalab/Desktop/edm_data/logs/system_logs/continuous.txt'
+
 
 ###### initial plot #####
-print(f'Showing last {num_points} points.')
+print(f'Showing last {num_points * skip_points} points (skip every {skip_points}).')
 plt.ion()
 fig = plt.figure(figsize=(10,8))
 gs = fig.add_gridspec(
@@ -112,7 +120,9 @@ times = []
 data = []
 
 last = 0
-for i, line in enumerate(tail('-n', num_points, '-f', filepath, _iter=True)):
+for i, line in enumerate(tail('-n', num_points * skip_points, '-f', filepath, _iter=True)):
+    if i % skip_points != 0: continue
+
     timestamp, raw_data = line.split(']')
     timestamp = datetime.datetime.strptime(timestamp[1:], '%Y-%m-%d %H:%M:%S')
     timestamp += datetime.timedelta(hours=4) # fix timezone (correct in logs, wrong on plot?)
@@ -131,10 +141,14 @@ for i, line in enumerate(tail('-n', num_points, '-f', filepath, _iter=True)):
     times.append(timestamp)
     data.append(processed_data)
 
-    # Avoid plot bottlenecking data read
-    if time.time() - last < 1.5: continue
+    if (
+        time.time() - last < 2 # Avoid plot bottlenecking data read
+        and
+        abs(i/skip_points - num_points) > 3 # Update a few times manually to get the initial plot
+    ): continue
 
     # Plot data
+    start_time = time.time()
     x_padding = [datetime.datetime.now()] * (num_points - len(data))
     y_padding = [None] * (num_points - len(data))
     for j, graph in enumerate(graphs):
@@ -143,7 +157,7 @@ for i, line in enumerate(tail('-n', num_points, '-f', filepath, _iter=True)):
 
         graph.set_xdata(xdata)
         graph.set_ydata(ydata)
-    
+
     for axis in axes:
         axis.relim()
         axis.autoscale_view()
@@ -151,4 +165,6 @@ for i, line in enumerate(tail('-n', num_points, '-f', filepath, _iter=True)):
     fig.canvas.draw()
     fig.canvas.flush_events()
     last = time.time()
+
+    print(f'Plot took {last - start_time:.3f} s')
     time.sleep(0.05)

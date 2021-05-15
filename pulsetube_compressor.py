@@ -56,6 +56,10 @@ class PulseTube:
         # print(X)
         return unpack('f',X)[0]
 
+    def is_on(self):
+        power_state = self.device.read_input_registers(0x01,count=1).registers[0]
+        return power_state == 3
+
 
     def status(self):
         status = self.device.read_input_registers(0x01,count=40)

@@ -14,6 +14,8 @@ from headers.zmq_client_socket import zmq_client_socket
 ROOT_DIR = Path('~/Desktop/edm_data/logs/system_logs/').expanduser()
 if not ROOT_DIR.exists(): ROOT_DIR.mkdir(parents=True, exist_ok=True)
 
+continuous_log_file = ROOT_DIR / 'continuous.txt'
+
 def log_file():
     """Return the current log file. Will change at midnight."""
     return ROOT_DIR / (time.strftime('%Y-%m-%d') + '.txt')
@@ -35,4 +37,8 @@ while True:
 
     with open(log_file(), 'a') as f:
         print(timestamp, json.dumps(data), file=f)
+
+    with open(continuous_log_file, 'a') as f:
+        print(timestamp, json.dumps(data), file=f)
+
     print(timestamp, json.dumps(data))
