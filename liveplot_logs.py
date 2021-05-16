@@ -2,6 +2,8 @@
 from sh import tail
 import time, json, datetime, math
 
+import numpy as np
+
 import matplotlib.pyplot as plt
 import matplotlib.dates as mpdates
 from matplotlib import rcParams
@@ -15,12 +17,10 @@ import tkinter as tk
 
 ##### PARAMETERS #####
 # number of past points to plot.
-# 500 works well
+# 2000 works well
 num_points = 2000
 
-# skip every x points
-# 5 works well. probably shouldn't set this above 15
-# because then the plot freezes up
+# skip every x points. 5 works well.
 skip_points = 5
 
 # Map from plot labels (name, unit) to paths in data
@@ -116,55 +116,54 @@ plt.gca().xaxis.set_major_formatter(formatter)
 axes[0].set_yscale('log') # set pressure as log
 
 ##### animated plot #####
-times = []
-data = []
+times = np.array([datetime.datetime.now()] * num_points)
+data = np.full((num_points, len(fields)), None)
 
 last = 0
 for i, line in enumerate(tail('-n', num_points * skip_points, '-f', filepath, _iter=True)):
-    if i % skip_points != 0: continue
+    if i % skip_points == 0:
+        timestamp, raw_data = line.split(']')
+        timestamp = datetime.datetime.strptime(timestamp[1:], '%Y-%m-%d %H:%M:%S')
+        timestamp += datetime.timedelta(hours=4) # fix timezone (correct in logs, wrong on plot?)
 
-    timestamp, raw_data = line.split(']')
-    timestamp = datetime.datetime.strptime(timestamp[1:], '%Y-%m-%d %H:%M:%S')
-    timestamp += datetime.timedelta(hours=4) # fix timezone (correct in logs, wrong on plot?)
+        raw_data = json.loads(raw_data)
 
-    raw_data = json.loads(raw_data)
+        # Filter out relevant fields
+        processed_data = []
+        for path in fields.values():
+            value = raw_data
+            for entry in path:
+                value = value[entry]
+            processed_data.append(value)
 
-    # Filter out relevant fields
-    processed_data = []
-    for path in fields.values():
-        value = raw_data
-        for entry in path:
-            value = value[entry]
-        processed_data.append(value)
+        # Add datapoint
+        times[:-1] = times[1:]
+        times[-1] = timestamp
 
-    # Add datapoint
-    times.append(timestamp)
-    data.append(processed_data)
+        data[:-1] = data[1:]
+        data[-1] = processed_data
 
     if (
         time.time() - last < 2 # Avoid plot bottlenecking data read
         and
-        abs(i/skip_points - num_points) > 3 # Update a few times manually to get the initial plot
+        abs(i/skip_points - num_points) > 2 # Update a few times manually to get the initial plot
     ): continue
 
-    # Plot data
-    start_time = time.time()
-    x_padding = [datetime.datetime.now()] * (num_points - len(data))
-    y_padding = [None] * (num_points - len(data))
-    for j, graph in enumerate(graphs):
-        xdata = x_padding + times[-num_points:]
-        ydata = y_padding + [row[j] for row in data[-num_points:]]
-
-        graph.set_xdata(xdata)
-        graph.set_ydata(ydata)
-
-    for axis in axes:
-        axis.relim()
-        axis.autoscale_view()
-
-    fig.canvas.draw()
     fig.canvas.flush_events()
-    last = time.time()
-
-    print(f'Plot took {last - start_time:.3f} s')
     time.sleep(0.05)
+
+    if i % skip_points == 0:
+        # Plot data
+        start_time = time.time()
+        for j, graph in enumerate(graphs):
+            graph.set_xdata(times)
+            graph.set_ydata(data[:, j])
+
+        for axis in axes:
+            axis.relim()
+            axis.autoscale_view()
+        
+        fig.canvas.draw()
+        last = time.time()
+
+        print(f'Plot took {last - start_time:.3f} s')

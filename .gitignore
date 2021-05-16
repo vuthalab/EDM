@@ -3,4 +3,4 @@ sequence.py
 temp.py
 **/*.swp
 *.txt
-sendgrid.env
+notify.py

@@ -88,6 +88,7 @@ def run_publisher():
                 temperatures[name] for name in ['srb4k', 'saph', '4k plate', 'coll']
                 if temperatures[name] is not None
             ]
+            min_temp = min(cold_temps)
 
             # Determine whether pt has been running for 24 hrs
             if not pt_on: pt_last_off = time.time()
@@ -101,10 +102,11 @@ def run_publisher():
             )
             if heaters_safe: heaters_last_safe = time.time()
 
-            print(f'{pt_on=} {pt_running=} {heaters_safe=}')
+            print(f'{pt_on=} {pt_running=} {heaters_safe=} {min_temp=}')
 
             chamber_pressure = pressures['chamber']
             if chamber_pressure is not None:
+                # Chamber pressure high during main experiment
                 if chamber_pressure > 0.2 and pt_running:
                     for thermometer, _, _ in thermometers:
                         thermometer.disable_output()
@@ -112,32 +114,33 @@ def run_publisher():
                 
                     send_email(
                         'Pressure Interlock Activated',
-                        f'Vacuum chamber pressure reached <strong>{chamber_pressure:.3f} torr</strong>! MFC and heaters disabled. Pulsetube is running.'
+                        f'Vacuum chamber pressure reached {chamber_pressure:.3f} torr while pulsetube is running! MFC and heaters disabled.'
                     )
 
-                if chamber_pressure > 2:
+                # Chamber pressurized while cold
+                if chamber_pressure > 2 and min_temp < 270:
                     pt_status = 'on' if pt_on else 'off'
                     send_email(
                         'Pressure Warning',
-                        f'Vacuum chamber pressure is <strong>{chamber_pressure:.3f} torr</strong>. Pulse tube is {pt_status}.'
+                        f'Vacuum chamber pressure is abnormally high ({chamber_pressure:.3f} torr) while cold ({min_temp:.2f} K). Pulse tube is {pt_status}.'
                     )
 
-            if pt_running:
-                if any(temp > 30 for temp in cold_temps):
+            # Pulsetube running for last 24 hours, yet temperatures abnormally high
+            if pt_running and any(temp > 30 for temp in cold_temps):
                     send_email(
                         'Temperature Warning',
-                        f'<strong>{name}</strong> temperature is <strong>{temp:.1f} K</strong>. Pulsetube is on.'
+                        f'Pulsetube has been running for the past 24 hours, yet {name} temperature is abnormally high ({temp:.1f} K).'
                     )
 
 
+            # Heaters running on full blast, yet surfaces are cold
             if (time.time() - heaters_last_safe) > 20 * 60:
                 strongest_heater = max(heaters.keys(), key=lambda name: heaters[name] or 0)
                 max_power = heaters[strongest_heater]
-                cold_temp = min(cold_temps)
 
                 send_email(
                     'Heater Warning',
-                    f'<strong>{strongest_heater}</strong> has been outputting <strong>{strongest_heater:.2f} W</strong> for 20 minutes. Coldest temperature is {cold_temp:.1f} K. Did the heater fall off?'
+                    f'{strongest_heater} has been outputting {strongest_heater:.2f} W for 20 minutes, yet coldest temperature is {min_temp:.1f} K. Did the heater fall off?'
                 )
 
 if __name__ == '__main__':

@@ -18,6 +18,6 @@ mfc = MFC(31417)
 
 ## Uncomment whatever commands you want and run the file ##
 mfc.flow_rate_cell = 0
-mfc.flow_rate_neon_line = 3
+mfc.flow_rate_neon_line = 0
 
 #T1.disable_output()
