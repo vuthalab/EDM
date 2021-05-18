@@ -25,7 +25,7 @@ class RigolDS1102e(USBTMCDevice):
     _garbage_points: int = 10
 
     # Cached properties
-    _cache = {channel: defaultdict(lambda x: None) for channel in [1, 2]}
+    _cache = {channel: defaultdict(lambda: None) for channel in [1, 2]}
 
 
     def __init__(self):

@@ -10,16 +10,16 @@ import numpy as np
 # Date format must be YYYY-MM-DD
 # Time format must be HH:MM:SS
 # End time can be in the future to get all data after a certain point
-date = '2021-05-14'
-start_time = '11:55:00'
-end_time = '12:50:00'
+date = '2021-05-17'
+start_time = '16:50:00'
+end_time = '17:25:00'
 
 # Map from plot labels (name, unit) to paths in data
 # Choose which fields you want to extract here
 fields = {
    ('pressure', 'torr'): ('pressures', 'chamber'),
 
-   ('buffer flow', 'sccm'): ('flows', 'cell'),
+#   ('buffer flow', 'sccm'): ('flows', 'cell'),
    ('neon flow', 'sccm'): ('flows', 'neon'),
 
    ('reflection', 'V'): ('voltages', 'AIN1'),

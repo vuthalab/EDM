@@ -2,9 +2,10 @@ from typing import Optional, Literal, Union
 import serial, time, telnetlib, itertools, os, socket, select
 
 
-ModeString = Union[Literal['serial'], Literal['ethernet'], Literal['direct']]
+ModeString = Union[Literal['serial'], Literal['ethernet'], Literal['direct'], Literal['multiplexed']]
 
-DEBUG = True
+DEBUG = True # Whether to print commands as they are sent
+DRY_RUN = False # If true, nothing actually happens (useful for debug)
 
 
 class USBTMCDevice:
@@ -47,6 +48,8 @@ class USBTMCDevice:
 
             'ethernet' should be used for networked LAN devices.
         """
+        if DRY_RUN: print('[WARNING] Dry-run mode active. Nothing will actually happen.')
+
         self._mode = mode 
 
         # Open the connection
@@ -109,6 +112,7 @@ class USBTMCDevice:
     def send_command(self, command: str) -> None:
         """Send a command to the device."""
         if DEBUG: print(' >', command)
+        if DRY_RUN: return
 
         if self._mode == 'multiplexed':
             self._conn.send((command + '\n').encode('utf-8'))
@@ -134,6 +138,10 @@ class USBTMCDevice:
             Delay between writing the command and reading the response.
             Increase the delay for commands that return large amounts of data.
         """
+        if DRY_RUN:
+            self.send_command(command)
+            return None
+
         if self._mode != 'multiplexed':
             self.send_command(command)
             time.sleep(delay)

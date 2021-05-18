@@ -17,37 +17,37 @@ ENABLE_LOGGING = True
 ##### Main Program #####
 # Initialize connection
 with RigolDS1102e() as scope:
-    # Set scope 2
-    scope.active_channel = 2
-    scope.voltage_scale = 1 # V/div
-    scope.voltage_offset = -2.5 # V
-
-    # Set trigger settings
-    scope.trigger_source = 'ch2'
-    scope.trigger_direction = 'rising'
-    scope.trigger_level = 2.5 # V
-    scope.time_scale = 1e-3 # s/div
-    scope.time_offset = 4 * scope.time_scale
-
-    # Read mean photodiode voltage
-    scope.active_channel = 1
-    scope.voltage_scale = 2.0 # V/div
-    scope.voltage_offset = 0 # V
-    time.sleep(2)
-    photodiode_offset = np.mean(scope.trace)
-
-    # Set scale + offset of signal trace
-    scope.voltage_scale = 2.0 # V/div
-    scope.voltage_offset = -photodiode_offset
-
-    # Fine-tune the offset
-    time.sleep(2)
-    photodiode_offset = np.mean(scope.trace)
-    scope.voltage_offset = -photodiode_offset
+    # # Set scope 2
+    # scope.active_channel = 2
+    # scope.voltage_scale = 1 # V/div
+    # scope.voltage_offset = -2.5 # V
+    #
+    # # Set trigger settings
+    # scope.trigger_source = 'ch2'
+    # scope.trigger_direction = 'rising'
+    # scope.trigger_level = 2.5 # V
+    # scope.time_scale = 1e-3 # s/div
+    # scope.time_offset = 4 * scope.time_scale
+    #
+    # # Read mean photodiode voltage
+    # scope.active_channel = 1
+    # scope.voltage_scale = 2.0 # V/div
+    # scope.voltage_offset = 0 # V
+    # time.sleep(2)
+    # photodiode_offset = np.mean(scope.trace)
+    #
+    # # Set scale + offset of signal trace
+    # scope.voltage_scale = 2.0 # V/div
+    # scope.voltage_offset = -photodiode_offset
+    #
+    # # Fine-tune the offset
+    # time.sleep(2)
+    # photodiode_offset = 0#np.mean(scope.trace)
+    # scope.voltage_offset = -photodiode_offset
 
     # Initialize acquisition buffer
     times = scope.times
-    acquisitions = np.zeros(shape=(N_AVERAGE, len(times))) + photodiode_offset
+    acquisitions = np.zeros(shape=(N_AVERAGE, len(times)))# + photodiode_offset
 
     # Initialize plot
     plt.ion()

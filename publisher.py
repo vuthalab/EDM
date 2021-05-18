@@ -94,11 +94,11 @@ def run_publisher():
             if not pt_on: pt_last_off = time.time()
             pt_running = (time.time() - pt_last_off) > 24*60*60
 
-            # Determine whether heaters are safe and working (all <20W, and temps >10K).
+            # Determine whether heaters are safe and working (all <20W, or temps >10K).
             # Will send a notification if unsafe for too long.
             heaters_safe = (
                 all(power is None or power < 20 for power in heaters.values())
-                and all(temp > 10 for temp in cold_temps)
+                or all(temp > 10 for temp in cold_temps)
             )
             if heaters_safe: heaters_last_safe = time.time()
 
@@ -140,7 +140,7 @@ def run_publisher():
 
                 send_email(
                     'Heater Warning',
-                    f'{strongest_heater} has been outputting {strongest_heater:.2f} W for 20 minutes, yet coldest temperature is {min_temp:.1f} K. Did the heater fall off?'
+                    f'{strongest_heater} has been outputting {max_power:.2f} W for 20 minutes, yet coldest temperature is {min_temp:.1f} K. Did the heater fall off?'
                 )
 
 if __name__ == '__main__':

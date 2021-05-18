@@ -17,11 +17,10 @@ import tkinter as tk
 
 ##### PARAMETERS #####
 # number of past points to plot.
-# 2000 works well
 num_points = 2000
 
-# skip every x points. 5 works well.
-skip_points = 5
+# skip every x points.
+skip_points = 1
 
 # Map from plot labels (name, unit) to paths in data
 fields = {
@@ -63,18 +62,19 @@ axis_labels = [
 
 ##### BEGIN CODE #####
 # pick the directory containing the log file
-print('Opening file dialog...')
-root_window = tk.Tk()
-filepath = filedialog.askopenfilename(
-    title="Pick file to log",
-    initialdir="/home/vuthalab/Desktop/edm_data/logs/system_logs/",
-    filetypes=[('Text Files', '*.txt')],
-    parent=root_window
-)
-root_window.destroy()
-print('Logging', filepath)
 
-#filepath = '/home/vuthalab/Desktop/edm_data/logs/system_logs/continuous.txt'
+#print('Opening file dialog...')
+#root_window = tk.Tk()
+#filepath = filedialog.askopenfilename(
+#    title="Pick file to log",
+#    initialdir="/home/vuthalab/Desktop/edm_data/logs/system_logs/",
+#    filetypes=[('Text Files', '*.txt')],
+#    parent=root_window
+#)
+#root_window.destroy()
+#print('Logging', filepath)
+
+filepath = '/home/vuthalab/Desktop/edm_data/logs/system_logs/continuous.txt'
 
 
 ###### initial plot #####

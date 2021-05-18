@@ -24,7 +24,8 @@ class MFC(USBTMCDevice):
         self.send_command(f'DAC{channel} {flowrate/self._calibration:.8f}')   #MFC flow is off (0 to 5 VDC givs 0 to 10 sccm)
         time.sleep(0.5) #Takes about 0.5s to ramp up the flow.
         val = self._get_flow_rate(channel)
-        print(f'Flow setpoint = {flowrate:3f}, Current flow rate = {val:3f} sccm.')
+        current = f'{val:.3f}' if val is not None else None
+        print(f'Flow setpoint = {flowrate:3f}, Current flow rate = {current} sccm.')
 
 
     @property
@@ -40,8 +41,7 @@ class MFC(USBTMCDevice):
     def flow_rate_neon_line(self, flowrate): self._set_flow_rate(flowrate, 1)
 
     def close(self):
-        self.flow_rate_neon_line = 0
-        self.flow_rate_cell = 0
+        self.off()
         self.send_command('close')
         print('MFC LabJack Closed.')
 
