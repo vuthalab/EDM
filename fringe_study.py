@@ -65,6 +65,7 @@ def melt_and_grow(low_temp, neon_flow, grow_while_cooling):
     time.sleep(finish_time - time.monotonic())
     with open('fringe-log.txt', 'a') as f:
         print(time.asctime(time.localtime()), '|', 'stop', file=f)
+    mfc.off()
 
 
 # Initialize devices.
@@ -90,10 +91,6 @@ try:
     melt_and_grow(7, 4, True)
 
     melt_and_grow(7, 2, True)
-
-    # Special run with buffer gas (may not finish but it's fine)
-    mfc.flow_rate_cell = 10
-    melt_and_grow(5, 4, False)
 
 finally:
     T1.disable_output()

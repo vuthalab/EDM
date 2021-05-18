@@ -30,7 +30,7 @@ with RigolDS1102e() as scope:
     # scope.time_offset = 4 * scope.time_scale
     #
     # # Read mean photodiode voltage
-    # scope.active_channel = 1
+    scope.active_channel = 1
     # scope.voltage_scale = 2.0 # V/div
     # scope.voltage_offset = 0 # V
     # time.sleep(2)

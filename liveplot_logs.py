@@ -162,7 +162,7 @@ for i, line in enumerate(tail('-n', num_points * skip_points, '-f', filepath, _i
         for axis in axes:
             axis.relim()
             axis.autoscale_view()
-        
+
         fig.canvas.draw()
         last = time.time()
 

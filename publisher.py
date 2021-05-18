@@ -6,13 +6,13 @@ from headers.CTC100 import CTC100
 from headers.labjack_device import Labjack
 from headers.mfc import MFC
 from headers.zmq_server_socket import zmq_server_socket
-
+#from wavemeter_plotter import LivePlotter
+from headers.wavemeter import WM
 from pulsetube_compressor import PulseTube
 
 from notify import send_email
 
 MAX_RATE = 2 # Hertz
-
 
 
 def run_publisher():
@@ -24,6 +24,7 @@ def run_publisher():
     ]
     labjack = Labjack('470022275')
     mfc = MFC(31417)
+    wm = WM(publish=False) #wavemeter class used for reading frequencies from high finesse wavemeter
 
     pt = PulseTube()
     pt_last_off = 0
@@ -32,8 +33,8 @@ def run_publisher():
 
     print('Starting publisher')
     printer = pprint.PrettyPrinter(indent=2)
+    last = time.time()
     with zmq_server_socket(5551, 'edm-monitor') as publisher:
-        last = time.time()
 
         while True:
             pressures = {
@@ -61,6 +62,9 @@ def run_publisher():
                 'cell': mfc.flow_rate_cell,
                 'neon': mfc.flow_rate_neon_line,
             }
+            frequencies = {
+                'BaF_Laser': wm.read_frequency(4) #read in GHz
+            }
 
             pt_on = pt.is_on()
 
@@ -70,18 +74,14 @@ def run_publisher():
                 'heaters': heaters,
                 'voltages': voltages,
                 'flows': flows,
+                'frequencies': frequencies,
                 'pulsetube': {
                     'running': pt_on,
-                },
-            }
+                    }
+                }
 
             publisher.send(data_dict)
             printer.pprint(data_dict)
-
-            # Limit publishing speed
-            dt = time.time() - last
-            last = time.time()
-            time.sleep(max(1/MAX_RATE - dt, 0))
 
             ###### Software Interlocks #####
             cold_temps = [
@@ -111,7 +111,7 @@ def run_publisher():
                     for thermometer, _, _ in thermometers:
                         thermometer.disable_output()
                     mfc.off()
-                
+
                     send_email(
                         'Pressure Interlock Activated',
                         f'Vacuum chamber pressure reached {chamber_pressure:.3f} torr while pulsetube is running! MFC and heaters disabled.'
@@ -142,6 +142,11 @@ def run_publisher():
                     'Heater Warning',
                     f'{strongest_heater} has been outputting {max_power:.2f} W for 20 minutes, yet coldest temperature is {min_temp:.1f} K. Did the heater fall off?'
                 )
+
+            ### Limit publishing speed ###
+            dt = time.time() - last
+            last = time.time()
+            time.sleep(max(1/MAX_RATE - dt, 0))
 
 if __name__ == '__main__':
     run_publisher()

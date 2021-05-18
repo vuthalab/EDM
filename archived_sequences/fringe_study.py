@@ -16,8 +16,12 @@ import numpy as np
 
 
 #Import class objects
+import headers.usbtmc as usbtmc
 from headers.CTC100 import CTC100
 from headers.mfc import MFC
+
+# If uncommented, then don't actually do anything
+# usbtmc.DRY_RUN = True
 
 
 # Log a copy of this sequence file
@@ -40,9 +44,14 @@ def melt_and_grow(low_temp, neon_flow, grow_while_cooling):
 
     modifier = '' if grow_while_cooling else 'not '
     print(f'Growing crystal at {low_temp:.1f} K with {neon_flow:.1f} sccm neon flow. Will {modifier}grow while cooling.')
+    with open('fringe-log.txt', 'a') as f:
+        print(
+            time.asctime(time.localtime()), '|', 'start',
+            low_temp, neon_flow, grow_while_cooling,
+            file=f
+        )
 
     # Melt the crystal.
-    T1.enable_output()
     T1.ramp_temperature('heat saph', 25, 0.1)
     time.sleep(10 * MINUTE)
 
@@ -54,7 +63,8 @@ def melt_and_grow(low_temp, neon_flow, grow_while_cooling):
     # Start the neon now if not started while cooling.
     if not grow_while_cooling: mfc.flow_rate_neon_line = neon_flow
     time.sleep(finish_time - time.monotonic())
-    T1.disable_output()
+    with open('fringe-log.txt', 'a') as f:
+        print(time.asctime(time.localtime()), '|', 'stop', file=f)
     mfc.off()
 
 
@@ -67,6 +77,8 @@ mfc = MFC(31417)
 
 try:
     mfc.off()
+    T1.enable_output()
+
     melt_and_grow(5, 2, False)
     melt_and_grow(5, 2, True)
 
@@ -77,6 +89,8 @@ try:
 
     melt_and_grow(7, 4, False)
     melt_and_grow(7, 4, True)
+
+    melt_and_grow(7, 2, True)
 
 finally:
     T1.disable_output()

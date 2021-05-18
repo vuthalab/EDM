@@ -72,7 +72,11 @@ class RigolDS1102e(USBTMCDevice):
         """Return the vertical offset of the currently active trace (V)."""
         cached = self._cache[self.active_channel]['voltage_offset']
         if cached is not None: return cached
-        return float(self.query(f':CHAN{self.active_channel}:OFFS?'))
+
+        # Get value and cache
+        value = float(self.query(f':CHAN{self.active_channel}:OFFS?'))
+        self._cache[self.active_channel]['voltage_offset'] = value
+        return value
 
     @voltage_offset.setter
     def voltage_offset(self, offset: float) -> None:
@@ -89,7 +93,11 @@ class RigolDS1102e(USBTMCDevice):
         """Return the voltage scale (V/div) of the currently active trace."""
         cached = self._cache[self.active_channel]['voltage_scale']
         if cached is not None: return cached
-        return float(self.query(f':CHAN{self.active_channel}:SCAL?'))
+
+        # Get value and cache
+        value = float(self.query(f':CHAN{self.active_channel}:SCAL?'))
+        self._cache[self.active_channel]['voltage_scale'] = value
+        return value
 
     @voltage_scale.setter
     def voltage_scale(self, scale: float) -> None:

@@ -17,7 +17,8 @@ T2 = CTC100(31416)
 mfc = MFC(31417)
 
 ## Uncomment whatever commands you want and run the file ##
-mfc.flow_rate_cell = 20
+#mfc.flow_rate_cell = 20
 #mfc.flow_rate_neon_line = 0
+mfc.off()
 
-#T1.disable_output()
+T1.disable_output()

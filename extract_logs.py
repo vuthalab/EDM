@@ -10,9 +10,9 @@ import numpy as np
 # Date format must be YYYY-MM-DD
 # Time format must be HH:MM:SS
 # End time can be in the future to get all data after a certain point
-date = '2021-05-17'
-start_time = '16:50:00'
-end_time = '17:25:00'
+date = '2021-05-18'
+start_time = '12:15:00'
+end_time = '12:40:00'
 
 # Map from plot labels (name, unit) to paths in data
 # Choose which fields you want to extract here
@@ -25,6 +25,9 @@ fields = {
    ('reflection', 'V'): ('voltages', 'AIN1'),
 
 #   ('transmission', 'V '): ('voltages', 'AIN2'),
+
+   ('frequency', 'GHz'): ('frequencies', 'BaF_Laser'),
+
 
 #   ('saph heat', 'W'): ('heaters', 'heat saph'),
 #   ('collimator heat', 'W'): ('heaters', 'heat coll'),
