@@ -37,7 +37,7 @@ shutil.copy(__file__, filename)
 MINUTE = 60
 HOUR = 60 * MINUTE
 
-total_time = 1 * HOUR # Total time for one trial.
+total_time = 2 * HOUR # Total time for one trial.
 
 def melt_and_grow(low_temp, neon_flow, grow_while_cooling):
     finish_time = time.monotonic() + total_time
@@ -79,18 +79,8 @@ try:
     mfc.off()
     T1.enable_output()
 
-    melt_and_grow(5, 2, False)
-    melt_and_grow(5, 2, True)
-
-    melt_and_grow(5, 4, False)
-    melt_and_grow(5, 4, True)
-
-    melt_and_grow(5, 8, True)
-
-    melt_and_grow(7, 4, False)
-    melt_and_grow(7, 4, True)
-
-    melt_and_grow(7, 2, True)
+    melt_and_grow(5.5, 2, True)
+    melt_and_grow(5.5, 3, True)
 
 finally:
     T1.disable_output()

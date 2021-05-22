@@ -31,7 +31,10 @@ freq_label.pack()
 
 def refresh_freq():
     freq = get_freq()
-    freq_label.config(text=f'{freq:.6f} GHz')
+    try:
+        freq_label.config(text=f'{freq:.4f} GHz')
+    except:
+        print('bad')
     root.after(300, refresh_freq)
 
 root.after(300, refresh_freq)

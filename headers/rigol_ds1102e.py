@@ -200,7 +200,7 @@ class RigolDS1102e(USBTMCDevice):
     def trace(self) -> Array:
         """Return the array of voltage readings for the currently active trace."""
         # Get raw trace bytes
-        raw_data = self.query(f':WAV:DATA? CHAN{self.active_channel}', raw=True, delay=0.2)
+        raw_data = self.query(f':WAV:DATA? CHAN{self.active_channel}', raw=True, delay=0.05)
 
         # Decode bytes (first 10 are garbage)
         decoded = (~np.frombuffer(raw_data, 'B')[self._garbage_points:]).astype(float)

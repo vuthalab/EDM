@@ -23,6 +23,8 @@ num_points = 2000
 skip_points = 1
 
 # Map from plot labels (name, unit) to paths in data
+# Uncomment any fields you want to see.
+# Traces will be grouped by units. (You can 'hack' this by putting spaces in the units.)
 fields = {
     ('pressure', 'torr'): ('pressures', 'chamber'),
 
@@ -32,6 +34,8 @@ fields = {
     ('reflection', 'V'): ('voltages', 'AIN1'),
 
     ('transmission', 'V '): ('voltages', 'AIN2'),
+
+#    ('frequency', 'GHz'): ('frequencies', 'BaF_Laser'),
 
     ('saph heat', 'W'): ('heaters', 'heat saph'),
     ('collimator heat', 'W'): ('heaters', 'heat coll'),
@@ -164,6 +168,9 @@ for i, line in enumerate(tail('-n', num_points * skip_points, '-f', filepath, _i
             axis.autoscale_view()
 
         fig.canvas.draw()
+
+        pt_status = 'Running' if raw_data['pulsetube']['running'] else 'Off'
+        fig.canvas.set_window_title(f'Pulse Tube {pt_status}')
         last = time.time()
 
         print(f'Plot took {last - start_time:.3f} s')

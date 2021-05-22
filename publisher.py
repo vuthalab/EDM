@@ -1,4 +1,4 @@
-import time, pprint
+import time, pprint, traceback
 
 #Import class objects
 from headers.FRG730 import FRG730
@@ -35,7 +35,6 @@ def run_publisher():
     printer = pprint.PrettyPrinter(indent=2)
     last = time.time()
     with zmq_server_socket(5551, 'edm-monitor') as publisher:
-
         while True:
             pressures = {
                 'chamber': pressure_gauge.pressure
@@ -62,8 +61,9 @@ def run_publisher():
                 'cell': mfc.flow_rate_cell,
                 'neon': mfc.flow_rate_neon_line,
             }
+
             frequencies = {
-                'BaF_Laser': wm.read_frequency(4) #read in GHz
+                'BaF_Laser': wm.read_frequency(8) #read in GHz
             }
 
             pt_on = pt.is_on()
@@ -77,11 +77,12 @@ def run_publisher():
                 'frequencies': frequencies,
                 'pulsetube': {
                     'running': pt_on,
-                    }
                 }
+            }
 
             publisher.send(data_dict)
             printer.pprint(data_dict)
+
 
             ###### Software Interlocks #####
             cold_temps = [
@@ -149,4 +150,11 @@ def run_publisher():
             time.sleep(max(1/MAX_RATE - dt, 0))
 
 if __name__ == '__main__':
-    run_publisher()
+    while True:
+        try:
+            run_publisher()
+        except:
+            with open('publisher-error-log.txt', 'a') as f:
+                print(traceback.format_exc(), file=f)
+            send_email('Publisher Crashed', traceback.format_exc(), high_priority=False)
+        time.sleep(1)

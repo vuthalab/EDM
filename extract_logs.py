@@ -10,23 +10,23 @@ import numpy as np
 # Date format must be YYYY-MM-DD
 # Time format must be HH:MM:SS
 # End time can be in the future to get all data after a certain point
-date = '2021-05-18'
-start_time = '12:15:00'
-end_time = '12:40:00'
+date = '2021-05-19'
+start_time = '19:26:00'
+end_time = '22:20:00'
 
 # Map from plot labels (name, unit) to paths in data
 # Choose which fields you want to extract here
 fields = {
    ('pressure', 'torr'): ('pressures', 'chamber'),
 
-#   ('buffer flow', 'sccm'): ('flows', 'cell'),
+   ('buffer flow', 'sccm'): ('flows', 'cell'),
    ('neon flow', 'sccm'): ('flows', 'neon'),
 
    ('reflection', 'V'): ('voltages', 'AIN1'),
 
-#   ('transmission', 'V '): ('voltages', 'AIN2'),
+   ('transmission', 'V '): ('voltages', 'AIN2'),
 
-   ('frequency', 'GHz'): ('frequencies', 'BaF_Laser'),
+#   ('frequency', 'GHz'): ('frequencies', 'BaF_Laser'),
 
 
 #   ('saph heat', 'W'): ('heaters', 'heat saph'),
@@ -39,7 +39,7 @@ fields = {
 #   ('45K sorb', 'K'): ('temperatures', 'srb45k'),
 #   ('45K plate', 'K'): ('temperatures', '45k plate'),
 
-#   ('sapphire mount', 'K '): ('temperatures', 'saph'),
+   ('sapphire mount', 'K '): ('temperatures', 'saph'),
 #   ('collimator', 'K '): ('temperatures', 'coll'),
 #   ('4K sorb', 'K '): ('temperatures', 'srb4k'),
 #   ('4K plate', 'K '): ('temperatures', '4k plate'),
@@ -67,7 +67,7 @@ with open(Path('~/Desktop/edm_data/logs/system_logs').expanduser() / f'{date}.tx
 
         timestamp = datetime.datetime.strptime(f'{date} {timestamp}', '%Y-%m-%d %H:%M:%S')
 
-        if None not in row:
+        if all(isinstance(x, float) for x in row):
             processed_data.append([timestamp.timestamp(), *row])
 
 print(f'Writing {len(processed_data)} entries to extract.txt...')

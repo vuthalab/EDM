@@ -1,5 +1,6 @@
 import time
 from pathlib import Path
+import itertools
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -30,7 +31,7 @@ with RigolDS1102e() as scope:
     # scope.time_offset = 4 * scope.time_scale
     #
     # # Read mean photodiode voltage
-    scope.active_channel = 1
+    # scope.active_channel = 1
     # scope.voltage_scale = 2.0 # V/div
     # scope.voltage_offset = 0 # V
     # time.sleep(2)
@@ -47,41 +48,63 @@ with RigolDS1102e() as scope:
 
     # Initialize acquisition buffer
     times = scope.times
-    acquisitions = np.zeros(shape=(N_AVERAGE, len(times)))# + photodiode_offset
+    acquisitions = np.zeros(shape=(2, N_AVERAGE, len(times)))# + photodiode_offset
 
     # Initialize plot
     plt.ion()
 
     fig = plt.figure()
-    ax = fig.add_subplot(111)
-    ax.set_xlabel('Time (s)')
-    ax.set_ylabel('Voltage (V)')
-    ax.set_title('Absorption Signal')
-    ax.set_ylim(*scope.voltage_range)
+    ax1 = fig.add_subplot(211)
+    ax2 = fig.add_subplot(212)
+    ax1.set_ylabel('Voltage (V)')
+    ax2.set_ylabel('Voltage (V)')
+    ax2.set_xlabel('Time (s)')
 
-    single = ax.plot(times, acquisitions[0], label='Acquisition')[0]
-    average = ax.plot(times, acquisitions[0], label=f'Average (N={N_AVERAGE})')[0]
-    plt.legend()
+    # Set range
+    scope.active_channel=1
+    ax1.set_ylim(*scope.voltage_range)
+    scope.active_channel=2
+    ax2.set_ylim(*scope.voltage_range)
+
+    # Initialize traces
+    single1 = ax1.plot(times, acquisitions[0, 0], label='Channel 1')[0]
+    average1 = ax1.plot(times, acquisitions[0, 0], label=f'Channel 1 Average (N={N_AVERAGE})')[0]
+    single2 = ax2.plot(times, acquisitions[0, 0], label='Channel 2')[0]
+    average2 = ax2.plot(times, acquisitions[0, 0], label=f'Channel 2 Average (N={N_AVERAGE})')[0]
+
+    ax1.legend()
+    ax2.legend()
 
     # Begin live plotting
     try:
         with open(log_file, 'a') as f:
             print(scope.time_offset, scope.time_scale, file=f)
 
-            while True:
-                acq = scope.trace
+            for iteration in itertools.count():
+                # Get data
+                scope.active_channel = 1
+                acq1 = scope.trace
+                scope.active_channel = 2
+                acq2 = scope.trace
 
-                acquisitions[1:] = acquisitions[:-1]
-                acquisitions[0] = acq
+                # Roll acquisition buffer
+                acquisitions[:, 1:] = acquisitions[:, :-1]
+                acquisitions[0, 0] = acq1
+                acquisitions[1, 0] = acq2
 
-                single.set_ydata(acq)
-                average.set_ydata(np.mean(acquisitions, axis=0))
+                # Plot data occasionally
+                if iteration % 4 == 0:
+                    single1.set_ydata(acq1)
+                    single2.set_ydata(acq2)
+                    average1.set_ydata(np.mean(acquisitions[0], axis=0))
+                    average2.set_ydata(np.mean(acquisitions[1], axis=0))
 
-                fig.canvas.draw()
-                fig.canvas.flush_events()
+                    fig.canvas.draw()
+                    fig.canvas.flush_events()
 
                 if ENABLE_LOGGING:
-                    print(time.time(), ' '.join(f'{x:.5f}' for x in acq), file=f)
+                    print(time.time(), ' '.join(f'{x:.5f}' for x in acq1), file=f)
+                    print(time.time(), ' '.join(f'{x:.5f}' for x in acq2), file=f)
 
     except KeyboardInterrupt:
         plt.ioff()

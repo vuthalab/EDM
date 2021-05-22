@@ -8,7 +8,11 @@ with open('.mailgun.key', 'r') as f:
 
 cache = {}
 
-def send_email(subject: str, body: str, cooldown: float = 12):
+def send_email(
+    subject: str, body: str,
+    cooldown: float = 12,
+    high_priority: bool = True 
+):
     """
     Sends a notification email.
     Does nothing if an email with the same subject was sent
@@ -18,6 +22,15 @@ def send_email(subject: str, body: str, cooldown: float = 12):
     # Prevent spam (limit to 1 email per 10 minutes, for each subject)
     if subject in cache and time.time() - cache[subject] < 3600 * cooldown: return
 
+    if high_priority:
+        recipients = [
+            'samuelj.li@protonmail.com',
+            'camilo.castellanossanchez@mail.utoronto.ca',
+            'rhys.anderson@mail.utoronto.ca',
+        ]
+    else:
+        recipients = ['samuelj.li@protonmail.com']
+
 
     try:
         requests.post(
@@ -25,11 +38,7 @@ def send_email(subject: str, body: str, cooldown: float = 12):
             auth=('api', API_KEY),
             data={
                 'from': 'EDM Experiment <edm@samuelj.li>',
-                'to': [
-                    'samuelj.li@mail.utoronto.ca',
-                    'camilo.castellanossanchez@mail.utoronto.ca',
-                    'rhys.anderson@mail.utoronto.ca',
-                ],
+                'to': recipients,
                 'subject': subject,
                 'text': body,
             }
