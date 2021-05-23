@@ -1,5 +1,5 @@
 from typing import Optional, Literal, Union
-import serial, time, telnetlib, itertools, os, socket, select
+import serial, time, telnetlib, itertools, os, socket, select, traceback
 
 
 ModeString = Union[Literal['serial'], Literal['ethernet'], Literal['direct'], Literal['multiplexed']]
@@ -124,7 +124,7 @@ class USBTMCDevice:
         if self._mode in ['serial', 'direct']: self._conn.flush()
 
 
-    def query(self, command: str, raw: bool = False, delay: float = 0.07) -> Union[str, bytes]:
+    def query(self, command: str, raw: bool = False, delay: float = 2e-2) -> Union[str, bytes]:
         """
         Send a command to the device, and return its response.
 
@@ -168,24 +168,27 @@ class USBTMCDevice:
             response = self._conn.readline()
 
         if self._mode == 'multiplexed':
-            try:
-                self._conn.send(b'lock\n')
-                time.sleep(0.01)
-                self._conn.recv(1024)
+            # Acquire lock
+            self._conn.send(b'lock\n')
+            assert self._conn.recv(32) == b'ok'
 
-                self.send_command(command)
-                time.sleep(delay)
+            # Send command and wait for device response
+            self.send_command(command)
+            time.sleep(delay)
 
+            # Read response
+            while True:
                 self._conn.send(b'read\n')
-                time.sleep(0.01)
                 response = self._conn.recv(1024)
+                if response != b'read failed': break
+                time.sleep(5e-2)
+                print('read failed, trying again')
 
-                self._conn.send(b'unlock\n')
-                time.sleep(0.01)
-                self._conn.recv(1024)
-            except Exception as e:
-                print(e)
-                return None
+            if DEBUG: print(' <', response)
+
+            # Release lock
+            self._conn.send(b'unlock\n')
+            assert self._conn.recv(32) == b'ok'
 
         # Decode the response to a Python string if raw == False.
         return response if raw else response.decode('utf-8').strip()

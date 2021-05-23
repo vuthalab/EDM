@@ -12,7 +12,7 @@ from pulsetube_compressor import PulseTube
 
 from notify import send_email
 
-MAX_RATE = 2 # Hertz
+MAX_RATE = 0.5 # Hertz
 
 
 def run_publisher():
@@ -33,9 +33,10 @@ def run_publisher():
 
     print('Starting publisher')
     printer = pprint.PrettyPrinter(indent=2)
-    last = time.time()
     with zmq_server_socket(5551, 'edm-monitor') as publisher:
         while True:
+            start = time.monotonic()
+
             pressures = {
                 'chamber': pressure_gauge.pressure
             }
@@ -92,8 +93,8 @@ def run_publisher():
             min_temp = min(cold_temps)
 
             # Determine whether pt has been running for 24 hrs
-            if not pt_on: pt_last_off = time.time()
-            pt_running = (time.time() - pt_last_off) > 24*60*60
+            if not pt_on: pt_last_off = time.monotonic()
+            pt_running = (time.monotonic() - pt_last_off) > 24*60*60
 
             # Determine whether heaters are safe and working (all <20W, or temps >10K).
             # Will send a notification if unsafe for too long.
@@ -101,7 +102,7 @@ def run_publisher():
                 all(power is None or power < 20 for power in heaters.values())
                 or all(temp > 10 for temp in cold_temps)
             )
-            if heaters_safe: heaters_last_safe = time.time()
+            if heaters_safe: heaters_last_safe = time.monotonic()
 
             print(f'{pt_on=} {pt_running=} {heaters_safe=} {min_temp=}')
 
@@ -135,7 +136,7 @@ def run_publisher():
 
 
             # Heaters running on full blast, yet surfaces are cold
-            if (time.time() - heaters_last_safe) > 20 * 60:
+            if (time.monotonic() - heaters_last_safe) > 20 * 60:
                 strongest_heater = max(heaters.keys(), key=lambda name: heaters[name] or 0)
                 max_power = heaters[strongest_heater]
 
@@ -145,8 +146,7 @@ def run_publisher():
                 )
 
             ### Limit publishing speed ###
-            dt = time.time() - last
-            last = time.time()
+            dt = time.monotonic() - start
             time.sleep(max(1/MAX_RATE - dt, 0))
 
 if __name__ == '__main__':
@@ -154,7 +154,13 @@ if __name__ == '__main__':
         try:
             run_publisher()
         except:
-            with open('publisher-error-log.txt', 'a') as f:
-                print(traceback.format_exc(), file=f)
-            send_email('Publisher Crashed', traceback.format_exc(), high_priority=False)
+            # Check if this was intentional
+            tb = traceback.format_exc()
+            if 'KeyboardInterrupt' in tb: break
+
+            # Log error and send email
+            with open('publisher-error-log.txt', 'a') as f: print(tb, file=f)
+            send_email('Publisher Crashed', tb, high_priority=False)
+
         time.sleep(1)
+

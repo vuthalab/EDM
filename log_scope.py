@@ -103,8 +103,8 @@ with RigolDS1102e() as scope:
                     fig.canvas.flush_events()
 
                 if ENABLE_LOGGING:
-                    print(time.time(), ' '.join(f'{x:.5f}' for x in acq1), file=f)
-                    print(time.time(), ' '.join(f'{x:.5f}' for x in acq2), file=f)
+                    print(time.monotonic(), ' '.join(f'{x:.5f}' for x in acq1), file=f)
+                    print(time.monotonic(), ' '.join(f'{x:.5f}' for x in acq2), file=f)
 
     except KeyboardInterrupt:
         plt.ioff()

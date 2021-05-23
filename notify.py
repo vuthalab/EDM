@@ -19,6 +19,9 @@ def send_email(
     within the last `cooldown` hours.
     """
 
+    # Disable warnings for now.
+    if high_priority: return
+
     # Prevent spam (limit to 1 email per 10 minutes, for each subject)
     if subject in cache and time.time() - cache[subject] < 3600 * cooldown: return
 
@@ -47,5 +50,3 @@ def send_email(
         cache[subject] = time.time()
     except Exception as e:
         print(e)
-
-#send_email('Test Message', 'Test EDM')

@@ -6,7 +6,12 @@ class Labjack:
         # For test: string "-2" opens fake device. "ANY" opens any T7.
 
     def read(self, channel):
-        return ljm.eReadName(self.handle, channel)
+        # Average out some noise automatically
+        N_AVERAGE = 64
+        mean = 0
+        for i in range(N_AVERAGE):
+            mean += ljm.eReadName(self.handle, channel)
+        return mean/N_AVERAGE
 
     def write(self, channel, value):
         success = ljm.eWriteName(self.handle, channel, value)

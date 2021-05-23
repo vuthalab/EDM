@@ -5,6 +5,7 @@ from pathlib import Path
 import os
 import zmq
 import time
+from datetime import datetime
 import json
 import numpy as np
 
@@ -33,7 +34,7 @@ monitor_socket.make_connection()
 print('Staring logging...')
 while True:
     _, data = monitor_socket.blocking_read()
-    timestamp = time.strftime('[%Y-%m-%d %H:%M:%S]')
+    timestamp = datetime.now().strftime('[%Y-%m-%d %H:%M:%S.%f]')
 
     with open(log_file(), 'a') as f:
         print(timestamp, json.dumps(data), file=f)

@@ -116,8 +116,11 @@ def telnet_handler(multiplexer, client_socket, msg):
     if msg == b'read':
         # Query the response and return.
         response = multiplexer.conn.read_very_eager()
+        if response in [b'', b'\r\n']:
+            response = b'read failed'
+
         print(multiplexer.name, '>', response)
-        client_socket.send(response or b'\r\n')
+        client_socket.send(response)
     else:
         # Just pass on the packet.
         multiplexer.conn.write(msg + b'\n')

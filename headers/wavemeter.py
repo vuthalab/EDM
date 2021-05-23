@@ -109,7 +109,7 @@ class WM:
         frequency = self.dll.GetFrequencyNum(ctypes.c_long(channel),ctypes.c_double(0.0))
         frequency = float(frequency)
         if frequency<0:
-            return wlmConst.meas_error_to_str(frequency)
+            return None #wlmConst.meas_error_to_str(frequency)
         else:
             return 1e3*float(frequency)
     
@@ -343,7 +343,6 @@ class WM:
         while go:
             for i in channels:
                 try:
-                    #print("Test")
                     new_data = self.read_frequency(i)
                     if self.publish:
                         self.publisher.publish_data((i,round(new_data,6)),prnt=True)

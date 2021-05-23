@@ -16,7 +16,7 @@ class MFC(USBTMCDevice):
         self._calibration = 10.0/5.0 #How many sccm per volt?
 
     def _get_flow_rate(self, channel):
-        val = self.query(f'AIN{channel}')
+        val = self.query(f'AIN{channel}', delay=1e-3)
         if val is None: return None
         return float(val) * self._calibration
 

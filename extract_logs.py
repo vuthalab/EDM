@@ -65,7 +65,7 @@ with open(Path('~/Desktop/edm_data/logs/system_logs').expanduser() / f'{date}.tx
                 value = value[entry]
             row.append(value)
 
-        timestamp = datetime.datetime.strptime(f'{date} {timestamp}', '%Y-%m-%d %H:%M:%S')
+        timestamp = datetime.datetime.strptime(f'{date} {timestamp}', '%Y-%m-%d %H:%M:%S.%f')
 
         if all(isinstance(x, float) for x in row):
             processed_data.append([timestamp.timestamp(), *row])

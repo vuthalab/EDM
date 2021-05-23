@@ -14,13 +14,18 @@ rcParams.update({'font.size': 8})
 from tkinter import filedialog
 import tkinter as tk
 
+MINUTE = 60
+HOUR = 60 * MINUTE
 
 ##### PARAMETERS #####
-# number of past points to plot.
-num_points = 2000
+# duration to plot.
+duration = 10 * MINUTE
 
 # skip every x points.
 skip_points = 1
+
+# how fast the publisher is
+publisher_rate = 0.5 # Hertz
 
 # Map from plot labels (name, unit) to paths in data
 # Uncomment any fields you want to see.
@@ -64,6 +69,7 @@ axis_labels = [
 ]
 
 
+
 ##### BEGIN CODE #####
 # pick the directory containing the log file
 
@@ -82,6 +88,7 @@ filepath = '/home/vuthalab/Desktop/edm_data/logs/system_logs/continuous.txt'
 
 
 ###### initial plot #####
+num_points = round(publisher_rate * duration / skip_points)
 print(f'Showing last {num_points * skip_points} points (skip every {skip_points}).')
 plt.ion()
 fig = plt.figure(figsize=(10,8))
@@ -127,7 +134,7 @@ last = 0
 for i, line in enumerate(tail('-n', num_points * skip_points, '-f', filepath, _iter=True)):
     if i % skip_points == 0:
         timestamp, raw_data = line.split(']')
-        timestamp = datetime.datetime.strptime(timestamp[1:], '%Y-%m-%d %H:%M:%S')
+        timestamp = datetime.datetime.strptime(timestamp[1:], '%Y-%m-%d %H:%M:%S.%f')
         timestamp += datetime.timedelta(hours=4) # fix timezone (correct in logs, wrong on plot?)
 
         raw_data = json.loads(raw_data)
@@ -148,7 +155,7 @@ for i, line in enumerate(tail('-n', num_points * skip_points, '-f', filepath, _i
         data[-1] = processed_data
 
     if (
-        time.time() - last < 2 # Avoid plot bottlenecking data read
+        time.monotonic() - last < 2 # Avoid plot bottlenecking data read
         and
         abs(i/skip_points - num_points) > 2 # Update a few times manually to get the initial plot
     ): continue
@@ -158,7 +165,7 @@ for i, line in enumerate(tail('-n', num_points * skip_points, '-f', filepath, _i
 
     if i % skip_points == 0:
         # Plot data
-        start_time = time.time()
+        start_time = time.monotonic()
         for j, graph in enumerate(graphs):
             graph.set_xdata(times)
             graph.set_ydata(data[:, j])
@@ -171,6 +178,6 @@ for i, line in enumerate(tail('-n', num_points * skip_points, '-f', filepath, _i
 
         pt_status = 'Running' if raw_data['pulsetube']['running'] else 'Off'
         fig.canvas.set_window_title(f'Pulse Tube {pt_status}')
-        last = time.time()
+        last = time.monotonic()
 
         print(f'Plot took {last - start_time:.3f} s')
