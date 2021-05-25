@@ -184,10 +184,12 @@ class USBTMCDevice:
                 time.sleep(5e-2)
                 print('read failed, trying again')
 
-            if DEBUG: print(' <', response)
+#            if DEBUG: print(' <', response)
 
             # Release lock
+            time.sleep(1e-3)
             self._conn.send(b'unlock\n')
+            time.sleep(1e-3)
             assert self._conn.recv(32) == b'ok'
 
         # Decode the response to a Python string if raw == False.

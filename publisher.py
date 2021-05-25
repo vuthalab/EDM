@@ -159,7 +159,8 @@ if __name__ == '__main__':
             if 'KeyboardInterrupt' in tb: break
 
             # Log error and send email
-            with open('publisher-error-log.txt', 'a') as f: print(tb, file=f)
+            with open('publisher-error-log.txt', 'a') as f:
+                print(time.asctime(time.localtime()), tb, file=f)
             send_email('Publisher Crashed', tb, high_priority=False)
 
         time.sleep(1)

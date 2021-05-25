@@ -19,7 +19,7 @@ HOUR = 60 * MINUTE
 
 ##### PARAMETERS #####
 # duration to plot.
-duration = 10 * MINUTE
+duration = 2 * HOUR 
 
 # skip every x points.
 skip_points = 1
@@ -155,7 +155,7 @@ for i, line in enumerate(tail('-n', num_points * skip_points, '-f', filepath, _i
         data[-1] = processed_data
 
     if (
-        time.monotonic() - last < 2 # Avoid plot bottlenecking data read
+        time.monotonic() - last < 1.5 # Avoid plot bottlenecking data read
         and
         abs(i/skip_points - num_points) > 2 # Update a few times manually to get the initial plot
     ): continue
