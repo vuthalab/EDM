@@ -6,13 +6,15 @@ from headers.CTC100 import CTC100
 from headers.labjack_device import Labjack
 from headers.mfc import MFC
 from headers.zmq_server_socket import zmq_server_socket
-#from wavemeter_plotter import LivePlotter
 from headers.wavemeter import WM
+from headers.oceanfx import OceanFX
 from pulsetube_compressor import PulseTube
 
 from notify import send_email
 
 MAX_RATE = 0.5 # Hertz
+
+def deconstruct(val): return (val.n, val.s)
 
 
 def run_publisher():
@@ -25,6 +27,7 @@ def run_publisher():
     labjack = Labjack('470022275')
     mfc = MFC(31417)
     wm = WM(publish=False) #wavemeter class used for reading frequencies from high finesse wavemeter
+    spectrometer = OceanFX()
 
     pt = PulseTube()
     pt_last_off = 0
@@ -54,17 +57,21 @@ def run_publisher():
             }
 
             voltages = {
-                channel: labjack.read(channel)
+                channel: deconstruct(labjack.read(channel))
                 for channel in ['AIN1', 'AIN2']
             }
 
             flows = {
-                'cell': mfc.flow_rate_cell,
-                'neon': mfc.flow_rate_neon_line,
+                'cell': deconstruct(mfc.flow_rate_cell),
+                'neon': deconstruct(mfc.flow_rate_neon_line),
             }
 
             frequencies = {
                 'BaF_Laser': wm.read_frequency(8) #read in GHz
+            }
+
+            spectral = {
+                'transmission': deconstruct(spectrometer.transmission_scalar)
             }
 
             pt_on = pt.is_on()
@@ -78,7 +85,8 @@ def run_publisher():
                 'frequencies': frequencies,
                 'pulsetube': {
                     'running': pt_on,
-                }
+                },
+                'spectral': spectral,
             }
 
             publisher.send(data_dict)

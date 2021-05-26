@@ -2,13 +2,15 @@
 Header file for the Ocean Optics OceanFX spectrometer.
 
 At the moment, only reads spectra.
-Integration time must be set to 250 us manually
+Integration time must be set to 200 us manually
 using the OceanView software.
 """
 
 import socket
 
 import numpy as np
+
+from uncertainties.unumpy import uarray
 
 
 # Dumped from packet capture
@@ -22,8 +24,8 @@ PROBE_PACKET = (
 SPECTRUM_LENGTH = 2136
 
 # Load previously recorded background and baseline
-background = np.loadtxt('spectra/background.txt')
-baseline = np.loadtxt('spectra/baseline.txt')
+background = uarray(*np.loadtxt('spectra/background.txt'))
+baseline = uarray(*np.loadtxt('spectra/baseline.txt'))
 baseline -= background
 
 class OceanFX:
@@ -38,8 +40,8 @@ class OceanFX:
 
     @property
     def intensities(self):
-        spectrum = np.zeros(SPECTRUM_LENGTH, dtype=float)
         N_AVERAGE = 128
+        spectrum = np.zeros((N_AVERAGE, SPECTRUM_LENGTH), dtype=float)
 
         # Average 128 spectra
         for i in range(N_AVERAGE):
@@ -53,16 +55,23 @@ class OceanFX:
             # Decode from little-endian 16-byte unsigned int,
             # and discard metadata.
             sample = np.frombuffer(data, dtype=np.uint16)[54:2190]
-            spectrum += sample
+            spectrum[i] = sample
 
-        # Compute average and scale to [0, 100]
-        spectrum *= 100/(65536 * N_AVERAGE)
-        return spectrum
+        # Scale to [0, 100]
+        spectrum *= 100/65536
+
+        # Return mean + std
+        return uarray(spectrum.mean(axis=0), spectrum.std(axis=0))
 
     @property
     def transmission(self):
         """Return the transmission (in percent) at each wavelength."""
         return 100 * (self.intensities - background) / baseline
+
+    @property
+    def transmission_scalar(self):
+        """Return the overall percent transmission."""
+        return 100 * (self.intensities - background).sum() / baseline.sum()
 
     @property
     def optical_density(self):

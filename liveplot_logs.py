@@ -1,6 +1,7 @@
 # live plot system log files
 from sh import tail
 import time, json, datetime, math
+from collections import defaultdict
 
 import numpy as np
 
@@ -13,6 +14,9 @@ rcParams.update({'font.size': 8})
 
 from tkinter import filedialog
 import tkinter as tk
+
+from uncertainties import ufloat
+
 
 MINUTE = 60
 HOUR = 60 * MINUTE
@@ -38,7 +42,8 @@ fields = {
 
     ('reflection', 'V'): ('voltages', 'AIN1'),
 
-    ('transmission', 'V '): ('voltages', 'AIN2'),
+    ('transmission (from photodiode)', 'V '): ('voltages', 'AIN2'),
+    ('transmission (from spectrometer)', '%'): ('spectral', 'transmission'),
 
 #    ('frequency', 'GHz'): ('frequencies', 'BaF_Laser'),
 
@@ -63,6 +68,7 @@ axis_labels = [
     'sccm',
     'V',
     'V ',
+    '%',
     'W',
     'K',
     'K '
@@ -100,17 +106,21 @@ axes = gs.subplots(sharex=True, sharey=False)
 
 # Initialize empty plots
 graphs = []
-for field in fields:
+bands = [None] * len(fields)
+colors = defaultdict(int)
+for j, field in enumerate(fields):
     name, unit = field
 
     i = axis_labels.index(unit)
+    color = colors[i]
     graph = axes[i].plot_date(
         num_points * [None], num_points * [None],
-        linestyle='solid', lw=2,
-        marker=None,
-        label=name
+        linestyle='solid', linewidth=1,
+        marker=None, label=name,
+        color=f'C{color}'
     )[0]
-    graphs.append(graph)
+    colors[i] += 1
+    graphs.append((i, color, graph))
 
 # Subplot tweaks
 for axis, label in zip(axes, axis_labels):
@@ -128,12 +138,12 @@ axes[0].set_yscale('log') # set pressure as log
 
 ##### animated plot #####
 times = np.array([datetime.datetime.now()] * num_points)
-data = np.full((num_points, len(fields)), None)
+data = np.zeros((num_points, len(fields), 2))
 
 last = 0
 for i, line in enumerate(tail('-n', num_points * skip_points, '-f', filepath, _iter=True)):
     if i % skip_points == 0:
-        timestamp, raw_data = line.split(']')
+        timestamp, raw_data = line.split(']', 1)
         timestamp = datetime.datetime.strptime(timestamp[1:], '%Y-%m-%d %H:%M:%S.%f')
         timestamp += datetime.timedelta(hours=4) # fix timezone (correct in logs, wrong on plot?)
 
@@ -142,10 +152,17 @@ for i, line in enumerate(tail('-n', num_points * skip_points, '-f', filepath, _i
         # Filter out relevant fields
         processed_data = []
         for path in fields.values():
-            value = raw_data
-            for entry in path:
-                value = value[entry]
+            try:
+                value = raw_data
+                for entry in path:
+                    value = value[entry]
+            except:
+                value = None
+
+            if not isinstance(value, list):
+                value = (value, 0)
             processed_data.append(value)
+        processed_data = np.array(processed_data)
 
         # Add datapoint
         times[:-1] = times[1:]
@@ -166,9 +183,22 @@ for i, line in enumerate(tail('-n', num_points * skip_points, '-f', filepath, _i
     if i % skip_points == 0:
         # Plot data
         start_time = time.monotonic()
-        for j, graph in enumerate(graphs):
+        for j, entry in enumerate(graphs):
+            k, color, graph = entry
+            trace, uncertainty = data[:, j].T
             graph.set_xdata(times)
-            graph.set_ydata(data[:, j])
+            graph.set_ydata(trace)
+
+            if bands[j] is not None:
+                bands[j].remove()
+            bands[j] = axes[k].fill_between(
+                times,
+                trace - 2*uncertainty,
+                trace + 2*uncertainty,
+                alpha=0.3,
+                color=f'C{color}',
+                zorder=-10
+            )
 
         for axis in axes:
             axis.relim()

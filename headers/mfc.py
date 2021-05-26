@@ -8,6 +8,8 @@ import time
 
 from headers.usbtmc import USBTMCDevice
 
+from uncertainties import ufloat
+
 #%% SETUP MASS FLOW CONTROLLER 470021124
 
 class MFC(USBTMCDevice):
@@ -18,7 +20,8 @@ class MFC(USBTMCDevice):
     def _get_flow_rate(self, channel):
         val = self.query(f'AIN{channel}', delay=1e-3)
         if val is None: return None
-        return float(val) * self._calibration
+        val = ufloat(*map(float, val.split()))
+        return val * self._calibration
 
     def _set_flow_rate(self, flowrate, channel): #0.0V = flow is off; 5.0V = open valve
         self.send_command(f'DAC{channel} {flowrate/self._calibration:.8f}')   #MFC flow is off (0 to 5 VDC givs 0 to 10 sccm)

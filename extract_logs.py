@@ -10,7 +10,7 @@ import numpy as np
 # Date format must be YYYY-MM-DD
 # Time format must be HH:MM:SS
 # End time can be in the future to get all data after a certain point
-date = '2021-05-19'
+date = '2021-05-25'
 start_time = '19:26:00'
 end_time = '22:20:00'
 
@@ -24,7 +24,8 @@ fields = {
 
    ('reflection', 'V'): ('voltages', 'AIN1'),
 
-   ('transmission', 'V '): ('voltages', 'AIN2'),
+   ('transmission', 'V'): ('voltages', 'AIN2'),
+   ('spectral transmission', '%'): ('spectral', 'transmission'),
 
 #   ('frequency', 'GHz'): ('frequencies', 'BaF_Laser'),
 
@@ -39,10 +40,10 @@ fields = {
 #   ('45K sorb', 'K'): ('temperatures', 'srb45k'),
 #   ('45K plate', 'K'): ('temperatures', '45k plate'),
 
-   ('sapphire mount', 'K '): ('temperatures', 'saph'),
-#   ('collimator', 'K '): ('temperatures', 'coll'),
-#   ('4K sorb', 'K '): ('temperatures', 'srb4k'),
-#   ('4K plate', 'K '): ('temperatures', '4k plate'),
+   ('sapphire mount', 'K'): ('temperatures', 'saph'),
+#   ('collimator', 'K'): ('temperatures', 'coll'),
+#   ('4K sorb', 'K'): ('temperatures', 'srb4k'),
+#   ('4K plate', 'K'): ('temperatures', '4k plate'),
 }
 
 
@@ -52,23 +53,30 @@ print(f'Extracting logs on {date} from {start_time} to {end_time}...')
 processed_data = []
 with open(Path('~/Desktop/edm_data/logs/system_logs').expanduser() / f'{date}.txt', 'r') as f:
     for line in f:
-        timestamp, data = line.split(']')
+        timestamp, data = line.split(']', 1)
         timestamp = timestamp.split(' ')[1]
         if start_time > timestamp or end_time < timestamp: continue
 
         data = json.loads(data)
 
-        row = []
+        entries = []
+        uncertainties = []
         for path in fields.values():
             value = data
             for entry in path:
                 value = value[entry]
-            row.append(value)
+
+            if isinstance(value, list):
+                entries.append(value[0])
+                uncertainties.append(value[1])
+            else:
+                entries.append(value)
+                uncertainties.append(0)
 
         timestamp = datetime.datetime.strptime(f'{date} {timestamp}', '%Y-%m-%d %H:%M:%S.%f')
 
-        if all(isinstance(x, float) for x in row):
-            processed_data.append([timestamp.timestamp(), *row])
+        if all(isinstance(x, float) for x in entries):
+            processed_data.append([timestamp.timestamp(), *entries, *uncertainties])
 
 print(f'Writing {len(processed_data)} entries to extract.txt...')
 processed_data = np.array(processed_data)
@@ -77,6 +85,7 @@ np.savetxt(
     processed_data,
     header=', '.join(
         ['unix timestamp'] +
-        [f'{name} [{unit}]' for name, unit in fields.keys()]
+        [f'{name} [{unit}]' for name, unit in fields.keys()] + 
+        [f'{name} uncertainty [{unit}]' for name, unit in fields.keys()]
     )
 )

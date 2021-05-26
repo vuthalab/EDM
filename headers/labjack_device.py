@@ -1,5 +1,9 @@
 from labjack import ljm
 
+import numpy as np
+
+from uncertainties import ufloat
+
 class Labjack:
     def __init__(self, serial_number):
         self.handle = ljm.openS("T7", "Ethernet", serial_number)
@@ -8,10 +12,10 @@ class Labjack:
     def read(self, channel):
         # Average out some noise automatically
         N_AVERAGE = 64
-        mean = 0
+        samples = []
         for i in range(N_AVERAGE):
-            mean += ljm.eReadName(self.handle, channel)
-        return mean/N_AVERAGE
+            samples.append(ljm.eReadName(self.handle, channel))
+        return ufloat(np.mean(samples), np.std(samples))
 
     def write(self, channel, value):
         success = ljm.eWriteName(self.handle, channel, value)

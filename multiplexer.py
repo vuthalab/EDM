@@ -15,6 +15,9 @@ import telnetlib
 
 from headers.labjack_device import Labjack
 
+from uncertainties import ufloat
+
+
 class Multiplexer(threading.Thread):
     """Allows multiple connections to be made to the same port."""
 
@@ -132,12 +135,12 @@ def labjack_handler(multiplexer, client_socket, msg):
 
     # Client wants to read a voltage.
     if msg.startswith(b'AIN'):
-        # Read the voltage. Returns a float, since
+        # Read the voltage. Returns a ufloat, since
         # `multiplexer.conn` is a Labjack object.
         voltage = multiplexer.conn.read(msg.decode('utf-8'))
 
         # Send the response, formatted as bytes.
-        client_socket.send(f'{voltage:.8f}'.encode('utf-8'))
+        client_socket.send(f'{voltage.n:.8f} {voltage.s:.8f}'.encode('utf-8'))
 
     # Client wants to set a voltage.
     if msg.startswith(b'DAC'):
