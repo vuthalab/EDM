@@ -170,27 +170,29 @@ class USBTMCDevice:
         if self._mode == 'multiplexed':
             # Acquire lock
             self._conn.send(b'lock\n')
-            assert self._conn.recv(32) == b'ok'
+            assert self._conn.recv(32) == b'locked'
 
             # Send command and wait for device response
             self.send_command(command)
             time.sleep(delay)
 
             # Read response
-            while True:
+            for i in range(20):
                 self._conn.send(b'read\n')
                 response = self._conn.recv(1024)
                 if response != b'read failed': break
                 time.sleep(5e-2)
                 print('read failed, trying again')
+            else:
+                raise ValueError('Read failed too many times.')
 
 #            if DEBUG: print(' <', response)
 
             # Release lock
             time.sleep(1e-3)
             self._conn.send(b'unlock\n')
-            time.sleep(1e-3)
-            assert self._conn.recv(32) == b'ok'
+            time.sleep(2e-3)
+            assert self._conn.recv(32) == b'unlocked'
 
         # Decode the response to a Python string if raw == False.
         return response if raw else response.decode('utf-8').strip()

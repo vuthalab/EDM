@@ -21,15 +21,12 @@ from uncertainties import ufloat
 class Multiplexer(threading.Thread):
     """Allows multiple connections to be made to the same port."""
 
-    def __init__(self, local_port: int, name: str, connection, client_handler):
+    def __init__(self, local_port: int, connection, client_handler):
         """
         Initializes a new multiplexing server.
 
         local_port: int
             The port on which the server is hosted.
-
-        name: str
-            Human-readable name for this multiplexer.
 
         connection
             A direct connection to the device.
@@ -42,7 +39,6 @@ class Multiplexer(threading.Thread):
 
         # Set instance variables
         self.conn = connection
-        self.name = name
 
         self.lock = threading.Lock()
         self._handler = client_handler
@@ -65,9 +61,14 @@ class ClientThread(threading.Thread):
     def __init__(self, client_socket, addr, multiplexer):
         super().__init__()
         self.client_socket = client_socket
-        self.addr = addr
+
+        host, port = client_socket.getsockname()
+        self.name = f'{host}:{port}'
+
         self.multiplexer = multiplexer
-        print('New client:', addr)
+
+        self.client_name = f'{addr[0]}:{addr[1]}'
+        print('New client:', self.client_name)
 
     def run(self):
         buff = b''
@@ -84,12 +85,13 @@ class ClientThread(threading.Thread):
                 if msg == b'': break
 
                 # Log command (for debug)
-                print(self.addr, '>', self.multiplexer.name, ':', msg)
+                print(f'{self.client_name:20s} > {self.name:20s} | {msg}')
 
                 # Acquire thread lock for safe atomic read
                 if msg == b'lock':
                     self.multiplexer.lock.acquire()
-                    self.client_socket.send(b'ok')
+                    self.client_socket.send(b'locked')
+                    print(f'{self.name:20s} > {self.client_name:20s} | locked')
                     continue
 
                 # Discard thread lock. Sometimes yells about unlocking
@@ -98,12 +100,13 @@ class ClientThread(threading.Thread):
                     try:
                         self.multiplexer.lock.release()
                     finally:
-                        self.client_socket.send(b'ok')
+                        self.client_socket.send(b'unlocked')
+                        print(f'{self.name:20s} > {self.client_name:20s} | unlocked')
                         continue
 
                 # Pass on the request to the handler function,
                 # where stuff actually happens.
-                self.multiplexer._handler(self.multiplexer, self.client_socket, msg)
+                self.multiplexer._handler(self, msg)
         except Exception as e:
             print(e)
         finally:
@@ -111,24 +114,30 @@ class ClientThread(threading.Thread):
             self.client_socket.close()
             if self.multiplexer.lock.locked():
                 self.multiplexer.lock.release()
-            print(f'{self.addr} closed')
+            print(f'{self.name} | client {self.client_name} dropped')
 
 
 ##### Connection Handlers #####
-def telnet_handler(multiplexer, client_socket, msg):
+def telnet_handler(client_thread, msg):
+    conn = client_thread.multiplexer.conn
+    client_socket = client_thread.client_socket
+
     if msg == b'read':
         # Query the response and return.
-        response = multiplexer.conn.read_very_eager()
+        response = conn.read_very_eager()
         if response in [b'', b'\r\n']:
             response = b'read failed'
 
-        print(multiplexer.name, '>', response)
+        print(f'{client_thread.name:20s} > {client_thread.client_name:20s} | {response}')
         client_socket.send(response)
     else:
         # Just pass on the packet.
-        multiplexer.conn.write(msg + b'\n')
+        conn.write(msg + b'\n')
 
-def labjack_handler(multiplexer, client_socket, msg):
+def labjack_handler(client_thread, msg):
+    conn = client_thread.multiplexer.conn
+    client_socket = client_thread.client_socket
+
     # Implement a USBTMC-like name function
     if msg == b'*IDN?':
         client_socket.send(b'Labjack')
@@ -137,7 +146,7 @@ def labjack_handler(multiplexer, client_socket, msg):
     if msg.startswith(b'AIN'):
         # Read the voltage. Returns a ufloat, since
         # `multiplexer.conn` is a Labjack object.
-        voltage = multiplexer.conn.read(msg.decode('utf-8'))
+        voltage = conn.read(msg.decode('utf-8'))
 
         # Send the response, formatted as bytes.
         client_socket.send(f'{voltage.n:.8f} {voltage.s:.8f}'.encode('utf-8'))
@@ -150,7 +159,7 @@ def labjack_handler(multiplexer, client_socket, msg):
 
         # Set the voltage by calling `.write()` on the 
         # Labjack object.
-        multiplexer.conn.write(channel.decode('utf-8'), voltage)
+        conn.write(channel.decode('utf-8'), voltage)
 
 
 
@@ -159,6 +168,6 @@ if __name__ == '__main__':
     TC2 = telnetlib.Telnet('192.168.0.107', port=23, timeout=2)
     L1 = Labjack('470017292')
 
-    Multiplexer(31415, 'tc1', TC1, telnet_handler).start()
-    Multiplexer(31416, 'tc2', TC2, telnet_handler).start()
-    Multiplexer(31417, 'labjack', L1, labjack_handler).start()
+    Multiplexer(31415, TC1, telnet_handler).start()
+    Multiplexer(31416, TC2, telnet_handler).start()
+    Multiplexer(31417, L1, labjack_handler).start()

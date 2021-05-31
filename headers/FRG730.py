@@ -2,6 +2,8 @@ import serial
 import numpy as np
 import time
 
+from uncertainties import ufloat
+
 class FRG730:
     def __init__(self, address = '/dev/agilent_pressure_gauge'):
         self._gauge = serial.Serial(address,baudrate=9600,stopbits=1,parity='N',timeout=1)
@@ -13,33 +15,47 @@ class FRG730:
     def write(self, command):
         self._gauge.write(command)
 
+    def close(self):
+        self._gauge.close()
+
     @property
     def pressure(self):
-        self.read(self._gauge.in_waiting - 16) #Clear buffer
+        print(self._gauge.in_waiting)
         try:
-            data = self._gauge.read(16) #Reading enough bytes to collect a full stream of data
+            data = self.read(2048)
         except:
             # Return last reading for minor blips
             if time.time() - self._last_reading[1] < 10: return self._last_reading[0]
             return None
 
+        # Decode data
         synchronization_byte = 7 # byte that denotes start of output string
         data_length = 9 # 9 bytes that are sent from the device every 6 ms
-        output_string = []
+        buff = []
 
+        pressures = []
         record_byte = False
         for byte in data:
             if byte == synchronization_byte:
                 record_byte = True
-            if record_byte and (len(output_string) < data_length): #Load list with one full output string
-                output_string.append(byte)
-        try:
-            pressure = 10**((output_string[4]*256+output_string[5])/4000 - 12.625) #Conversion from manual
-        except IndexError: return None
 
-        # Avoid occasional bugs
-        if pressure < 5e-12: return self._last_reading[0]
+            if record_byte: #Load list with one full output string
+                buff.append(byte)
 
+            if len(buff) == data_length:
+                try:
+                    pressure = 10**((buff[4]*256+buff[5])/4000 - 12.625) # Conversion from manual
+
+                    # Avoid occasional bugs
+                    if pressure > 5e-12: pressures.append(pressure)
+                finally:
+                    buff = []
+                    record_byte = False
+
+        if pressures:
+            pressure = ufloat(np.mean(pressures), np.std(pressures))
+        else:
+            pressure = None
         self._last_reading = (pressure, time.time())
         return pressure
 

@@ -10,24 +10,27 @@ import numpy as np
 # Date format must be YYYY-MM-DD
 # Time format must be HH:MM:SS
 # End time can be in the future to get all data after a certain point
-date = '2021-05-25'
-start_time = '19:26:00'
-end_time = '22:20:00'
+date = '2021-05-27'
+start_time = '20:00:00'
+end_time = '22:00:00'
 
 # Map from plot labels (name, unit) to paths in data
 # Choose which fields you want to extract here
 fields = {
-   ('pressure', 'torr'): ('pressures', 'chamber'),
+#   ('pressure', 'torr'): ('pressure',),
 
-   ('buffer flow', 'sccm'): ('flows', 'cell'),
-   ('neon flow', 'sccm'): ('flows', 'neon'),
+#   ('buffer flow', 'sccm'): ('flows', 'cell'),
+#   ('neon flow', 'sccm'): ('flows', 'neon'),
 
-   ('reflection', 'V'): ('voltages', 'AIN1'),
+#   ('reflection', 'V'): ('refl',),
 
-   ('transmission', 'V'): ('voltages', 'AIN2'),
-   ('spectral transmission', '%'): ('spectral', 'transmission'),
+#   ('transmission (photodiode)', '%'): ('trans', 'pd'),
+#   ('transmission (spectrometer)', '%'): ('trans', 'spec'),
+#   ('transmission (non-roughness sources)', '%'): ('trans', 'unexpl'),
 
-#   ('frequency', 'GHz'): ('frequencies', 'BaF_Laser'),
+   ('frequency', 'GHz'): ('freq', 'BaF_Laser'),
+
+#    ('rms roughness (spectrometer)', 'nm'): ('rough',),
 
 
 #   ('saph heat', 'W'): ('heaters', 'heat saph'),
@@ -40,7 +43,7 @@ fields = {
 #   ('45K sorb', 'K'): ('temperatures', 'srb45k'),
 #   ('45K plate', 'K'): ('temperatures', '45k plate'),
 
-   ('sapphire mount', 'K'): ('temperatures', 'saph'),
+#   ('sapphire mount', 'K'): ('temperatures', 'saph'),
 #   ('collimator', 'K'): ('temperatures', 'coll'),
 #   ('4K sorb', 'K'): ('temperatures', 'srb4k'),
 #   ('4K plate', 'K'): ('temperatures', '4k plate'),
@@ -85,7 +88,7 @@ np.savetxt(
     processed_data,
     header=', '.join(
         ['unix timestamp'] +
-        [f'{name} [{unit}]' for name, unit in fields.keys()] + 
+        [f'{name} [{unit}]' for name, unit in fields.keys()] +
         [f'{name} uncertainty [{unit}]' for name, unit in fields.keys()]
     )
 )
