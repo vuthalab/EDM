@@ -37,9 +37,9 @@ shutil.copy(__file__, filename)
 MINUTE = 60
 HOUR = 60 * MINUTE
 
-total_time = 2 * HOUR # Total time for one trial.
+total_time = 3 * HOUR # Total time for one trial.
 
-def melt_and_grow(low_temp, neon_flow, grow_while_cooling):
+def melt_and_grow(low_temp, neon_flow, buffer_flow, grow_while_cooling):
     finish_time = time.monotonic() + total_time
 
     modifier = '' if grow_while_cooling else 'not '
@@ -56,12 +56,16 @@ def melt_and_grow(low_temp, neon_flow, grow_while_cooling):
     time.sleep(10 * MINUTE)
 
     # Cool crystal. Possibly start the neon now.
-    if grow_while_cooling: mfc.flow_rate_neon_line = neon_flow
+    if grow_while_cooling:
+        mfc.flow_rate_neon_line = neon_flow
+        mfc.flow_rate_cell = buffer_flow
     T1.ramp_temperature('heat saph', low_temp, 0.05)
     time.sleep(10 * MINUTE)
 
     # Start the neon now if not started while cooling.
-    if not grow_while_cooling: mfc.flow_rate_neon_line = neon_flow
+    if not grow_while_cooling:
+        mfc.flow_rate_neon_line = neon_flow
+        mfc.flow_rate_cell = buffer_flow
     time.sleep(finish_time - time.monotonic())
     with open('fringe-log.txt', 'a') as f:
         print(time.asctime(time.localtime()), '|', 'stop', file=f)
@@ -79,8 +83,13 @@ try:
     mfc.off()
     T1.enable_output()
 
-    melt_and_grow(7.5, 2, True)
-    melt_and_grow(5.0, 3, True)
+    melt_and_grow(7, 3, 0, True)
+    melt_and_grow(7, 3, 2, True)
+    melt_and_grow(7, 3, 6, True)
+    melt_and_grow(7, 3, 10, True)
+
+    melt_and_grow(8.5, 3, 0, True)
+    melt_and_grow(8, 3, 0, True)
 
 finally:
     T1.disable_output()

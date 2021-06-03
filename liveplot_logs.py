@@ -23,29 +23,32 @@ HOUR = 60 * MINUTE
 
 ##### PARAMETERS #####
 # duration to plot.
-duration = 2 * HOUR 
+duration = 4 * HOUR
 
 # skip every x points.
 skip_points = 1
 
 # how fast the publisher is
-publisher_rate = 0.5 # Hertz
+publisher_rate = 1/3 # Hertz
 
 # Map from plot labels (name, unit) to paths in data
 # Uncomment any fields you want to see.
 # Traces will be grouped by units. (You can 'hack' this by putting spaces in the units.)
 fields = {
-    ('pressure', 'torr'): ('pressures', 'chamber'),
+    ('pressure', 'torr'): ('pressure',),
 
     ('buffer flow', 'sccm'): ('flows', 'cell'),
     ('neon flow', 'sccm'): ('flows', 'neon'),
 
-    ('reflection', 'V'): ('voltages', 'AIN1'),
+    ('reflection', 'V'): ('refl',),
 
-    ('transmission (from photodiode)', 'V '): ('voltages', 'AIN2'),
-    ('transmission (from spectrometer)', '%'): ('spectral', 'transmission'),
+    ('transmission (overall, from photodiode)', '%'): ('trans', 'pd'),
+    ('transmission (overall, from spectrometer)', '%'): ('trans', 'spec'),
+    ('transmission (non-roughness sources only)', '%'): ('trans', 'unexpl'),
 
-#    ('frequency', 'GHz'): ('frequencies', 'BaF_Laser'),
+#    ('frequency', 'GHz'): ('freq', 'BaF_Laser'),
+
+    ('rms roughness (from spectrometer)', 'nm'): ('rough',),
 
     ('saph heat', 'W'): ('heaters', 'heat saph'),
     ('collimator heat', 'W'): ('heaters', 'heat coll'),
@@ -67,8 +70,8 @@ axis_labels = [
     'torr',
     'sccm',
     'V',
-    'V ',
     '%',
+    'nm',
     'W',
     'K',
     'K '
@@ -134,7 +137,8 @@ locator = mpdates.AutoDateLocator()
 formatter = mpdates.ConciseDateFormatter(locator)
 plt.gca().xaxis.set_major_formatter(formatter)
 
-axes[0].set_yscale('log') # set pressure as log
+axes[axis_labels.index('torr')].set_yscale('log') # set pressure as log
+#axes[axis_labels.index('V')].set_yscale('log') # set reflection as log
 
 ##### animated plot #####
 times = np.array([datetime.datetime.now()] * num_points)
@@ -172,7 +176,7 @@ for i, line in enumerate(tail('-n', num_points * skip_points, '-f', filepath, _i
         data[-1] = processed_data
 
     if (
-        time.monotonic() - last < 1.5 # Avoid plot bottlenecking data read
+        time.monotonic() - last < 1 # Avoid plot bottlenecking data read
         and
         abs(i/skip_points - num_points) > 2 # Update a few times manually to get the initial plot
     ): continue
@@ -206,8 +210,8 @@ for i, line in enumerate(tail('-n', num_points * skip_points, '-f', filepath, _i
 
         fig.canvas.draw()
 
-        pt_status = 'Running' if raw_data['pulsetube']['running'] else 'Off'
-        fig.canvas.set_window_title(f'Pulse Tube {pt_status}')
+        pt_status = 'Running' if raw_data['pulsetube'] else 'Off'
+        fig.canvas.set_window_title(f'Pulse Tube {pt_status} | {time.asctime(time.localtime())}')
         last = time.monotonic()
 
         print(f'Plot took {last - start_time:.3f} s')
