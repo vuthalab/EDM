@@ -23,7 +23,7 @@ HOUR = 60 * MINUTE
 
 ##### PARAMETERS #####
 # duration to plot.
-duration = 4 * HOUR
+duration = 2 * HOUR
 
 # skip every x points.
 skip_points = 1
@@ -46,7 +46,8 @@ fields = {
     ('transmission (overall, from spectrometer)', '%'): ('trans', 'spec'),
     ('transmission (non-roughness sources only)', '%'): ('trans', 'unexpl'),
 
-#    ('frequency', 'GHz'): ('freq', 'BaF_Laser'),
+#    ('BaF Laser', 'GHz'): ('freq', 'baf'),
+    ('Ca Laser', 'GHz'): ('freq', 'calcium'),
 
     ('rms roughness (from spectrometer)', 'nm'): ('rough',),
 
@@ -67,6 +68,7 @@ fields = {
 }
 
 axis_labels = [
+    'GHz',
     'torr',
     'sccm',
     'V',
@@ -74,7 +76,7 @@ axis_labels = [
     'nm',
     'W',
     'K',
-    'K '
+    'K ',
 ]
 
 
@@ -163,8 +165,11 @@ for i, line in enumerate(tail('-n', num_points * skip_points, '-f', filepath, _i
             except:
                 value = None
 
+            if isinstance(value, str): value = None
+
             if not isinstance(value, list):
                 value = (value, 0)
+
             processed_data.append(value)
         processed_data = np.array(processed_data)
 

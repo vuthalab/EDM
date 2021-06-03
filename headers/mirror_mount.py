@@ -1,11 +1,20 @@
+import random
+from pathlib import Path
+
 import numpy as np 
 import time
 from telnetlib import Telnet
+
+songs = list(Path('headers/songs/').glob('*.txt'))
+SECONDS_PER_SIXTEENTH = 0.1 # tempo
 
 Velocity = int
 Position = int
 
 NOTES = {
+    'C_': 523,
+    'E_': 659,
+    'F_': 698,
     'F#': 740,
     'G': 784,
     'G#': 831,
@@ -39,7 +48,7 @@ class microcontroller:
     Commands list can be found https://www.newport.com/medias/sys_master/images/images/h9a/h38/9100236390430/90066734D-8742-Manual.pdf
     """
     def __init__(self, host: str = '192.168.0.125'):
-        self.tn= Telnet(host) #initalize handshake with microcontroller
+        self.tn = Telnet(host) #initalize handshake with microcontroller
 
     def _get_int(self, command: str):
         self.tn.write(command.encode())
@@ -238,6 +247,12 @@ class microcontroller:
         #get reply
         motion = self._get_int(command)
         return motion
+
+    def get_position(self, motor):
+        return self._get_int(f'{motor}TP?\n')
+
+    def get_xy_position(self):
+        return (self.get_position(1), self.get_position(2))
 
     def keep_move(self, motor, dirr):
         """
@@ -610,401 +625,52 @@ class microcontroller:
     def move_with_speed(self, motor: int, pos: Position, vel: Velocity) -> None:
         self.set_speed(motor, vel)
         self.move_to(motor, pos)
+
+    def home(self):
+        print('Homing 1')
+        self.move_with_speed(1, 0, 2000)
+        while abs(self.get_position(1)) != 0:
+            print(self.get_position(1))
+            time.sleep(0.3)
+
+        print('Homing 2')
+        self.move_with_speed(2, 0, 2000)
+        while abs(self.get_position(2)) != 0:
+            print(self.get_position(2))
+            time.sleep(0.3)
  
 
-transpose = 1
+    def music_scan(self):
+        while True:
+            song = random.choice(songs)
+            pos = np.array(self.get_xy_position(), dtype=int)
+            with song.open('r') as f:
+                transpose = float(next(f)) * 0.25
 
-if False:
-    # Ice Ice Baby
-    song = [
-        ('D', 2),
-        ('D', 2),
-        ('D', 2),
-        ('D', 1),
-        ('D', 1),
-        ('D', 2),
-        ('A', 2),
-        (None, 2),
+                for i, entry in enumerate(f):
+                    entry = entry.strip()
+                    if not entry or entry.startswith('#'): continue
 
-        ('D', 2),
-        ('D', 2),
-        ('D', 2),
-        ('D', 2),
-        ('D', 1),
-        ('D', 1),
-        ('D', 2),
-        ('A', 2),
-        (None, 4),
-    ] * 4
+                    note, duration = entry.split()
+                    duration = float(duration) * SECONDS_PER_SIXTEENTH
 
-if True:
-    # Rondo Alla Turca
-    transpose = 0.85
-    song = [
-        ('B', 1),
-        ('A', 1),
-        ('G#', 1),
-        ('A', 1),
-        ('C', 2),
-        (None, 2),
+                    # Alternate x and y motors
+                    motor = i % 2
+                    sign = -1 if pos[motor] > 0 else 1
 
-        ('D', 1),
-        ('C', 1),
-        ('B', 1),
-        ('C', 1),
-        ('E', 2),
-        (None, 2),
+                    if note != 'X':
+                        freq = round(NOTES[note] * transpose)
+                        steps = round(0.5 * duration * freq)
 
-        ('F', 1),
-        ('E', 1),
-        ('D#', 1),
-        ('E', 1),
-        ('b', 1),
-        ('a', 1),
-        ('g#', 1),
-        ('a', 1),
-        ('b', 1),
-        ('a', 1),
-        ('g#', 1),
-        ('a', 1),
-        ('c', 4),
+                        pos[motor] += steps * sign
+                        self.move_with_speed(
+                            motor + 1,
+                            pos[motor],
+                            freq
+                        )
 
-        ('a', 2),
-        ('c', 2),
-        ('b', 2),
-        ('a', 2),
-        ('g', 2),
-        ('a', 2),
-        ('b', 2),
-        ('a', 2),
-        ('g', 2),
-        ('a', 2),
-        ('b', 2),
-        ('a', 2),
-        ('g', 2),
-        ('f#', 2),
-        ('E', 4),
+                    # Log position
+                    if i % 8 == 0:
+                        print('Current position:', self.get_xy_position())
 
-        ('E', 2),
-        ('F', 2),
-        ('g', 2),
-        ('g', 2),
-        ('a', 1),
-        ('g', 1),
-        ('F', 1),
-        ('E', 1),
-        ('D', 2),
-        ('G', 2),
-
-        ('E', 2),
-        ('F', 2),
-        ('g', 2),
-        ('g', 2),
-        ('a', 1),
-        ('g', 1),
-        ('F', 1),
-        ('E', 1),
-        ('D', 4),
-
-        ('C', 2),
-        ('D', 2),
-        ('E', 2),
-        ('E', 2),
-        ('F', 1),
-        ('E', 1),
-        ('D', 1),
-        ('C', 1),
-        ('B', 4),
-
-        ('C', 2),
-        ('D', 2),
-        ('E', 2),
-        ('E', 2),
-        ('F', 1),
-        ('E', 1),
-        ('D', 1),
-        ('C', 1),
-        ('B', 4),
-
-        ('B', 1),
-        ('A', 1),
-        ('G#', 1),
-        ('A', 1),
-        ('C', 2),
-        (None, 2),
-
-        ('D', 1),
-        ('C', 1),
-        ('B', 1),
-        ('C', 1),
-        ('E', 2),
-        (None, 2),
-
-        ('F', 1),
-        ('E', 1),
-        ('D#', 1),
-        ('E', 1),
-        ('b', 1),
-        ('a', 1),
-        ('g#', 1),
-        ('a', 1),
-        ('b', 1),
-        ('a', 1),
-        ('g#', 1),
-        ('a', 1),
-        ('c', 4),
-
-        ('a', 2),
-        ('b', 2),
-        ('c', 2),
-        ('b', 2),
-        ('a', 2),
-        ('g#', 2),
-        ('a', 2),
-        ('E', 2),
-        ('F', 2),
-        ('D', 2),
-        ('C', 4),
-
-        ('C', 0.5),
-        ('B', 0.5),
-        ('C', 0.5),
-        ('B', 0.5),
-        ('C', 0.5),
-        ('B', 0.5),
-        ('A', 0.5),
-        ('B', 0.5),
-
-        ('A', 4),
-
-        ('a', 2),
-        ('b', 2),
-        ('c#', 4),
-        ('a', 2),
-        ('b', 2),
-        ('c#', 2),
-        ('b', 2),
-        ('a', 2),
-        ('g#', 2),
-        ('f#', 2),
-        ('g#', 2),
-        ('a', 2),
-        ('b', 2),
-        ('g#', 2),
-        ('E', 2),
-
-        ('a', 2),
-        ('b', 2),
-        ('c#', 4),
-        ('a', 2),
-        ('b', 2),
-        ('c#', 2),
-        ('b', 2),
-        ('a', 2),
-        ('g#', 2),
-        ('f#', 2),
-        ('b', 2),
-        ('g#', 2),
-        ('E', 2),
-        ('a', 4),
-
-        ('c#', 1),
-        ('d', 1),
-        ('c#', 1),
-        ('b', 1),
-
-        ('a', 1),
-        ('b', 1),
-        ('a', 1),
-        ('g#', 1),
-
-        ('f#', 1),
-        ('a', 1),
-        ('g#', 1),
-        ('f#', 1),
-
-        ('F', 1),
-        ('f#', 1),
-        ('g#', 1),
-        ('F', 1),
-
-        ('C#', 1),
-        ('D#', 1),
-        ('F', 1),
-        ('C#', 1),
-
-        ('f#', 1),
-        ('F', 1),
-        ('f#', 1),
-        ('g#', 1),
-
-        ('a', 1),
-        ('g#', 1),
-        ('a', 1),
-        ('b', 1),
-
-        ('c#', 1),
-        ('c', 1),
-        ('c#', 1),
-        ('c', 1),
-        ('c#', 1),
-        ('d', 1),
-        ('c#', 1),
-        ('b', 1),
-
-        ('a', 1),
-        ('b', 1),
-        ('a', 1),
-        ('g#', 1),
-
-        ('f#', 1),
-        ('a', 1),
-        ('g#', 1),
-        ('f#', 1),
-
-        ('E', 1),
-        ('f#', 1),
-        ('g#', 1),
-        ('E', 1),
-
-        ('C#', 1),
-        ('D#', 1),
-        ('E', 1),
-        ('C#', 1),
-
-        ('D#', 1),
-        ('E', 1),
-        ('f#', 1),
-        ('D#', 1),
-
-        ('C', 1),
-        ('C#', 1),
-        ('D#', 1),
-        ('C', 1),
-        ('C#', 4),
-    ]
-
-if False:
-    # O Canada
-    song = [
-        ('B', 8),
-        ('D', 6),
-        ('D', 2),
-        ('G', 12),
-        ('A', 4),
-        ('B', 4),
-        ('C', 4),
-        ('D', 4),
-        ('E', 4),
-        ('A', 16),
-
-        ('B', 8),
-        ('C#', 6),
-        ('C#', 2),
-        ('D', 12),
-        ('E', 4),
-        ('f#', 4),
-        ('f#', 4),
-        ('E', 4),
-        ('E', 4),
-        ('D', 12),
-
-        ('A', 3),
-        ('B', 1),
-        ('C', 6),
-        ('B', 2),
-        ('A', 4),
-        ('B', 3),
-        ('C', 1),
-        ('D', 6),
-        ('C', 2),
-        ('B', 4),
-        ('C', 3),
-        ('D', 1),
-        ('E', 4),
-        ('D', 4),
-        ('C', 4),
-        ('B', 4),
-        ('A', 12),
-
-        ('A', 3),
-        ('B', 1),
-        ('C', 6),
-        ('B', 2),
-        ('A', 4),
-        ('B', 3),
-        ('C', 1),
-        ('D', 6),
-        ('C', 2),
-        ('B', 4),
-        ('B', 4),
-        ('A', 4),
-        ('D', 4),
-        ('D', 2),
-        ('C#', 2),
-        ('B', 2),
-        ('C#', 2),
-        ('D', 16),
-
-        ('B', 8),
-        ('D', 6),
-        ('D', 2),
-        ('G', 12),
-        ('A', 4),
-
-        ('C', 8),
-        ('E', 6),
-        ('E', 2),
-        ('A', 12),
-        ('G', 2),
-        ('A', 2),
-
-        ('D', 8),
-        ('D#', 6),
-        ('D#', 2),
-        ('E', 4),
-        ('C', 4),
-        ('B', 4),
-        ('A', 4),
-        ('G', 8),
-        ('A', 8),
-        ('B', 16),
-
-        ('D', 8),
-        ('g', 6),
-        ('g', 2),
-        ('E', 4),
-        ('C', 4),
-        ('B', 4),
-        ('A', 4),
-        ('D', 8),
-        ('F#', 8),
-        ('G', 16),
-    ]
-
-
-if __name__ == '__main__':
-    mc = microcontroller()
-
-    print('Homing 1')
-    mc.move_with_speed(1, 0, 2000)
-    time.sleep(2)
-    print('Homing 2')
-    mc.move_with_speed(2, 0, 2000)
-    time.sleep(2)
-
-    pos = [0, 0]
-
-    for i, entry in enumerate(song):
-        note, duration = entry
-        sign = (-1)**(i//2)
-        motor = i % 2
-
-        if note is not None:
-            pos[motor] += round(duration * 50 * sign)
-            mc.move_with_speed(
-                motor + 1,
-                pos[motor],
-                round(NOTES[note] * transpose)
-            )
-        time.sleep(duration * 0.1)
+                    time.sleep(duration)

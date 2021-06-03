@@ -384,7 +384,7 @@ class PowerMeterGUI():
 
 
 if __name__=='__main__':
-    pm = PM16('/dev/usbtmc1')
+    pm = PM16('/dev/usbtmc2')
     pm.launch_gui()
 """
 Other commands: SENS:CORR:POW:PDI:RESP? returns a number

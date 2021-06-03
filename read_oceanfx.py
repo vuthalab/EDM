@@ -10,7 +10,7 @@ spec = OceanFX()
 #print(spec.roughness)
 
 plot(spec.wavelengths, spec.transmission, continuous=True)
-plt.xlim(450, 750)
+plt.xlim(400, 900)
 plt.ylim(-10, 110)
 plt.xlabel('Wavelength (nm)')
 plt.ylabel('Transmission (%)')

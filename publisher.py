@@ -15,7 +15,7 @@ from notify import send_email
 PUBLISH_INTERVAL = 3 # publish every x seconds
 
 
-FULL_TRANSMISSION_VOLTAGE = 3.869 # Initial voltage on transmission photodiode
+FULL_TRANSMISSION_VOLTAGE = 3.196 # Initial voltage on transmission photodiode
 
 def deconstruct(val): 
     if val is None: return None
@@ -23,7 +23,7 @@ def deconstruct(val):
 
 def run_publisher():
     print('Initializing devices...')
-    pressure_gauge = FRG730('/dev/agilent_pressure_gauge')
+    pressure_gauge = FRG730()
     thermometers = [
         (CTC100(31415), ['saph', 'coll', 'bott hs', 'cell'], ['heat saph', 'heat coll']),
         (CTC100(31416), ['srb4k', 'srb45k', '45k plate', '4k plate'], ['srb45k out', 'srb4k out'])
@@ -64,7 +64,8 @@ def run_publisher():
                 }
 
                 frequencies = {
-                    'BaF_Laser': wm.read_frequency(8) #read in GHz
+                    'baf': wm.read_frequency(8),
+                    'calcium': wm.read_frequency(6),
                 }
 
                 pt_on = pt.is_on()
@@ -169,9 +170,9 @@ if __name__ == '__main__':
         except:
             # Check if this was intentional
             tb = traceback.format_exc()
-            if 'KeyboardInterrupt' in tb:
-                print(tb)
-                break
+            print(tb)
+
+            if 'KeyboardInterrupt' in tb: break
 
             # Log error and send email
             with open('publisher-error-log.txt', 'a') as f:

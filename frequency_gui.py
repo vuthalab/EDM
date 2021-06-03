@@ -14,7 +14,7 @@ monitor_socket.make_connection()
 
 def get_freq():
     time, data = monitor_socket.blocking_read()
-    return data['freq']['BaF_Laser']
+    return data['freq']['baf']
 
 
 

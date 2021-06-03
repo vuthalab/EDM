@@ -15,6 +15,9 @@ N_AVERAGE = 16 # How many traces to average over
 
 ENABLE_LOGGING = True
 
+if not ENABLE_LOGGING:
+    print('WARNING LOGGING IS OFF!')
+
 ##### Main Program #####
 # Initialize connection
 with RigolDS1102e() as scope:

@@ -30,7 +30,7 @@ class RigolDS1102e(USBTMCDevice):
 
     def __init__(self):
         """Initialize a connection to the scope and start acquisition."""
-        super().__init__('/dev/usbtmc0', mode='direct')
+        super().__init__('/dev/usbtmc1', mode='direct')
         self.send_command(':RUN')
         self.send_command(':KEY:LOCK DISABLE')
 

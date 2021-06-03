@@ -83,13 +83,7 @@ try:
     mfc.off()
     T1.enable_output()
 
-    melt_and_grow(7, 3, 0, True)
-    melt_and_grow(7, 3, 2, True)
-    melt_and_grow(7, 3, 6, True)
     melt_and_grow(7, 3, 10, True)
-
-    melt_and_grow(8.5, 3, 0, True)
-    melt_and_grow(8, 3, 0, True)
 
 finally:
     T1.disable_output()
