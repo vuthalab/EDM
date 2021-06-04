@@ -1,5 +1,11 @@
 import time, pprint, traceback
 
+import asyncio
+
+import numpy as np
+
+from uncertainties import ufloat
+
 #Import class objects
 from headers.FRG730 import FRG730
 from headers.CTC100 import CTC100
@@ -12,16 +18,28 @@ from pulsetube_compressor import PulseTube
 
 from notify import send_email
 
-PUBLISH_INTERVAL = 3 # publish every x seconds
+PUBLISH_INTERVAL = 2 # publish every x seconds
 
 
 FULL_TRANSMISSION_VOLTAGE = 3.196 # Initial voltage on transmission photodiode
 
+
 def deconstruct(val): 
+    """Deconstructs an uncertainty object into a tuple (value, uncertainty)"""
     if val is None: return None
     return (val.n, val.s)
 
-def run_publisher():
+async def with_uncertainty(getter, N=64, delay=2e-3):
+    """Call the given getter function N times and return the mean and standard deviation."""
+    values = []
+    for i in range(N):
+        values.append(getter())
+        await asyncio.sleep(delay)
+    return (np.mean(values), np.std(values))
+
+
+
+async def run_publisher():
     print('Initializing devices...')
     pressure_gauge = FRG730()
     thermometers = [
@@ -31,8 +49,8 @@ def run_publisher():
     labjack = Labjack('470022275')
     mfc = MFC(31417)
     wm = WM(publish=False) #wavemeter class used for reading frequencies from high finesse wavemeter
-    spectrometer = OceanFX()
     pt = PulseTube()
+    spectrometer = OceanFX()
 
     pt_last_off = 0
     heaters_last_safe = 0
@@ -42,37 +60,75 @@ def run_publisher():
     try:
         with zmq_server_socket(5551, 'edm-monitor') as publisher:
             while True:
+                print('[LOOP START]')
+                loop_start = time.monotonic()
+                async_getters = []
+
                 start = time.monotonic()
-
                 chamber_pressure = pressure_gauge.pressure
+                print(f'[SYNC] Read pressure took {time.monotonic() - start:.3f} seconds')
 
-                temperatures = {
-                    channel: thermometer.read(channel)
-                    for thermometer, inputs, _ in thermometers
-                    for channel in inputs
-                }
+                ##### Read CTC100 Temperatures + Heaters (Async) #####
+                temperatures = {}
+                heaters = {}
+                async def CTC_getter(thermometer):
+                    """Record data from the given thermometer."""
+                    start = time.monotonic()
 
-                heaters = {
-                    channel: thermometer.read(channel)
-                    for thermometer, _, outputs in thermometers
-                    for channel in outputs
-                }
+                    obj, temp_channels, heater_channels = thermometer
+                    for channel in temp_channels:
+                        temperatures[channel] = await obj.async_read(channel)
 
-                flows = {
-                    'cell': deconstruct(mfc.flow_rate_cell),
-                    'neon': deconstruct(mfc.flow_rate_neon_line),
-                }
+                    for channel in heater_channels:
+                        heaters[channel] = await obj.async_read(channel)
 
-                frequencies = {
-                    'baf': wm.read_frequency(8),
-                    'calcium': wm.read_frequency(6),
-                }
+                    print(f'[ASYNC] Read CTC{obj._address[1]} took {time.monotonic() - start:.3f} seconds')
 
+                async_getters.extend([
+                    CTC_getter(thermometer) for thermometer in thermometers
+                ])
+
+
+                ##### Read MFC Flows (Async) #####
+                flows = {}
+                async def flow_getter():
+                    """Record the flow rates from the MFC."""
+                    start = time.monotonic()
+
+                    flows['cell'] = deconstruct(await mfc.async_get_flow_rate_cell())
+                    flows['neon'] = deconstruct(await mfc.async_get_flow_rate_neon_line())
+
+                    print(f'[ASYNC] Read MFC took {time.monotonic() - start:.3f} seconds')
+                async_getters.append(flow_getter())
+
+
+                ##### Read wavemeter frequencies (Async) #####
+                frequencies = {}
+                async def frequency_getter():
+                    """Record the frequencies from the wavemeter."""
+                    start = time.monotonic()
+
+                    frequencies['baf'] = await with_uncertainty(lambda: wm.read_frequency(8))
+                    frequencies['calcium'] = await with_uncertainty(lambda: wm.read_frequency(6))
+
+                    print(f'[ASYNC] Read Wavemeter took {time.monotonic() - start:.3f} seconds')
+                async_getters.append(frequency_getter())
+
+                start = time.monotonic()
                 pt_on = pt.is_on()
+                print(f'[SYNC] Read pulsetube took {time.monotonic() - start:.3f} seconds')
+
+                start = time.monotonic()
                 spectrometer.capture()
-
                 I0, roughness = spectrometer.roughness_full
+                print(f'[SYNC] Read spectrometer took {time.monotonic() - start:.3f} seconds')
 
+
+                # Await all async data getters
+                await asyncio.wait(async_getters, timeout=2)
+
+                # Construct final data packet
+                start = time.monotonic()
                 data_dict = {
                     'pressure': deconstruct(chamber_pressure),
 
@@ -91,8 +147,7 @@ def run_publisher():
                         'unexpl': deconstruct(I0),
                     },
                 }
-
-                publisher.send(data_dict)
+                print(f'[SYNC] Read miscellaneous took {time.monotonic() - start:.3f} seconds')
                 printer.pprint(data_dict)
 
 
@@ -115,7 +170,9 @@ def run_publisher():
                 )
                 if heaters_safe: heaters_last_safe = time.monotonic()
 
+
                 print(f'{pt_on=} {pt_running=} {heaters_safe=} {min_temp=}')
+
 
                 if chamber_pressure is not None:
                     # Chamber pressure high during main experiment
@@ -156,17 +213,21 @@ def run_publisher():
                         f'{strongest_heater} has been outputting {max_power:.2f} W for 20 minutes, yet coldest temperature is {min_temp:.1f} K. Did the heater fall off?'
                     )
 
+
                 ### Limit publishing speed ###
-                dt = time.monotonic() - start
+                dt = time.monotonic() - loop_start
                 time.sleep(max(PUBLISH_INTERVAL - dt, 0))
+                publisher.send(data_dict)
+                print()
     finally:
         spectrometer.close()
         pressure_gauge.close()
 
+
 if __name__ == '__main__':
     while True:
         try:
-            run_publisher()
+            asyncio.run(run_publisher())
         except:
             # Check if this was intentional
             tb = traceback.format_exc()
@@ -177,7 +238,6 @@ if __name__ == '__main__':
             # Log error and send email
             with open('publisher-error-log.txt', 'a') as f:
                 print(time.asctime(time.localtime()), tb, file=f)
-            send_email('Publisher Crashed', tb, high_priority=False)
+#            send_email('Publisher Crashed', tb, high_priority=False)
 
         time.sleep(1)
-

@@ -5,7 +5,8 @@ import numpy as np
 import time
 from telnetlib import Telnet
 
-songs = list(Path('headers/songs/').glob('*.txt'))
+SONG_DIR = Path('headers/songs/')
+songs = [song.stem for song in SONG_DIR.glob('*.txt')]
 SECONDS_PER_SIXTEENTH = 0.1 # tempo
 
 Velocity = int
@@ -638,39 +639,41 @@ class microcontroller:
         while abs(self.get_position(2)) != 0:
             print(self.get_position(2))
             time.sleep(0.3)
- 
+
+    def play_song(self, name: str):
+        pos = np.array(self.get_xy_position(), dtype=int)
+
+        print(f'Playing {name}')
+        song = SONG_DIR / f'{name}.txt'
+        with song.open('r') as f:
+            transpose = float(next(f)) * 0.25
+
+            for i, entry in enumerate(f):
+                entry = entry.strip()
+                if not entry or entry.startswith('#'): continue
+
+                note, duration = entry.split()
+                duration = float(duration) * SECONDS_PER_SIXTEENTH
+
+                # Alternate x and y motors, moving towards (0, 0)
+                motor = i % 2
+                sign = -1 if pos[motor] > 0 else 1
+
+                if note != 'X':
+                    freq = round(NOTES[note] * transpose)
+                    steps = round(0.5 * duration * freq)
+
+                    pos[motor] += steps * sign
+                    self.move_with_speed(motor + 1, pos[motor], freq)
+
+                # Log position
+                if i % 8 == 0:
+                    print('Current position:', self.get_xy_position())
+
+                time.sleep(duration)
+
 
     def music_scan(self):
         while True:
             song = random.choice(songs)
-            pos = np.array(self.get_xy_position(), dtype=int)
-            with song.open('r') as f:
-                transpose = float(next(f)) * 0.25
-
-                for i, entry in enumerate(f):
-                    entry = entry.strip()
-                    if not entry or entry.startswith('#'): continue
-
-                    note, duration = entry.split()
-                    duration = float(duration) * SECONDS_PER_SIXTEENTH
-
-                    # Alternate x and y motors
-                    motor = i % 2
-                    sign = -1 if pos[motor] > 0 else 1
-
-                    if note != 'X':
-                        freq = round(NOTES[note] * transpose)
-                        steps = round(0.5 * duration * freq)
-
-                        pos[motor] += steps * sign
-                        self.move_with_speed(
-                            motor + 1,
-                            pos[motor],
-                            freq
-                        )
-
-                    # Log position
-                    if i % 8 == 0:
-                        print('Current position:', self.get_xy_position())
-
-                    time.sleep(duration)
+            self.play_song(song)

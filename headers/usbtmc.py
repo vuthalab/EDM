@@ -1,5 +1,6 @@
 from typing import Optional, Literal, Union
 import serial, time, telnetlib, itertools, os, socket, select, traceback
+import asyncio
 
 
 ModeString = Union[Literal['serial'], Literal['ethernet'], Literal['direct'], Literal['multiplexed']]
@@ -67,6 +68,10 @@ class USBTMCDevice:
             self._conn = open(resource_path, 'r+b')
 
         if mode == 'multiplexed':
+            # For async: defer connection until later.
+            self._async_conn = None
+            self._address = ('127.0.0.1', resource_path)
+
             try:
                 print(f'Connecting to multiplexer server on port {resource_path}...')
                 self._conn = socket.socket()
@@ -75,8 +80,6 @@ class USBTMCDevice:
             except:
                 print('Please start the multiplexer server!')
                 self._conn = None
-
-        time.sleep(0.1)
 
         time.sleep(0.1)
         self._name = self.query('*IDN?')
@@ -196,6 +199,70 @@ class USBTMCDevice:
 
         # Decode the response to a Python string if raw == False.
         return response if raw else response.decode('utf-8').strip()
+
+
+    ##### Async Code #####
+    async def open_async_connection(self):
+        """Open a new async TCP connection, if not already opened."""
+        assert self._mode == 'multiplexed'
+        if self._async_conn is not None: return
+        self._async_conn = await asyncio.open_connection(*self._address)
+
+
+    async def async_query(self, command: str, raw: bool = False, delay: float = 2e-2) -> Union[str, bytes]:
+        """
+        Send a command to the device, and return its response.
+
+        command: str
+            The command to send.
+
+        raw: bool
+            Whether to return the response as raw bytes or a Python string.
+
+        delay: float
+            Delay between writing the command and reading the response.
+            Increase the delay for commands that return large amounts of data.
+        """
+
+        await self.open_async_connection()
+        reader, writer = self._async_conn
+
+        # Acquire lock
+        writer.write(b'lock\n')
+        await writer.drain()
+        assert await reader.read(32) == b'locked'
+
+        # Send command and wait for device response
+        if DEBUG: print(' >', command)
+        writer.write((command + '\n').encode('utf-8'))
+        await writer.drain()
+        await asyncio.sleep(delay)
+
+        # Read response
+        for i in range(20):
+            writer.write(b'read\n')
+            await writer.drain()
+
+
+            response = await reader.read(1024)
+            if response != b'read failed': break
+            await asyncio.sleep(5e-2)
+            print('read failed, trying again')
+        else:
+            raise ValueError('Read failed too many times.')
+
+            if DEBUG: print(' <', response)
+
+        # Release lock
+        await asyncio.sleep(1e-3)
+        writer.write(b'unlock\n')
+        await writer.drain()
+        await asyncio.sleep(2e-3)
+        assert await reader.read(32) == b'unlocked'
+
+        # Decode the response to a Python string if raw == False.
+        return response if raw else response.decode('utf-8').strip()
+
 
     ##### Context Manager Magic Methods #####
     def __enter__(self): return self

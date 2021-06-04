@@ -3,10 +3,12 @@ import time
 from headers.mirror_mount import microcontroller
 
 mc = microcontroller()
-mc.home()
+#mc.home()
 
-print('Homed')
-print(mc.get_xy_position())
-time.sleep(2)
+#print('Homed')
+#print(mc.get_xy_position())
+#time.sleep(2)
 
-mc.music_scan()
+#mc.music_scan()
+
+mc.play_song('ice_ice_baby')

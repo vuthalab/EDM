@@ -29,7 +29,7 @@ duration = 2 * HOUR
 skip_points = 1
 
 # how fast the publisher is
-publisher_rate = 1/3 # Hertz
+publisher_rate = 1/2 # Hertz
 
 # Map from plot labels (name, unit) to paths in data
 # Uncomment any fields you want to see.

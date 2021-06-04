@@ -43,7 +43,13 @@ class CTC100(USBTMCDevice):
         """
         
         var = var.replace(" ", "") # Remove spaces from the variable name. They're optional and can potentially cause problems
-        return self.query(f"{var}?")
+        return self.query(f'{var}?')
+
+        
+    async def _async_get_variable(self, var):
+        var = var.replace(" ", "") # Remove spaces from the variable name. They're optional and can potentially cause problems
+        return await self.async_query(f'{var}?')
+
         
     def _set_variable(self, var, val):
         """
@@ -100,6 +106,17 @@ class CTC100(USBTMCDevice):
             channel = f"In{channel}"
             
         response = self._get_variable(f"{channel}.value")
+        if response is None: return None
+   
+        # Extract the response using a regex in case verbose mode is on
+        match = re.search(r"[-+]?\d*\.\d+", response)
+        return float(match.group()) if match is not None else None
+
+    async def async_read(self, channel):
+        if not isinstance(channel, str): #Sets string for channel
+            channel = f"In{channel}"
+            
+        response = await self._async_get_variable(f"{channel}.value")
         if response is None: return None
    
         # Extract the response using a regex in case verbose mode is on

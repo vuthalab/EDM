@@ -106,7 +106,7 @@ class WM:
     @_mode_check    
     def read_frequency(self,channel):
         """ Return frequency of channel in GHz """
-        frequency = self.dll.GetFrequencyNum(ctypes.c_long(channel),ctypes.c_double(0.0))
+        frequency = self.dll.GetFrequencyNum(ctypes.c_long(channel), ctypes.c_double(0.0))
         frequency = float(frequency)
         if frequency<0:
             return None #wlmConst.meas_error_to_str(frequency)

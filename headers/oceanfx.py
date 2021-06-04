@@ -46,7 +46,7 @@ def fit_roughness(wavelengths, transmission):
         roughness_model,
         wavelengths,
         y, sigma=y_err,
-        p0=[100, 100]
+        p0=[100, 400]
     )
     return (
         ufloat(popt[0], np.sqrt(pcov[0][0])),
@@ -58,14 +58,22 @@ class OceanFX:
     def __init__(self, ip_addr: str = '192.168.0.100', port: int = 57357):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.settimeout(1)
-        self.sock.connect((ip_addr, port))
+
+        try:
+            self.sock.connect((ip_addr, port))
+        except:
+            print('[WARNING] OceanFX failed to connect!')
+            self.sock = None
 
         self.cache = None
     
     def close(self):
-        self.sock.close()
+        if self.sock is not None:
+            self.sock.close()
 
     def capture(self):
+        if self.sock is None: return
+
         N_AVERAGE = 128
         spectrum = np.zeros((N_AVERAGE, SPECTRUM_LENGTH), dtype=float)
 
@@ -107,6 +115,8 @@ class OceanFX:
     @property
     def transmission_scalar(self):
         """Return the overall percent transmission."""
+        if self.sock is None: return None
+
         return 100 * (self.intensities - background).sum() / baseline.sum()
 
     @property
@@ -117,6 +127,8 @@ class OceanFX:
     @property
     def roughness_full(self):
         """Return the estimated roughness and unexplained overall transmission of a transmissive surface."""
+        if self.sock is None: return (None, None)
+
         wavelengths = self.wavelengths
         mask = (wavelengths > 450) & (wavelengths < 750)
 

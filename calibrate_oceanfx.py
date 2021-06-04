@@ -17,8 +17,6 @@ def calibrate(name):
         samples.append(spec.intensities)
     spectrum = sum(samples) / len(samples)
 
-    np.savetxt(f'spectra/{name}.txt', [nom(spectrum), std(spectrum)])
-
     print('Plotting...')
     plot(spec.wavelengths, spectrum, continuous=True)
     plt.xlim(300, 900)
@@ -26,6 +24,10 @@ def calibrate(name):
     plt.ylabel('Intensity (%)')
     plt.title(name)
     plt.show()
+
+    print('Saving...')
+    np.savetxt(f'spectra/{name}.txt', [nom(spectrum), std(spectrum)])
+
 
 input('Turn on broadband, then press Enter.')
 calibrate('baseline')
