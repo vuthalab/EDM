@@ -23,7 +23,7 @@ HOUR = 60 * MINUTE
 
 ##### PARAMETERS #####
 # duration to plot.
-duration = 2 * HOUR
+duration = 10 * MINUTE #2 * HOUR
 
 # skip every x points.
 skip_points = 1
@@ -215,8 +215,12 @@ for i, line in enumerate(tail('-n', num_points * skip_points, '-f', filepath, _i
 
         fig.canvas.draw()
 
-        pt_status = 'Running' if raw_data['pulsetube'] else 'Off'
-        fig.canvas.set_window_title(f'Pulse Tube {pt_status} | {time.asctime(time.localtime())}')
+        if 'running' in raw_data:
+            running = raw_data['running']
+            pt_status = 'Running' if running['pt'] else 'Off'
+            turbo_status = 'Running' if running['turbo'] else 'Off'
+            fig.canvas.set_window_title(f'Pulse Tube {pt_status} | Turbo {turbo_status} | {time.asctime(time.localtime())}')
+
         last = time.monotonic()
 
         print(f'Plot took {last - start_time:.3f} s')

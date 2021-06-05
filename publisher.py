@@ -14,6 +14,7 @@ from headers.mfc import MFC
 from headers.zmq_server_socket import zmq_server_socket
 from headers.wavemeter import WM
 from headers.oceanfx import OceanFX
+from headers.turbo import TurboPump
 from pulsetube_compressor import PulseTube
 
 from notify import send_email
@@ -51,6 +52,7 @@ async def run_publisher():
     wm = WM(publish=False) #wavemeter class used for reading frequencies from high finesse wavemeter
     pt = PulseTube()
     spectrometer = OceanFX()
+    turbo = TurboPump()
 
     pt_last_off = 0
     heaters_last_safe = 0
@@ -114,6 +116,7 @@ async def run_publisher():
                     print(f'[ASYNC] Read Wavemeter took {time.monotonic() - start:.3f} seconds')
                 async_getters.append(frequency_getter())
 
+                ##### Read other devices #####
                 start = time.monotonic()
                 pt_on = pt.is_on()
                 print(f'[SYNC] Read pulsetube took {time.monotonic() - start:.3f} seconds')
@@ -122,6 +125,18 @@ async def run_publisher():
                 spectrometer.capture()
                 I0, roughness = spectrometer.roughness_full
                 print(f'[SYNC] Read spectrometer took {time.monotonic() - start:.3f} seconds')
+
+                ##### Read turbo status (Async) #####
+                running = {'pt': pt_on}
+                async def turbo_getter():
+                    """Record the operational status of the turbo pump."""
+                    start = time.monotonic()
+
+                    status = await turbo.async_operation_status()
+                    running['turbo'] = (status == 'normal')
+
+                    print(f'[ASYNC] Read turbo took {time.monotonic() - start:.3f} seconds')
+                async_getters.append(turbo_getter())
 
 
                 # Await all async data getters
@@ -139,7 +154,7 @@ async def run_publisher():
                     'flows': flows,
 
                     'freq': frequencies,
-                    'pulsetube': pt_on,
+                    'running': running,
                     'rough': deconstruct(roughness),
                     'trans': {
                         'pd': deconstruct(100 * labjack.read('AIN2')/FULL_TRANSMISSION_VOLTAGE),

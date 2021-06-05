@@ -24,7 +24,8 @@ class USBTMCDevice:
             resource_path: str,
 
             tcp_port: int = 23,
-            mode: ModeString = 'serial'
+            mode: ModeString = 'serial',
+            name: Optional[str] = None,
         ):
         """
         Initializes a connection to the USBTMC device.
@@ -82,7 +83,7 @@ class USBTMCDevice:
                 self._conn = None
 
         time.sleep(0.1)
-        self._name = self.query('*IDN?')
+        self._name = name or self.query('*IDN?')
         print(f'Connected to {self.name}')
 
 
@@ -112,22 +113,31 @@ class USBTMCDevice:
             print('Extra Output:', self._conn.readline())
 
 
-    def send_command(self, command: str) -> None:
+    def send_command(self, command: str, raw: bool = False) -> None:
         """Send a command to the device."""
         if DEBUG: print(' >', command)
         if DRY_RUN: return
 
+        if not raw:
+            command = (command + '\n').encode('utf-8')
+
         if self._mode == 'multiplexed':
-            self._conn.send((command + '\n').encode('utf-8'))
+            self._conn.send(command)
             return
 
         self._clear_output()
-        self._conn.write((command + '\n').encode('utf-8'))
+        self._conn.write(command)
 
         if self._mode in ['serial', 'direct']: self._conn.flush()
 
 
-    def query(self, command: str, raw: bool = False, delay: float = 2e-2) -> Union[str, bytes]:
+    def query(
+        self,
+        command: str,
+        raw: bool = False,
+        raw_command: bool = False,
+        delay: float = 2e-2
+    ) -> Union[str, bytes]:
         """
         Send a command to the device, and return its response.
 
@@ -142,11 +152,11 @@ class USBTMCDevice:
             Increase the delay for commands that return large amounts of data.
         """
         if DRY_RUN:
-            self.send_command(command)
+            self.send_command(command, raw=raw_command)
             return None
 
         if self._mode != 'multiplexed':
-            self.send_command(command)
+            self.send_command(command, raw=raw_command)
             time.sleep(delay)
 
         if self._mode == 'ethernet':
@@ -176,7 +186,7 @@ class USBTMCDevice:
             assert self._conn.recv(32) == b'locked'
 
             # Send command and wait for device response
-            self.send_command(command)
+            self.send_command(command, raw=raw_command)
             time.sleep(delay)
 
             # Read response
@@ -209,20 +219,13 @@ class USBTMCDevice:
         self._async_conn = await asyncio.open_connection(*self._address)
 
 
-    async def async_query(self, command: str, raw: bool = False, delay: float = 2e-2) -> Union[str, bytes]:
-        """
-        Send a command to the device, and return its response.
-
-        command: str
-            The command to send.
-
-        raw: bool
-            Whether to return the response as raw bytes or a Python string.
-
-        delay: float
-            Delay between writing the command and reading the response.
-            Increase the delay for commands that return large amounts of data.
-        """
+    async def async_query(
+            self,
+            command: str,
+            raw: bool = False,
+            raw_command: bool = False,
+            delay: float = 2e-2
+        ) -> Union[str, bytes]:
 
         await self.open_async_connection()
         reader, writer = self._async_conn
@@ -234,7 +237,9 @@ class USBTMCDevice:
 
         # Send command and wait for device response
         if DEBUG: print(' >', command)
-        writer.write((command + '\n').encode('utf-8'))
+        if not raw_command:
+            command = (command + '\n').encode('utf-8')
+        writer.write(command)
         await writer.drain()
         await asyncio.sleep(delay)
 
@@ -251,7 +256,7 @@ class USBTMCDevice:
         else:
             raise ValueError('Read failed too many times.')
 
-            if DEBUG: print(' <', response)
+#        if DEBUG: print(' <', response)
 
         # Release lock
         await asyncio.sleep(1e-3)

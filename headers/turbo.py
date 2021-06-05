@@ -5,8 +5,15 @@ All packets are taken from the user manual.
 Author: Samuel Li
 May 25, 2021
 """
-import time, serial
+import time
+
 from functools import reduce
+
+try:
+    from headers.usbtmc import USBTMCDevice
+except:
+    from usbtmc import USBTMCDevice
+
 
 HEADER = b'\x02\x80'
 FOOTER = b'\x03'
@@ -21,9 +28,9 @@ PACKETS = {
 }
 
 
-class TurboPump:
-    def __init__(self, port='/dev/ttyUSB3'):
-        self._conn = serial.Serial(port, 9600, timeout=0.5)
+class TurboPump(USBTMCDevice):
+    def __init__(self, multiplexer_port=31418):
+        super().__init__(multiplexer_port, mode='multiplexed', name='Turbo')
 
     ##### Private Util Functions #####
     def _pad_packet(self, packet):
@@ -35,12 +42,18 @@ class TurboPump:
         crc = reduce(lambda a, b: a ^ b, packet[1:], 0)
         return hex(crc)[2:].upper().encode('utf-8')
 
-    def _query(self, packet):
-        self._conn.write(self._pad_packet(packet))
-        response = self._conn.read(32)
-        response, crc = response[:-2], response[-2:]
+    def _decode_packet(self, packet):
+        response, crc = packet[:-2], packet[-2:]
         assert self._compute_crc(response) == crc
         return response[2:-1]
+
+    def _query(self, packet):
+        response = self.query(self._pad_packet(packet), raw=True, raw_command=True)
+        return self._decode_packet(response)
+
+    async def _async_query(self, packet):
+        response = await self.async_query(self._pad_packet(packet), raw=True, raw_command=True)
+        return self._decode_packet(response)
 
     def _read_int(self, window):
         window = str(window).encode('utf-8')
@@ -62,9 +75,7 @@ class TurboPump:
     def start(self): self.on()
     def stop(self): self.off()
 
-    @property
-    def operation_status(self):
-        response = self._query(b'2050')
+    def _decode_operation_status(self, packet):
         return [
             'stopped',
             'waiting intlk',
@@ -73,7 +84,16 @@ class TurboPump:
             'braking',
             'normal',
             'failed',
-        ][response[9] - 48]
+        ][packet[9] - 48]
+
+    @property
+    def operation_status(self):
+        response = self._query(b'2050')
+        return self._decode_operation_status(response)
+
+    async def async_operation_status(self):
+        response = await self._async_query(b'2050')
+        return self._decode_operation_status(response)
 
     @property
     def current(self):

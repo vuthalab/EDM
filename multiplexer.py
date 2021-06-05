@@ -10,7 +10,7 @@ Author: Samuel Li
 Date: May 11, 2021
 """
 
-import socket, threading, time
+import socket, threading, time, serial
 import telnetlib
 
 from headers.labjack_device import Labjack
@@ -134,6 +134,23 @@ def telnet_handler(client_thread, msg):
         # Just pass on the packet.
         conn.write(msg + b'\n')
 
+def serial_handler(client_thread, msg):
+    conn = client_thread.multiplexer.conn
+    client_socket = client_thread.client_socket
+
+    if msg == b'read':
+        # Query the response and return.
+        response = conn.read(1024)
+        if response in [b'', b'\r\n']:
+            response = b'read failed'
+
+        print(f'{client_thread.name:20s} > {client_thread.client_name:20s} | {response}')
+        client_socket.send(response)
+    else:
+        # Just pass on the packet.
+        conn.write(msg + b'\n')
+
+
 def labjack_handler(client_thread, msg):
     conn = client_thread.multiplexer.conn
     client_socket = client_thread.client_socket
@@ -151,6 +168,7 @@ def labjack_handler(client_thread, msg):
         # Send the response, formatted as bytes.
         client_socket.send(f'{voltage.n:.8f} {voltage.s:.8f}'.encode('utf-8'))
 
+
     # Client wants to set a voltage.
     if msg.startswith(b'DAC'):
         # Read the channel and voltage from the packet.
@@ -163,11 +181,14 @@ def labjack_handler(client_thread, msg):
 
 
 
+
 if __name__ == '__main__':
     TC1 = telnetlib.Telnet('192.168.0.104', port=23, timeout=2)
     TC2 = telnetlib.Telnet('192.168.0.107', port=23, timeout=2)
-    L1 = Labjack('470017292')
+    labjack = Labjack('470017292')
+    turbo = serial.Serial('/dev/ttyUSB3', 9600, timeout=0.5)
 
     Multiplexer(31415, TC1, telnet_handler).start()
     Multiplexer(31416, TC2, telnet_handler).start()
-    Multiplexer(31417, L1, labjack_handler).start()
+    Multiplexer(31417, labjack, labjack_handler).start()
+    Multiplexer(31418, turbo, serial_handler).start()
