@@ -1,6 +1,7 @@
 import time, pprint, traceback
 
 import asyncio
+from colorama import Fore, Style
 
 import numpy as np
 
@@ -34,9 +35,23 @@ async def with_uncertainty(getter, N=64, delay=2e-3):
     """Call the given getter function N times and return the mean and standard deviation."""
     values = []
     for i in range(N):
-        values.append(getter())
+        value = getter()
+        if not isinstance(value, float): return None
+
+        values.append(value)
         await asyncio.sleep(delay)
+
     return (np.mean(values), np.std(values))
+
+def print_tree(obj, indent=0):
+    for key, value in obj.items():
+        print('   ' * indent + f'{Fore.YELLOW}{key}{Style.RESET_ALL}', end='')
+
+        if isinstance(value, dict):
+            print()
+            print_tree(value, indent=indent+1)
+        else:
+            print(':', value)
 
 
 
@@ -62,7 +77,6 @@ async def run_publisher():
     try:
         with zmq_server_socket(5551, 'edm-monitor') as publisher:
             while True:
-                print('[LOOP START]')
                 loop_start = time.monotonic()
                 async_getters = []
 
@@ -84,7 +98,7 @@ async def run_publisher():
                     for channel in heater_channels:
                         heaters[channel] = await obj.async_read(channel)
 
-                    print(f'[ASYNC] Read CTC{obj._address[1]} took {time.monotonic() - start:.3f} seconds')
+                    print(f'  [ASYNC] Read CTC{obj._address[1]} took {time.monotonic() - start:.3f} seconds')
 
                 async_getters.extend([
                     CTC_getter(thermometer) for thermometer in thermometers
@@ -100,7 +114,7 @@ async def run_publisher():
                     flows['cell'] = deconstruct(await mfc.async_get_flow_rate_cell())
                     flows['neon'] = deconstruct(await mfc.async_get_flow_rate_neon_line())
 
-                    print(f'[ASYNC] Read MFC took {time.monotonic() - start:.3f} seconds')
+                    print(f'  [ASYNC] Read MFC took {time.monotonic() - start:.3f} seconds')
                 async_getters.append(flow_getter())
 
 
@@ -113,18 +127,16 @@ async def run_publisher():
                     frequencies['baf'] = await with_uncertainty(lambda: wm.read_frequency(8))
                     frequencies['calcium'] = await with_uncertainty(lambda: wm.read_frequency(6))
 
-                    print(f'[ASYNC] Read Wavemeter took {time.monotonic() - start:.3f} seconds')
+                    print(f'  [ASYNC] Read Wavemeter took {time.monotonic() - start:.3f} seconds')
                 async_getters.append(frequency_getter())
 
                 ##### Read other devices #####
-                start = time.monotonic()
                 pt_on = pt.is_on()
-                print(f'[SYNC] Read pulsetube took {time.monotonic() - start:.3f} seconds')
 
                 start = time.monotonic()
                 spectrometer.capture()
                 I0, roughness = spectrometer.roughness_full
-                print(f'[SYNC] Read spectrometer took {time.monotonic() - start:.3f} seconds')
+                print(f'  [SYNC] Read spectrometer took {time.monotonic() - start:.3f} seconds')
 
                 ##### Read turbo status (Async) #####
                 running = {'pt': pt_on}
@@ -135,12 +147,12 @@ async def run_publisher():
                     status = await turbo.async_operation_status()
                     running['turbo'] = (status == 'normal')
 
-                    print(f'[ASYNC] Read turbo took {time.monotonic() - start:.3f} seconds')
+                    print(f'  [ASYNC] Read turbo took {time.monotonic() - start:.3f} seconds')
                 async_getters.append(turbo_getter())
 
 
                 # Await all async data getters
-                await asyncio.wait(async_getters, timeout=2)
+                await asyncio.wait_for(asyncio.gather(*async_getters), timeout=2)
 
                 # Construct final data packet
                 start = time.monotonic()
@@ -163,7 +175,8 @@ async def run_publisher():
                     },
                 }
                 print(f'[SYNC] Read miscellaneous took {time.monotonic() - start:.3f} seconds')
-                printer.pprint(data_dict)
+
+                print_tree(data_dict)
 
 
                 ###### Software Interlocks #####
@@ -234,9 +247,11 @@ async def run_publisher():
                 time.sleep(max(PUBLISH_INTERVAL - dt, 0))
                 publisher.send(data_dict)
                 print()
+                print()
     finally:
         spectrometer.close()
         pressure_gauge.close()
+        mfc.close()
 
 
 if __name__ == '__main__':
@@ -251,8 +266,9 @@ if __name__ == '__main__':
             if 'KeyboardInterrupt' in tb: break
 
             # Log error and send email
+            print(f'{Fore.RED}===== PUBLISHER CRASHED ====={Style.RESET_ALL}')
             with open('publisher-error-log.txt', 'a') as f:
                 print(time.asctime(time.localtime()), tb, file=f)
 #            send_email('Publisher Crashed', tb, high_priority=False)
 
-        time.sleep(1)
+        time.sleep(5)

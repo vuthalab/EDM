@@ -14,7 +14,7 @@ from uncertainties import ufloat
 
 class MFC(USBTMCDevice):
     def __init__(self, multiplexer_port):
-        super().__init__(multiplexer_port, mode='multiplexed')
+        super().__init__(multiplexer_port, mode='multiplexed', name='MFC')
         self._calibration = 10.0/5.0 #How many sccm per volt?
 
     def _get_flow_rate(self, channel):
@@ -54,11 +54,6 @@ class MFC(USBTMCDevice):
 
     async def async_get_flow_rate_neon_line(self):
         return await self._async_get_flow_rate(1)
-
-    def close(self):
-        self.off()
-        self.send_command('close')
-        print('MFC LabJack Closed.')
 
     def off(self):
         self.flow_rate_neon_line = 0

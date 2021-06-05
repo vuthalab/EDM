@@ -7,6 +7,9 @@ import zmq
 import time
 from datetime import datetime
 import json
+
+from colorama import Fore, Style
+
 import numpy as np
 
 from headers.zmq_client_socket import zmq_client_socket
@@ -42,4 +45,4 @@ while True:
     with open(continuous_log_file, 'a') as f:
         print(timestamp, json.dumps(data), file=f)
 
-    print(timestamp, json.dumps(data))
+    print(f'{Style.BRIGHT}{Fore.GREEN}{timestamp}{Style.RESET_ALL}', json.dumps(data))

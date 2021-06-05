@@ -13,6 +13,8 @@ Date: May 11, 2021
 import socket, threading, time, serial
 import telnetlib
 
+from colorama import Fore, Style
+
 from headers.labjack_device import Labjack
 
 from uncertainties import ufloat
@@ -85,13 +87,13 @@ class ClientThread(threading.Thread):
                 if msg == b'': break
 
                 # Log command (for debug)
-                print(f'{self.client_name:20s} > {self.name:20s} | {msg}')
+                print(f'[{Fore.GREEN}RECV{Style.RESET_ALL}] {Style.DIM}{self.name:15s} < {self.client_name:15s}{Style.RESET_ALL} | {Fore.GREEN}{msg}{Style.RESET_ALL}')
 
                 # Acquire thread lock for safe atomic read
                 if msg == b'lock':
                     self.multiplexer.lock.acquire()
                     self.client_socket.send(b'locked')
-                    print(f'{self.name:20s} > {self.client_name:20s} | locked')
+                    print(f'[{Fore.RED}SEND{Style.RESET_ALL}] {Style.DIM}{self.name:15s} > {self.client_name:15s}{Style.RESET_ALL} | {Fore.BLUE}locked{Style.RESET_ALL}')
                     continue
 
                 # Discard thread lock. Sometimes yells about unlocking
@@ -101,7 +103,7 @@ class ClientThread(threading.Thread):
                         self.multiplexer.lock.release()
                     finally:
                         self.client_socket.send(b'unlocked')
-                        print(f'{self.name:20s} > {self.client_name:20s} | unlocked')
+                        print(f'[{Fore.RED}SEND{Style.RESET_ALL}] {Style.DIM}{self.name:15s} > {self.client_name:15s}{Style.RESET_ALL} | {Fore.BLUE}unlocked{Style.RESET_ALL}')
                         continue
 
                 # Pass on the request to the handler function,
@@ -114,7 +116,7 @@ class ClientThread(threading.Thread):
             self.client_socket.close()
             if self.multiplexer.lock.locked():
                 self.multiplexer.lock.release()
-            print(f'{self.name} | client {self.client_name} dropped')
+            print(f'[{Fore.BLUE}INFO{Style.RESET_ALL}] {self.name} | client {self.client_name} dropped')
 
 
 ##### Connection Handlers #####
@@ -128,7 +130,7 @@ def telnet_handler(client_thread, msg):
         if response in [b'', b'\r\n']:
             response = b'read failed'
 
-        print(f'{client_thread.name:20s} > {client_thread.client_name:20s} | {response}')
+        print(f'[{Fore.RED}SEND{Style.RESET_ALL}] {Style.DIM}{client_thread.name:15s} > {client_thread.client_name:15s}{Style.RESET_ALL} | {Fore.RED}{response}{Style.RESET_ALL}')
         client_socket.send(response)
     else:
         # Just pass on the packet.
@@ -144,7 +146,7 @@ def serial_handler(client_thread, msg):
         if response in [b'', b'\r\n']:
             response = b'read failed'
 
-        print(f'{client_thread.name:20s} > {client_thread.client_name:20s} | {response}')
+        print(f'[{Fore.RED}SEND{Style.RESET_ALL}] {Style.DIM}{client_thread.name:15s} > {client_thread.client_name:15s}{Style.RESET_ALL} | {Fore.RED}{response}{Style.RESET_ALL}')
         client_socket.send(response)
     else:
         # Just pass on the packet.
@@ -185,10 +187,10 @@ def labjack_handler(client_thread, msg):
 if __name__ == '__main__':
     TC1 = telnetlib.Telnet('192.168.0.104', port=23, timeout=2)
     TC2 = telnetlib.Telnet('192.168.0.107', port=23, timeout=2)
-    labjack = Labjack('470017292')
+    mfc = Labjack('470017292')
     turbo = serial.Serial('/dev/ttyUSB3', 9600, timeout=0.5)
 
     Multiplexer(31415, TC1, telnet_handler).start()
     Multiplexer(31416, TC2, telnet_handler).start()
-    Multiplexer(31417, labjack, labjack_handler).start()
+    Multiplexer(31417, mfc, labjack_handler).start()
     Multiplexer(31418, turbo, serial_handler).start()

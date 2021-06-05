@@ -1,6 +1,8 @@
 from typing import Optional, Literal, Union
 import serial, time, telnetlib, itertools, os, socket, select, traceback
+
 import asyncio
+from colorama import Fore, Style
 
 
 ModeString = Union[Literal['serial'], Literal['ethernet'], Literal['direct'], Literal['multiplexed']]
@@ -79,12 +81,12 @@ class USBTMCDevice:
                 self._conn.connect(('127.0.0.1', resource_path))
                 self._conn.settimeout(2)
             except:
-                print('Please start the multiplexer server!')
+                print(f'{Fore.RED}Please start the multiplexer server!{Style.RESET_ALL}')
                 self._conn = None
 
         time.sleep(0.1)
         self._name = name or self.query('*IDN?')
-        print(f'Connected to {self.name}')
+        print(f'  [{Fore.BLUE}INFO{Style.RESET_ALL}] Connected to {self.name}')
 
 
     @property
@@ -104,6 +106,10 @@ class USBTMCDevice:
         """Default implementation. Override in subclasses."""
         return self.name
 
+    @property
+    def short_name(self) -> str:
+        return self.name[:20] if self.name is not None else 'unknown'
+
 
     ##### Utility Functions #####
     def _clear_output(self) -> None:
@@ -115,7 +121,7 @@ class USBTMCDevice:
 
     def send_command(self, command: str, raw: bool = False) -> None:
         """Send a command to the device."""
-        if DEBUG: print(' >', command)
+        if DEBUG: print(f'  [{Fore.RED}SEND{Style.RESET_ALL}] {Style.DIM}{self.short_name:20s} <{Style.RESET_ALL} {Fore.RED}{command}{Style.RESET_ALL}')
         if DRY_RUN: return
 
         if not raw:
@@ -195,17 +201,18 @@ class USBTMCDevice:
                 response = self._conn.recv(1024)
                 if response != b'read failed': break
                 time.sleep(5e-2)
-                print('read failed, trying again')
+                print(f'  [{Fore.BLUE}INFO{Style.RESET_ALL}] Read failed, trying again.')
             else:
                 raise ValueError('Read failed too many times.')
-
-#            if DEBUG: print(' <', response)
 
             # Release lock
             time.sleep(1e-3)
             self._conn.send(b'unlock\n')
             time.sleep(2e-3)
             assert self._conn.recv(32) == b'unlocked'
+
+
+        if DEBUG: print(f'  [{Fore.GREEN}RECV{Style.RESET_ALL}] {Style.DIM}{self.short_name:20s} >{Style.RESET_ALL} {Fore.GREEN}{response[:50]}{Style.RESET_ALL}')
 
         # Decode the response to a Python string if raw == False.
         return response if raw else response.decode('utf-8').strip()
@@ -236,7 +243,7 @@ class USBTMCDevice:
         assert await reader.read(32) == b'locked'
 
         # Send command and wait for device response
-        if DEBUG: print(' >', command)
+        if DEBUG: print(f'  [{Fore.RED}SEND{Style.RESET_ALL}] {Style.DIM}{self.short_name:20s} <{Style.RESET_ALL} {Fore.RED}{command}{Style.RESET_ALL}')
         if not raw_command:
             command = (command + '\n').encode('utf-8')
         writer.write(command)
@@ -252,11 +259,11 @@ class USBTMCDevice:
             response = await reader.read(1024)
             if response != b'read failed': break
             await asyncio.sleep(5e-2)
-            print('read failed, trying again')
+            print(f'  [{Fore.BLUE}INFO{Style.RESET_ALL}] Read failed, trying again.')
         else:
             raise ValueError('Read failed too many times.')
 
-#        if DEBUG: print(' <', response)
+        if DEBUG: print(f'  [{Fore.GREEN}RECV{Style.RESET_ALL}] {Style.DIM}{self.short_name:20s} >{Style.RESET_ALL} {Fore.GREEN}{response[:50]}{Style.RESET_ALL}')
 
         # Release lock
         await asyncio.sleep(1e-3)

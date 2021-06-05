@@ -6,7 +6,7 @@ from uncertainties import ufloat
 
 class FRG730:
     def __init__(self, address = '/dev/agilent_pressure_gauge'):
-        self._gauge = serial.Serial(address,baudrate=9600,stopbits=1,parity='N',timeout=0.2)
+        self._gauge = serial.Serial(address,baudrate=9600,stopbits=1,parity='N',timeout=0.1)
         self._last_reading = (None, None)
 
     def read(self, Nbyte):
@@ -20,7 +20,6 @@ class FRG730:
 
     @property
     def pressure(self):
-        print(self._gauge.in_waiting)
         try:
             data = self.read(2048)
         except:

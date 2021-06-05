@@ -17,7 +17,6 @@ def get_freq():
     return data['freq']['baf']
 
 
-
 root = tk.Tk()
 root.title("Power Meter")
 

@@ -23,7 +23,7 @@ HOUR = 60 * MINUTE
 
 ##### PARAMETERS #####
 # duration to plot.
-duration = 10 * MINUTE #2 * HOUR
+duration = 2 * HOUR
 
 # skip every x points.
 skip_points = 1
