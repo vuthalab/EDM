@@ -1,19 +1,24 @@
 import random
 from pathlib import Path
 
-import numpy as np 
 import time
+import math
 from telnetlib import Telnet
+
+import numpy as np 
 
 SONG_DIR = Path('headers/songs/')
 songs = [song.stem for song in SONG_DIR.glob('*.txt')]
-SECONDS_PER_SIXTEENTH = 0.1 # tempo
+SECONDS_PER_SIXTEENTH = 1/(1.4 * 8) # tempo, chosen to match pulsetube
 
 Velocity = int
 Position = int
 
 NOTES = {
     'C_': 523,
+    'C#_': 554,
+    'D_': 587,
+    'D#_': 622,
     'E_': 659,
     'F_': 698,
     'F#': 740,
@@ -645,15 +650,20 @@ class microcontroller:
 
         print(f'Playing {name}')
         song = SONG_DIR / f'{name}.txt'
+
+        # Absolute time for accuracy
+        start = time.monotonic()
+        beats = 0
         with song.open('r') as f:
-            transpose = float(next(f)) * 0.25
+            transpose = float(next(f)) * 0.9
 
             for i, entry in enumerate(f):
                 entry = entry.strip()
                 if not entry or entry.startswith('#'): continue
 
                 note, duration = entry.split()
-                duration = float(duration) * SECONDS_PER_SIXTEENTH
+                duration = float(duration)
+                beats += duration
 
                 # Alternate x and y motors, moving towards (0, 0)
                 motor = i % 2
@@ -661,7 +671,7 @@ class microcontroller:
 
                 if note != 'X':
                     freq = round(NOTES[note] * transpose)
-                    steps = round(0.5 * duration * freq)
+                    steps = round(0.7 * duration * SECONDS_PER_SIXTEENTH * freq)
 
                     pos[motor] += steps * sign
                     self.move_with_speed(motor + 1, pos[motor], freq)
@@ -670,10 +680,20 @@ class microcontroller:
                 if i % 8 == 0:
                     print('Current position:', self.get_xy_position())
 
-                time.sleep(duration)
+                end = start + beats * SECONDS_PER_SIXTEENTH
+                time.sleep(max(0, end - time.monotonic()))
+
+            # End on integer measure
+            song_end = 16 * math.ceil(beats/16)
+            end = start + song_end * SECONDS_PER_SIXTEENTH
+            time.sleep(max(0, end - time.monotonic()))
 
 
     def music_scan(self):
         while True:
-            song = random.choice(songs)
-            self.play_song(song)
+            random.shuffle(songs)
+            for song in songs:
+                self.play_song(song)
+
+                # Sleep for one measure
+                time.sleep(SECONDS_PER_SIXTEENTH * 16)

@@ -108,12 +108,13 @@ def plot(
     if clear: plt.cla()
 
     if continuous:
-        plt.plot(
+        ax.plot(
             nom(x), nom(y),
             zorder=10,
             color=color,
+            label=label,
         )
-        plt.fill_between(
+        ax.fill_between(
             nom(x),
             nom(y) - 2 * std(y),
             nom(y) + 2 * std(y),
@@ -122,7 +123,7 @@ def plot(
             color=color,
         )
     else:
-        plt.errorbar(
+        ax.errorbar(
             nom(x), nom(y),
             xerr=std(x), yerr=std(y),
             capsize=2, fmt='.',
@@ -174,10 +175,14 @@ def display(value: ufloat,
         table: bool = False) -> str:
     """Return formatted string for given value with uncertainty."""
 
-    power = int(np.floor(np.log10(abs(value.n))))
-    scientific = power > 3 or power < -2
-    if scientific:
-        value = value / pow(10, power)
+    if value.n != 0:
+        power = int(np.floor(np.log10(abs(value.n))))
+        scientific = power > 3 or power < -2
+        if scientific:
+            value = value / pow(10, power)
+    else:
+        power = 3
+        scientific = False
 
     if digits is None:
         digits = max(int(-np.floor(np.log10(value.s / 1.9))), 0) if value.s > 0 else 3
@@ -210,9 +215,15 @@ def unicode_superscript(value: int):
 
 
 ##### Processing #####
-def unweighted_mean(arr):
-    arr = nom(np.array(arr))
-    return ufloat(np.mean(arr), np.std(arr)/np.sqrt(len(arr)))
+def unweighted_mean(arr, samples_per_point: int = 1):
+    arr = np.array(arr)
+    mean = nom(arr)
+    se = std(arr)
+    N = len(arr)
+
+    total_var = np.mean(np.square(se)) + np.square(np.std(mean)) / samples_per_point
+    return ufloat(np.mean(mean), np.sqrt(total_var/N))
+
 
 def weighted_mean(arr):
     arr = np.array(arr)

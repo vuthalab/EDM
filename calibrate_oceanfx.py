@@ -26,7 +26,7 @@ def calibrate(name):
     plt.show()
 
     print('Saving...')
-    np.savetxt(f'spectra/{name}.txt', [nom(spectrum), std(spectrum)])
+    np.savetxt(f'calibration/{name}.txt', [nom(spectrum), std(spectrum)])
 
 
 input('Turn on broadband, then press Enter.')

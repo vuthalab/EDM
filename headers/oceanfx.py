@@ -11,6 +11,8 @@ import socket
 import numpy as np
 from scipy.optimize import curve_fit
 
+from colorama import Fore, Style
+
 from uncertainties import ufloat
 from uncertainties.unumpy import uarray, nominal_values, std_devs
 
@@ -27,9 +29,11 @@ SPECTRUM_LENGTH = 2136
 
 
 # Load previously recorded background and baseline
-background = uarray(*np.loadtxt('spectra/background.txt'))
-baseline = uarray(*np.loadtxt('spectra/baseline.txt'))
+background = uarray(*np.loadtxt('calibration/background.txt'))
+baseline = uarray(*np.loadtxt('calibration/baseline.txt'))
 baseline -= background
+
+OCEANFX_WAVELENGTHS = np.loadtxt('calibration/wavelengths.txt')
 
 
 # Utilities for fitting surface roughness
@@ -62,23 +66,22 @@ class OceanFX:
         try:
             self.sock.connect((ip_addr, port))
         except:
-            print('[WARNING] OceanFX failed to connect!')
+            print(f'  [{Fore.YELLOW}WARN{Style.RESET_ALL}] OceanFX failed to connect!')
             self.sock = None
 
-        self.cache = None
+        self._cache = None
     
     def close(self):
         if self.sock is not None:
             self.sock.close()
 
-    def capture(self):
+    def capture(self, n_samples = 128):
         if self.sock is None: return
 
-        N_AVERAGE = 128
-        spectrum = np.zeros((N_AVERAGE, SPECTRUM_LENGTH), dtype=float)
+        spectrum = np.zeros((n_samples, SPECTRUM_LENGTH), dtype=float)
 
-        # Average 128 spectra
-        for i in range(N_AVERAGE):
+        # Average some spectra
+        for i in range(n_samples):
             # Send the same 64 data bytes from packet capture
             self.sock.send(PROBE_PACKET)
 
@@ -91,21 +94,24 @@ class OceanFX:
             sample = np.frombuffer(data, dtype=np.uint16)[54:2190]
             spectrum[i] = sample
 
+            if i % 200 == 0 and i > 0:
+                print(f'{i}/{n_samples}')
+
         # Scale to [0, 100]
         spectrum *= 100/65536
 
         # Return mean + std
-        self.cache = uarray(spectrum.mean(axis=0), spectrum.std(axis=0))
+        self._cache = uarray(spectrum.mean(axis=0), spectrum.std(axis=0))
 
     @property
     def wavelengths(self):
-        # Hard-coded, but proabably good enough for now.
-        return np.linspace(318.408, 1015.653, SPECTRUM_LENGTH)
+        # Taken from an OceanFX save file
+        return OCEANFX_WAVELENGTHS
 
     @property
     def intensities(self):
-        if self.cache is None: self.capture()
-        return self.cache
+        if self._cache is None: self.capture()
+        return self._cache
 
     @property
     def transmission(self):
@@ -131,6 +137,10 @@ class OceanFX:
 
         wavelengths = self.wavelengths
         mask = (wavelengths > 450) & (wavelengths < 750)
+        hene_mask = (wavelengths < 650) & (wavelengths > 600)
+
+        # Filter out hene
+        mask = mask & ~hene_mask
 
         try:
             I0, roughness = fit_roughness(self.wavelengths[mask], self.transmission[mask])

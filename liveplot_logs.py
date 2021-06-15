@@ -1,10 +1,19 @@
+# Whether to save liveplot to file instead of showing it.
+# Should be False unless you know what you are doing.
+HEADLESS = False
+
+
 # live plot system log files
 from sh import tail
 import time, json, datetime, math
 from collections import defaultdict
 
+import subprocess
+
 import numpy as np
 
+import matplotlib
+if HEADLESS: matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.dates as mpdates
 from matplotlib import rcParams
@@ -23,13 +32,16 @@ HOUR = 60 * MINUTE
 
 ##### PARAMETERS #####
 # duration to plot.
-duration = 2 * HOUR
+duration = 0.5 * HOUR
 
 # skip every x points.
-skip_points = 1
+skip_points = max(1, duration // (2 * HOUR))
 
 # how fast the publisher is
 publisher_rate = 1/2 # Hertz
+
+# how often to update plot.
+PLOT_INTERVAL = 60 if HEADLESS else 2
 
 # Map from plot labels (name, unit) to paths in data
 # Uncomment any fields you want to see.
@@ -40,19 +52,23 @@ fields = {
     ('buffer flow', 'sccm'): ('flows', 'cell'),
     ('neon flow', 'sccm'): ('flows', 'neon'),
 
-    ('reflection', 'V'): ('refl',),
+    ('reflection (from photodiode)', 'V'): ('refl', 'pd'),
+    ('reflection (from camera)', 'V'): ('refl', 'cam'),
 
     ('transmission (overall, from photodiode)', '%'): ('trans', 'pd'),
     ('transmission (overall, from spectrometer)', '%'): ('trans', 'spec'),
     ('transmission (non-roughness sources only)', '%'): ('trans', 'unexpl'),
 
-#    ('BaF Laser', 'GHz'): ('freq', 'baf'),
-    ('Ca Laser', 'GHz'): ('freq', 'calcium'),
+#    ('beam center x (from camera)', '% '): ('center', 'x'),
+#    ('beam center y (from camera)', '% '): ('center', 'y'),
+
+    ('BaF Laser', 'GHz'): ('freq', 'baf'),
+#    ('Ca Laser', 'GHz '): ('freq', 'calcium'),
 
     ('rms roughness (from spectrometer)', 'nm'): ('rough',),
 
     ('saph heat', 'W'): ('heaters', 'heat saph'),
-    ('collimator heat', 'W'): ('heaters', 'heat coll'),
+    ('nozzle heat', 'W'): ('heaters', 'heat coll'),
     ('45K heat', 'W'): ('heaters', 'srb45k out'),
     ('4K heat', 'W'): ('heaters', 'srb4k out'),
 
@@ -60,23 +76,35 @@ fields = {
     ('buffer cell', 'K'): ('temperatures', 'cell'),
     ('45K sorb', 'K'): ('temperatures', 'srb45k'),
     ('45K plate', 'K'): ('temperatures', '45k plate'),
+    ('nozzle', 'K'): ('temperatures', 'coll'),
 
     ('sapphire mount', 'K '): ('temperatures', 'saph'),
-    ('collimator', 'K '): ('temperatures', 'coll'),
     ('4K sorb', 'K '): ('temperatures', 'srb4k'),
     ('4K plate', 'K '): ('temperatures', '4k plate'),
+
+#    ('loop time', 's'): ('debug', 'loop'),
+#    ('uptime', 'hr'): ('debug', 'uptime'),
 }
 
 axis_labels = [
     'GHz',
+#    'GHz ',
+
     'torr',
     'sccm',
+
     'V',
     '%',
     'nm',
+
+#    '% ',
+
     'W',
     'K',
     'K ',
+
+#    's',
+#    'hr'
 ]
 
 
@@ -101,8 +129,11 @@ filepath = '/home/vuthalab/Desktop/edm_data/logs/system_logs/continuous.txt'
 ###### initial plot #####
 num_points = round(publisher_rate * duration / skip_points)
 print(f'Showing last {num_points * skip_points} points (skip every {skip_points}).')
-plt.ion()
-fig = plt.figure(figsize=(10,8))
+
+if not HEADLESS: plt.ion()
+
+figsize = (6, 16) if HEADLESS else (10, 8)
+fig = plt.figure(figsize=figsize)
 gs = fig.add_gridspec(
     len(axis_labels),
     hspace=0.1,
@@ -181,7 +212,7 @@ for i, line in enumerate(tail('-n', num_points * skip_points, '-f', filepath, _i
         data[-1] = processed_data
 
     if (
-        time.monotonic() - last < 1 # Avoid plot bottlenecking data read
+        time.monotonic() - last < PLOT_INTERVAL # Avoid plot bottlenecking data read
         and
         abs(i/skip_points - num_points) > 2 # Update a few times manually to get the initial plot
     ): continue
@@ -213,14 +244,24 @@ for i, line in enumerate(tail('-n', num_points * skip_points, '-f', filepath, _i
             axis.relim()
             axis.autoscale_view()
 
-        fig.canvas.draw()
-
         if 'running' in raw_data:
             running = raw_data['running']
             pt_status = 'Running' if running['pt'] else 'Off'
             turbo_status = 'Running' if running['turbo'] else 'Off'
-            fig.canvas.set_window_title(f'Pulse Tube {pt_status} | Turbo {turbo_status} | {time.asctime(time.localtime())}')
+            title = f'Pulse Tube {pt_status} · Turbo {turbo_status} · {time.asctime(time.localtime())}'
+
+            if HEADLESS:
+                axes[0].set_title(title, pad=20)
+            else:
+                fig.canvas.set_window_title(title)
+
+        fig.canvas.draw()
+
 
         last = time.monotonic()
 
         print(f'Plot took {last - start_time:.3f} s')
+
+        if HEADLESS:
+            plt.savefig(f'/tmp/log-{round(duration)}.png', dpi=150)
+            subprocess.run(f'scp /tmp/log-{round(duration)}.png nserc@159.89.127.56:~/server/', shell=True)

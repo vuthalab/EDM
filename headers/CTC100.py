@@ -33,6 +33,8 @@ class CTC100(USBTMCDevice):
         """Connect to the the CTC100."""
         #super().__init__(ip_address, tcp_port=23, mode='ethernet') # direct connection
         super().__init__(ip_address, mode='multiplexed') # multiplexed connection. here 'ip_address' is actually a local port number.
+        self._set_variable('system.com.verbose', 'Medium')
+        self._set_variable('system.display.Figures', 4)
 
         
     def _get_variable(self, var):
@@ -42,12 +44,12 @@ class CTC100(USBTMCDevice):
         simple bugs.
         """
         
-        var = var.replace(" ", "") # Remove spaces from the variable name. They're optional and can potentially cause problems
+        var = var.replace(' ', '') # Remove spaces from the variable name. They're optional and can potentially cause problems
         return self.query(f'{var}?')
 
         
     async def _async_get_variable(self, var):
-        var = var.replace(" ", "") # Remove spaces from the variable name. They're optional and can potentially cause problems
+        var = var.replace(' ', '')
         return await self.async_query(f'{var}?')
 
         
@@ -60,7 +62,10 @@ class CTC100(USBTMCDevice):
         
         var = var.replace(" ", "") # Remove spaces from the variable name. They're optional and can potentially cause problems
         val = "({})".format(val) # Wrap argument in parentheses, just in case. This prevents an argument containing a space from causing unexpected issues
-        return self.query(f"{var} = {val}")
+
+        # Replace with query if verbose mode is high
+        return self.send_command(f"{var} = {val}")
+
         
     def _increment_variable(self, var, val):
         """
@@ -86,6 +91,7 @@ class CTC100(USBTMCDevice):
         
         response = self._set_variable(f"{channel}.alarm.mode", "Level") # Turns alarm on
         return response
+
         
     def disableAlarm(self, channel):
         if not isinstance(channel, str): #Sets string for channel
@@ -111,6 +117,7 @@ class CTC100(USBTMCDevice):
         # Extract the response using a regex in case verbose mode is on
         match = re.search(r"[-+]?\d*\.\d+", response)
         return float(match.group()) if match is not None else None
+
 
     async def async_read(self, channel):
         if not isinstance(channel, str): #Sets string for channel

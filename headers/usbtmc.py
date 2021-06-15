@@ -76,9 +76,9 @@ class USBTMCDevice:
             self._address = ('127.0.0.1', resource_path)
 
             try:
-                print(f'Connecting to multiplexer server on port {resource_path}...')
+                print(f'  [{Fore.BLUE}INFO{Style.RESET_ALL}] {Style.DIM}Connecting to multiplexer server on port {Style.RESET_ALL}{Style.BRIGHT}{resource_path}{Style.RESET_ALL}')
                 self._conn = socket.socket()
-                self._conn.connect(('127.0.0.1', resource_path))
+                self._conn.connect(self._address)
                 self._conn.settimeout(2)
             except:
                 print(f'{Fore.RED}Please start the multiplexer server!{Style.RESET_ALL}')
@@ -86,7 +86,7 @@ class USBTMCDevice:
 
         time.sleep(0.1)
         self._name = name or self.query('*IDN?')
-        print(f'  [{Fore.BLUE}INFO{Style.RESET_ALL}] Connected to {self.name}')
+        print(f'  [{Fore.BLUE}INFO{Style.RESET_ALL}] {Style.DIM}Connected to {Style.RESET_ALL}{Style.BRIGHT}{self.name}{Style.RESET_ALL}')
 
 
     @property
@@ -98,7 +98,13 @@ class USBTMCDevice:
         Closes the connection.
         Subclasses may override this to add additional cleanup behavior.
         """
-        if self._mode == 'multiplexed': self._conn.send(b'unlock')
+        if self._mode == 'multiplexed':
+            self._conn.send(b'unlock')
+
+            if self._async_conn is not None:
+                reader, writer = self._async_conn
+                writer.close()
+
         self._conn.close()
 
 
@@ -119,7 +125,7 @@ class USBTMCDevice:
             print('Extra Output:', self._conn.readline())
 
 
-    def send_command(self, command: str, raw: bool = False) -> None:
+    def send_command(self, command: str, raw: bool = False, delay: float = 0.2) -> None:
         """Send a command to the device."""
         if DEBUG: print(f'  [{Fore.RED}SEND{Style.RESET_ALL}] {Style.DIM}{self.short_name:20s} <{Style.RESET_ALL} {Fore.RED}{command}{Style.RESET_ALL}')
         if DRY_RUN: return
@@ -129,12 +135,19 @@ class USBTMCDevice:
 
         if self._mode == 'multiplexed':
             self._conn.send(command)
+
+            # unless you read after, a 0.2 s
+            # delay is necessary because of
+            # TCP packet scheduling voodoo magic
+            time.sleep(delay)
             return
 
         self._clear_output()
         self._conn.write(command)
 
-        if self._mode in ['serial', 'direct']: self._conn.flush()
+        if self._mode in ['serial', 'direct']:
+            self._conn.flush()
+            time.sleep(delay)
 
 
     def query(
@@ -158,12 +171,11 @@ class USBTMCDevice:
             Increase the delay for commands that return large amounts of data.
         """
         if DRY_RUN:
-            self.send_command(command, raw=raw_command)
+            self.send_command(command, raw=raw_command, delay=0)
             return None
 
         if self._mode != 'multiplexed':
-            self.send_command(command, raw=raw_command)
-            time.sleep(delay)
+            self.send_command(command, raw=raw_command, delay=delay)
 
         if self._mode == 'ethernet':
             for tries in itertools.count(1):
@@ -192,8 +204,7 @@ class USBTMCDevice:
             assert self._conn.recv(32) == b'locked'
 
             # Send command and wait for device response
-            self.send_command(command, raw=raw_command)
-            time.sleep(delay)
+            self.send_command(command, raw=raw_command, delay=delay)
 
             # Read response
             for i in range(20):
@@ -201,7 +212,7 @@ class USBTMCDevice:
                 response = self._conn.recv(1024)
                 if response != b'read failed': break
                 time.sleep(5e-2)
-                print(f'  [{Fore.BLUE}INFO{Style.RESET_ALL}] Read failed, trying again.')
+                print(f'  [{Fore.BLUE}INFO{Style.RESET_ALL}] {Style.DIM}{self.short_name:20s} :{Style.RESET_ALL} {Fore.BLUE}Read failed, trying again.{Style.RESET_ALL}')
             else:
                 raise ValueError('Read failed too many times.')
 
@@ -259,7 +270,7 @@ class USBTMCDevice:
             response = await reader.read(1024)
             if response != b'read failed': break
             await asyncio.sleep(5e-2)
-            print(f'  [{Fore.BLUE}INFO{Style.RESET_ALL}] Read failed, trying again.')
+            print(f'  [{Fore.BLUE}INFO{Style.RESET_ALL}] {Style.DIM}{self.short_name:20s} :{Style.RESET_ALL} {Fore.BLUE}Read failed, trying again.{Style.RESET_ALL}')
         else:
             raise ValueError('Read failed too many times.')
 
@@ -270,7 +281,11 @@ class USBTMCDevice:
         writer.write(b'unlock\n')
         await writer.drain()
         await asyncio.sleep(2e-3)
-        assert await reader.read(32) == b'unlocked'
+        ack = await asyncio.wait_for(
+            reader.read(32),
+            timeout=5
+        )
+        assert ack == b'unlocked'
 
         # Decode the response to a Python string if raw == False.
         return response if raw else response.decode('utf-8').strip()

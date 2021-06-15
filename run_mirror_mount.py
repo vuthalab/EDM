@@ -9,6 +9,7 @@ mc = microcontroller()
 #print(mc.get_xy_position())
 #time.sleep(2)
 
-#mc.music_scan()
+input('Press enter once on pulse tube beat')
+mc.music_scan()
 
-mc.play_song('ice_ice_baby')
+#mc.play_song('prelude_c_minor')

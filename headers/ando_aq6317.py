@@ -5,8 +5,9 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 
-from headers.gpib_device import GPIBDevice
+from uncertainties.unumpy import uarray
 
+from headers.gpib_device import GPIBDevice
 
 Array = List[float]
 
@@ -64,7 +65,7 @@ class AndoAQ6317(GPIBDevice):
         """Sets the currently active trace."""
         assert trace.upper() in ['A', 'B', 'C']
         trace_num = 'ABC'.index(trace.upper())
-        self.send_command(f'ACTV{trace_num}')
+        self.send_command(f'ACTV{trace_num}', delay=2)
 
 
     @property
@@ -80,7 +81,7 @@ class AndoAQ6317(GPIBDevice):
             'repeat': 'RPT',
             'auto': 'AUTO',
         }[mode.lower()]
-        self.send_command(command)
+        self.send_command(command, delay=5)
 
 
     @property
@@ -106,12 +107,12 @@ class AndoAQ6317(GPIBDevice):
     @lower_frequency.setter
     def lower_frequency(self, frequency: float) -> None:
         assert 1 <= frequency <= 499.5
-        self.send_command(f'STAF{frequency:07.3f}')
+        self.send_command(f'STAF{frequency:07.3f}', delay=2)
 
     @upper_frequency.setter
     def upper_frequency(self, frequency: float) -> None:
         assert 171.5 <= frequency <= 674.5
-        self.send_command(f'STPF{frequency:07.3f}')
+        self.send_command(f'STPF{frequency:07.3f}', delay=2)
 
 
     @property
@@ -149,7 +150,7 @@ class AndoAQ6317(GPIBDevice):
     def scale(self, scale: str) -> None:
         assert scale.lower() in ['log', 'linear']
         unit_num = ['log', 'linear'].index(scale.lower())
-        self.send_command(f'PMUNT{unit_num}')
+        self.send_command(f'PMUNT{unit_num}', delay=2)
 
 
     @property
@@ -174,7 +175,7 @@ class AndoAQ6317(GPIBDevice):
                     f'{f/200:.2f}' for f in valid_ghz
                 )
             )
-        self.send_command(f'RESLNF{ghz:03d}')
+        self.send_command(f'RESLNF{ghz:03d}', delay=2)
 
 
     ##### Convenience Functions #####
@@ -184,7 +185,7 @@ class AndoAQ6317(GPIBDevice):
         ax.set_xlabel('Wavelength (nm)')
         ax.set_ylabel(f'Power ({self.unit})')
         ax.set_title(f'Trace {self.active_trace}')
-        return fig.canvas, ax.plot(*self.spectrum)[0]
+        return fig.canvas, ax, ax.plot(*self.spectrum)[0]
 
     def quick_plot(self):
         """Shows a plot of the currently active trace."""
@@ -194,10 +195,16 @@ class AndoAQ6317(GPIBDevice):
     def live_plot(self):
         """Shows a live plot of the current trace."""
         plt.ion()
-        canvas, line = self._create_plot()
+        canvas, ax, line = self._create_plot()
+        average = ax.plot(*self.spectrum)[0]
+
+        buff = []
         try:
             while True:
-                line.set_ydata(self.levels)
+                buff.append(self.levels)
+                line.set_ydata(buff[-1])
+                average.set_ydata(np.mean(buff, axis=0))
+
                 canvas.draw()
                 canvas.flush_events()
                 time.sleep(0.5)
@@ -208,3 +215,15 @@ class AndoAQ6317(GPIBDevice):
     def spectrum(self) -> Tuple[Array, Array]:
         """Retrieves data for the currently active trace from the OSA."""
         return self.wavelengths, self.levels
+
+    def average_spectra(self, n=32, delay=0.5):
+        samples = []
+        for i in range(n):
+            print(f'{i+1}/{n}')
+            samples.append(self.levels)
+            time.sleep(delay)
+
+        mean = np.mean(samples, axis=0)
+        stdev = np.std(samples, axis=0)
+        average = uarray(mean, stdev)
+        return self.wavelengths, average

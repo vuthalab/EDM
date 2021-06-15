@@ -2,6 +2,8 @@ import time
 from pathlib import Path
 import itertools
 
+from colorama import Fore, Style
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -16,7 +18,8 @@ N_AVERAGE = 16 # How many traces to average over
 ENABLE_LOGGING = True
 
 if not ENABLE_LOGGING:
-    print('WARNING LOGGING IS OFF!')
+    print(f'{Fore.RED}WARNING: LOGGING IS OFF!{Style.RESET_ALL}')
+    time.sleep(5)
 
 ##### Main Program #####
 # Initialize connection
@@ -106,8 +109,8 @@ with RigolDS1102e() as scope:
                     fig.canvas.flush_events()
 
                 if ENABLE_LOGGING:
-                    print(time.monotonic(), ' '.join(f'{x:.5f}' for x in acq1), file=f)
-                    print(time.monotonic(), ' '.join(f'{x:.5f}' for x in acq2), file=f)
+                    print(time.time(), ' '.join(f'{x:.5f}' for x in acq1), file=f)
+                    print(time.time(), ' '.join(f'{x:.5f}' for x in acq2), file=f)
 
     except KeyboardInterrupt:
         plt.ioff()
