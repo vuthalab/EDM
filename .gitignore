@@ -4,3 +4,4 @@ temp.py
 **/*.swp
 *.txt
 .mailgun.key
+*.insyncdl
