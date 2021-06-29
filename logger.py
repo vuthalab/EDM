@@ -58,28 +58,31 @@ last_neon = None
 def update_neon_remaining(data):
     global last_neon
 
-    buffer_flow = data['flows']['cell'][0] - 0.02
-    neon_flow = (data['flows']['neon'][0] - 0.005) * 2.0 # empirical calibration factor
-    curr = np.array([time.time(), buffer_flow, neon_flow])
+    # Subtract offset and scale by calibration factors
+    buffer_flow = (data['flows']['cell'][0] - 0.02) * 1.46/1.39
+    neon_flow = (data['flows']['neon'][0] - 0.005) * 1.46
+
+    # Prevent drift
+    if buffer_flow < 0.2: buffer_flow = 0
+    if neon_flow < 0.2: neon_flow = 0
+
+
+    curr = np.array([time.monotonic(), buffer_flow, neon_flow])
 
     if last_neon is not None:
         dt = (curr[0] - last_neon[0]) / 60 # minutes
 
         remaining, buffer_used, neon_used = np.loadtxt('calibration/neon.txt').T
         print(
-            f'{Style.BRIGHT}{remaining:.2f} L{Style.RESET_ALL} {Fore.GREEN}neon remaining',
-            f'{Style.BRIGHT}{buffer_used:.2f} L{Style.RESET_ALL} {Fore.YELLOW}buffer gas used',
-            f'{Style.BRIGHT}{neon_used:.2f} L{Style.RESET_ALL} {Fore.YELLOW}neon line used',
+            f'{Style.BRIGHT}{remaining:.3f} L{Style.RESET_ALL} {Fore.GREEN}neon remaining',
+            f'{Style.BRIGHT}{buffer_used:.3f} L{Style.RESET_ALL} {Fore.YELLOW}buffer gas used',
+            f'{Style.BRIGHT}{neon_used:.3f} L{Style.RESET_ALL} {Fore.YELLOW}neon line used',
             sep = f' {Style.RESET_ALL}{Style.DIM}|{Style.RESET_ALL} '
         )
 
 
         # Update usage
-        increment = 0.5 * (last_neon[1:] + curr[1:]) * 1e-3
-
-        # Prevent drift
-        if increment[0] < 0.2: increment[0] = 0
-        if increment[1] < 0.2: increment[1] = 0
+        increment = 0.5 * (last_neon[1:] + curr[1:]) * 1e-3 * dt
 
         buffer_used += increment[0]
         neon_used += increment[1]

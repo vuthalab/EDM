@@ -219,9 +219,10 @@ class AndoAQ6317(GPIBDevice):
     def average_spectra(self, n=32, delay=0.5):
         samples = []
         for i in range(n):
-            print(f'{i+1}/{n}')
-            samples.append(self.levels)
+            print(f'Capturing sample {i+1}/{n}...')
             time.sleep(delay)
+            print('Done.')
+            samples.append(self.levels)
 
         mean = np.mean(samples, axis=0)
         stdev = np.std(samples, axis=0)

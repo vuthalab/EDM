@@ -5,3 +5,4 @@ temp.py
 *.txt
 .mailgun.key
 *.insyncdl
+models/model.h5

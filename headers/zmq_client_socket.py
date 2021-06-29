@@ -49,11 +49,8 @@ class zmq_client_socket:
         try:
             received_data = self.socket.recv(flags=zmq.NOBLOCK)
             self.received_first_data = True
-            print(received_data)
+            return received_data
         except zmq.ZMQError:
-            if self.received_first_data is False:
-                return
-            print("Data Grab failed, no information was retrieved.")
             return
 
     def _decode(self, packet):

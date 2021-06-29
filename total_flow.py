@@ -14,10 +14,10 @@ from uncertainties import ufloat
 from headers.util import display, uarray, nom, std
 
 
-# empirical calibration factors
+# mfc correction factors
 CALIBRATION_FACTORS = {
-    'buffer': 1,
-    'neon': 2,
+    'buffer': 1.46/1.39, # Ne/Ar
+    'neon': 1.46/1.00, # Ne/N2
 }
 
 

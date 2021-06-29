@@ -10,19 +10,20 @@ from headers.util import nom, std, plot
 
 
 # Name of file to save spectrum to
-SAVE_NAME = 'osa-crystal-only'
+SAVE_NAME = 'osa-baseline'
 
 
 serial_port = '/dev/ttyUSB2' # TODO remap the serial port to something human-readable
 gpib_address = 1 # Configurable on the OSA
+
 
 # Initialize connection
 with AndoAQ6317(serial_port, gpib_address) as osa:
     ###### Configure capture settings #####
 #    osa.active_trace = 'c' # choose which trace to read
 
-    osa.resolution = 0.05 # set resolution (nm)
-    osa.range = (750, 900) # set range (nm)
+    osa.resolution = 0.1 # set resolution (nm)
+    osa.range = (780, 880) # set range (nm)
 
     #osa.center() # self-center
     #osa.scale = 'log'
@@ -44,10 +45,10 @@ with AndoAQ6317(serial_port, gpib_address) as osa:
     #osa.live_plot()
 
 
-    #Get some averaged spectra
+    # Get some averaged spectra
     for i in itertools.count():
         if True:
-            wavelengths, power = osa.average_spectra(n=16, delay=10)
+            wavelengths, power = osa.average_spectra(n=16, delay=40)
 
             data = np.array([wavelengths, nom(power), std(power)])
             np.savetxt(f'spectra/{SAVE_NAME}-{i:04d}.txt', data.T, header='wavelength (nm)\tpower (dB)\tpower uncertainty (dB)')

@@ -7,9 +7,22 @@ from telnetlib import Telnet
 
 import numpy as np 
 
+from headers.zmq_client_socket import zmq_client_socket
+
+from models.mirror_mount import MirrorModel
+
 SONG_DIR = Path('headers/songs/')
 songs = [song.stem for song in SONG_DIR.glob('*.txt')]
 SECONDS_PER_SIXTEENTH = 1/(1.4 * 8) # tempo, chosen to match pulsetube
+
+DIP_CHANNEL = 'ch1'
+
+
+connection_settings = {
+    'ip_addr': 'localhost',
+    'port': 5556,
+    'topic': 'scope',
+}
 
 Velocity = int
 Position = int
@@ -645,8 +658,29 @@ class microcontroller:
             print(self.get_position(2))
             time.sleep(0.3)
 
-    def play_song(self, name: str):
+
+    @property
+    def _dip_size(self):
+        samples = []
+        while True:
+            ret = self.client_socket.grab_data()
+            if ret is None: break
+
+            ts, data = self.client_socket._decode(ret)
+            samples.append(data['dip'][DIP_CHANNEL])
+
+        if len(samples) > 0:
+            return np.mean(samples)
+        else:
+            return None
+
+
+    def play_song(self, name: str, amplitude=1):
         pos = np.array(self.get_xy_position(), dtype=int)
+        last = (
+            np.array(pos, dtype=int),
+            self._dip_size
+        )
 
         print(f'Playing {name}')
         song = SONG_DIR / f'{name}.txt'
@@ -655,7 +689,7 @@ class microcontroller:
         start = time.monotonic()
         beats = 0
         with song.open('r') as f:
-            transpose = float(next(f)) * 0.9
+            transpose = float(next(f)) * 0.7
 
             for i, entry in enumerate(f):
                 entry = entry.strip()
@@ -665,20 +699,41 @@ class microcontroller:
                 duration = float(duration)
                 beats += duration
 
-                # Alternate x and y motors, moving towards (0, 0)
-                motor = i % 2
-                sign = -1 if pos[motor] > 0 else 1
+                # Alternate motors and directions
+#                motor = i % 2
+#                sign = 1 if (i//2) % 2 == 0 else -1
+
+                # Go in direction of maximum gradient
+                gradient = self.model.gradient
+                motor = 1
+                sign = 1 if gradient[motor] > 0 else -1
 
                 if note != 'X':
-                    freq = round(NOTES[note] * transpose)
-                    steps = round(0.7 * duration * SECONDS_PER_SIXTEENTH * freq)
+                    freq = round(NOTES[note] * transpose) * amplitude 
+                    steps = round(0.4 * duration * SECONDS_PER_SIXTEENTH * freq)
 
                     pos[motor] += steps * sign
                     self.move_with_speed(motor + 1, pos[motor], freq)
 
                 # Log position
-                if i % 8 == 0:
-                    print('Current position:', self.get_xy_position())
+                if np.hypot(*(pos - last[0])) > 500:
+                    real_pos = np.array(self.get_xy_position(), dtype=int)
+                    curr_dip = self._dip_size
+
+                    if curr_dip is not None:
+                        delta_pos = real_pos - last[0]
+                        delta_dip = curr_dip - last[1]
+                        self.model.update(*delta_pos, delta_dip)
+
+                        print(
+                            'Position:', real_pos,
+                            '|',
+                            'Dip Size', curr_dip,
+                            '|',
+                            'Gradient:', self.model.gradient
+                        )
+                        print(delta_pos, delta_dip)
+                        last = (np.array(real_pos, dtype=int), curr_dip)
 
                 end = start + beats * SECONDS_PER_SIXTEENTH
                 time.sleep(max(0, end - time.monotonic()))
@@ -689,11 +744,17 @@ class microcontroller:
             time.sleep(max(0, end - time.monotonic()))
 
 
-    def music_scan(self):
+    def music_scan(self, amplitude=1):
+        self.client_socket = zmq_client_socket(connection_settings)
+        self.client_socket.make_connection()
+        self.model = MirrorModel()
+
+        input('Press enter once on pulse tube beat')
+
         while True:
             random.shuffle(songs)
             for song in songs:
-                self.play_song(song)
+                self.play_song(song, amplitude=amplitude)
 
                 # Sleep for one measure
                 time.sleep(SECONDS_PER_SIXTEENTH * 16)

@@ -16,16 +16,22 @@ monitor_socket = zmq_client_socket(connection_settings)
 monitor_socket.make_connection()
 
 
+def from_png(buff, color=False):
+    png = np.frombuffer(buff, dtype=np.uint8)
+    return cv2.imdecode(png, int(color))
+
+
 start = time.monotonic()
 
 while True:
-    _, png = monitor_socket.blocking_read()
-    png = np.frombuffer(png, dtype=np.uint8)
-    frame = cv2.imdecode(png, cv2.IMREAD_GRAYSCALE)
+    _, data = monitor_socket.blocking_read()
+    frame = from_png(data['raw'])
+    pattern = from_png(data['fringe-annotated'], color=True)
 
-    frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
+    frame = cv2.resize(frame, (720, 540))
 
     cv2.imshow('Camera', frame)
+    cv2.imshow('Fringe Pattern', pattern)
     print(time.monotonic() - start)
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break

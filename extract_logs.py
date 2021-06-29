@@ -12,47 +12,59 @@ from colorama import Style, Fore
 # Date format must be YYYY-MM-DD
 # Time format must be HH:MM:SS (24-hour format)
 # End time can be in the future to get all data after a certain point
-START_TIME = ('2021-05-11', '00:00:00')
-END_TIME = ('2021-06-12', '10:00:00')
+START_TIME = ('2021-06-28', '15:10:00')
+END_TIME = ('2021-06-28', '23:00:00')
 
 # Map from plot labels (name, unit) to paths in data
 # Choose which fields you want to extract here
 fields = {
-#   ('pressure', 'torr'): ('pressure',),
+#    ('pressure', 'torr'): ('pressure',),
 
-   ('buffer flow', 'sccm'): ('flows', 'cell'),
-   ('neon flow', 'sccm'): ('flows', 'neon'),
+    ('buffer flow', 'sccm'): ('flows', 'cell'),
+    ('neon flow', 'sccm'): ('flows', 'neon'),
 
-#   ('reflection (from photodiode)', 'V'): ('refl', 'pd'),
-#   ('reflection (from camera)', 'V'): ('refl', 'cam'),
+#    ('intensity (broadband)', 'V '): ('intensities', 'broadband'),
+#    ('intensity (LED)', 'V '): ('intensities', 'LED'),
 
-#   ('transmission (photodiode)', '%'): ('trans', 'pd'),
-#   ('transmission (spectrometer)', '%'): ('trans', 'spec'),
-#   ('transmission (non-roughness sources)', '%'): ('trans', 'unexpl'),
+#    ('reflection (from photodiode)', 'V'): ('refl', 'pd'),
+#    ('reflection (from camera, centroid)', 'V'): ('refl', 'cam'),
+#    ('reflection (from camera, neural network)', 'V'): ('refl', 'ai'),
 
-#   ('beam center x (from camera)', '% '): ('center', 'x'),
-#   ('beam center y (from camera)', '% '): ('center', 'y'),
-
-#   ('BaF Laser', 'GHz'): ('freq', 'baf'),
-#   ('Ca Laser', 'GHz'): ('freq', 'calcium'),
-
-#   ('rms roughness (spectrometer)', 'nm'): ('rough',),
+    ('fringe count', 'fringes'): ('fringe', 'count'),
+    ('fringe amplitude', '%  '): ('fringe', 'ampl'),
 
 
-#   ('saph heat', 'W'): ('heaters', 'heat saph'),
-#   ('nozzle heat', 'W'): ('heaters', 'heat coll'),
-#   ('45K heat', 'W'): ('heaters', 'srb45k out'),
-#   ('4K heat', 'W'): ('heaters', 'srb4k out'),
+#    ('transmission (photodiode)', '%'): ('trans', 'pd'),
+#    ('transmission (spectrometer)', '%'): ('trans', 'spec'),
+#    ('transmission (non-roughness sources)', '%'): ('trans', 'unexpl'),
 
-#   ('bottom hs', 'K'): ('temperatures', 'bott hs'),
-#   ('buffer cell', 'K'): ('temperatures', 'cell'),
-#   ('45K sorb', 'K'): ('temperatures', 'srb45k'),
-#   ('45K plate', 'K'): ('temperatures', '45k plate'),
+#    ('BaF Laser', 'GHz'): ('freq', 'baf'),
+#    ('Ca Laser', 'GHz'): ('freq', 'calcium'),
 
-#   ('sapphire mount', 'K'): ('temperatures', 'saph'),
-#   ('nozzle', 'K'): ('temperatures', 'coll'),
-#   ('4K sorb', 'K'): ('temperatures', 'srb4k'),
-#   ('4K plate', 'K'): ('temperatures', '4k plate'),
+    ('rms roughness (spectrometer)', 'nm'): ('rough',),
+
+#    ('saph heat', 'W'): ('heaters', 'heat saph'),
+#    ('nozzle heat', 'W'): ('heaters', 'heat coll'),
+#    ('45K heat', 'W'): ('heaters', 'srb45k out'),
+#    ('4K heat', 'W'): ('heaters', 'srb4k out'),
+
+#    ('bottom hs', 'K'): ('temperatures', 'bott hs'),
+#    ('buffer cell', 'K'): ('temperatures', 'cell'),
+#    ('45K sorb', 'K'): ('temperatures', 'srb45k'),
+#    ('45K plate', 'K'): ('temperatures', '45k plate'),
+
+    ('sapphire mount', 'K'): ('temperatures', 'saph'),
+    ('nozzle', 'K'): ('temperatures', 'coll'),
+#    ('4K sorb', 'K'): ('temperatures', 'srb4k'),
+#    ('4K plate', 'K'): ('temperatures', '4k plate'),
+
+#    ('beam center x (from camera)', '% '): ('center', 'x'),
+#    ('beam center y (from camera)', '% '): ('center', 'y'),
+#    ('image entropy', 'bytes'): ('center', 'entropy'),
+
+#    ('loop time', 's'): ('debug', 'loop'),
+#    ('uptime', 'hr'): ('debug', 'uptime'),
+#    ('memory usage', 'KB'): ('debug', 'memory'),
 }
 
 
@@ -64,10 +76,9 @@ log_dir = Path('~/Desktop/edm_data/logs/system_logs').expanduser()
 processed_data = []
 for path in sorted(log_dir.glob('*.txt')):
     if START_TIME[0] > path.stem or END_TIME[0] < path.stem: continue
-    print(f'\r[{path.stem}] {Style.BRIGHT}{len(processed_data):10d}{Style.RESET_ALL} {Fore.YELLOW}entries processed{Style.RESET_ALL}', end='')
 
     with path.open('r') as f:
-        for line in f:
+        for i, line in enumerate(f):
             timestamp, data = line.split(']', 1)
             timestamp = timestamp[1:]
             time_only = timestamp.split(' ')[1]
@@ -92,6 +103,10 @@ for path in sorted(log_dir.glob('*.txt')):
                         uncertainties.append(0)
             except KeyError:
                 continue
+
+
+            if i % 1234 == 0:
+                print(f'\r[{timestamp}] {Style.BRIGHT}{len(processed_data):10d}{Style.RESET_ALL} {Fore.YELLOW}entries processed{Style.RESET_ALL}', end='')
 
             try:
                 timestamp = datetime.datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S.%f')

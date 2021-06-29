@@ -7,6 +7,8 @@ from colorama import Fore, Style
 import numpy as np
 import matplotlib.pyplot as plt
 
+from headers.zmq_server_socket import zmq_server_socket
+
 from headers.rigol_ds1102e import RigolDS1102e
 
 ##### Parameters #####
@@ -20,6 +22,8 @@ ENABLE_LOGGING = True
 if not ENABLE_LOGGING:
     print(f'{Fore.RED}WARNING: LOGGING IS OFF!{Style.RESET_ALL}')
     time.sleep(5)
+
+publisher = zmq_server_socket(5556, 'scope')
 
 ##### Main Program #####
 # Initialize connection
@@ -112,5 +116,17 @@ with RigolDS1102e() as scope:
                     print(time.time(), ' '.join(f'{x:.5f}' for x in acq1), file=f)
                     print(time.time(), ' '.join(f'{x:.5f}' for x in acq2), file=f)
 
+                # Log dip sizes
+                traces = acquisitions[:, 0]
+                dip_size = 100 - 100 * np.min(traces, axis=1) / np.max(traces, axis=1)
+                publisher.send({
+                    'dip': {
+                        'ch1': dip_size[0],
+                        'ch2': dip_size[1],
+                    }
+                })
+
     except KeyboardInterrupt:
         plt.ioff()
+        publisher.close()
+

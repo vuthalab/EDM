@@ -52,7 +52,8 @@ class USBTMCDevice:
 
             'ethernet' should be used for networked LAN devices.
         """
-        if DRY_RUN: print('[WARNING] Dry-run mode active. Nothing will actually happen.')
+        if DRY_RUN:
+            print(f'  [{Fore.YELLOW}WARN{Style.RESET_ALL}] Dry-run mode active. Nothing will actually happen.')
 
         self._mode = mode 
 

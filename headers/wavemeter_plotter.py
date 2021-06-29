@@ -109,5 +109,5 @@ class LivePlotter:
         return self.lines,
 
 if __name__=='__main__':
-  # pltr = LivePlotter()
-  # pltr.create_animation(channels=[4],t_refresh=30)
+   pltr = LivePlotter()
+   pltr.create_animation(channels=[4],t_refresh=30)

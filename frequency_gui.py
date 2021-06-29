@@ -36,7 +36,7 @@ def refresh_freq():
     freq = get_freq()
     try:
         freq, uncertainty = freq
-        freq_label.config(text=f'{freq:.4f} GHz\n± {uncertainty*1e3:.1f} MHz RMS')
+        freq_label.config(text=f'{freq:.4f} GHz\n± {uncertainty*1e3:.2f} MHz RMS')
     except:
         freq_label.config(text='Error (Low Signal?)')
     root.after(300, refresh_freq)

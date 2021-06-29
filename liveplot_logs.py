@@ -1,12 +1,10 @@
-# Whether to save liveplot to file instead of showing it.
-# Should be False unless you know what you are doing.
-HEADLESS = False
-
-
 # live plot system log files
 from sh import tail
-import time, json, datetime, math
+import time, json, datetime, math, sys
 from collections import defaultdict
+
+# Whether to show plot or upload to server
+HEADLESS = len(sys.argv) > 1
 
 import subprocess
 
@@ -32,16 +30,24 @@ HOUR = 60 * MINUTE
 
 ##### PARAMETERS #####
 # duration to plot.
-duration = 0.5 * HOUR
+duration = 2 * HOUR
+
+if HEADLESS:
+    duration = float(sys.argv[1]) * HOUR
+
 
 # skip every x points.
-skip_points = max(1, duration // (2 * HOUR))
+skip_points = max(1, round(duration / (2 * HOUR)))
+
 
 # how fast the publisher is
-publisher_rate = 1/2 # Hertz
+publisher_rate = 1.4/2 # Hertz
+
 
 # how often to update plot.
-PLOT_INTERVAL = 60 if HEADLESS else 2
+PLOT_INTERVAL = 30 if HEADLESS else 2
+
+
 
 # Map from plot labels (name, unit) to paths in data
 # Uncomment any fields you want to see.
@@ -52,20 +58,23 @@ fields = {
     ('buffer flow', 'sccm'): ('flows', 'cell'),
     ('neon flow', 'sccm'): ('flows', 'neon'),
 
-    ('reflection (from photodiode)', 'V'): ('refl', 'pd'),
-    ('reflection (from camera)', 'V'): ('refl', 'cam'),
+    ('intensity (broadband)', 'V '): ('intensities', 'broadband'),
+    ('intensity (LED)', 'V '): ('intensities', 'LED'),
 
-    ('transmission (overall, from photodiode)', '%'): ('trans', 'pd'),
+    ('reflection (from camera, centroid)', 'V'): ('refl', 'cam'),
+    ('reflection (from camera, neural network)', 'V'): ('refl', 'ai'),
+
+    ('fringe count', 'fringes'): ('fringe', 'count'),
+    ('fringe amplitude', '%  '): ('fringe', 'ampl'),
+
     ('transmission (overall, from spectrometer)', '%'): ('trans', 'spec'),
     ('transmission (non-roughness sources only)', '%'): ('trans', 'unexpl'),
 
-#    ('beam center x (from camera)', '% '): ('center', 'x'),
-#    ('beam center y (from camera)', '% '): ('center', 'y'),
-
-    ('BaF Laser', 'GHz'): ('freq', 'baf'),
-#    ('Ca Laser', 'GHz '): ('freq', 'calcium'),
+#    ('BaF Laser', 'GHz'): ('freq', 'baf'),
+    ('Ca Laser', 'GHz '): ('freq', 'calcium'),
 
     ('rms roughness (from spectrometer)', 'nm'): ('rough',),
+    ('crystal thickness (dead reckoning)', 'micron'): ('model', 'height'),
 
     ('saph heat', 'W'): ('heaters', 'heat saph'),
     ('nozzle heat', 'W'): ('heaters', 'heat coll'),
@@ -82,13 +91,18 @@ fields = {
     ('4K sorb', 'K '): ('temperatures', 'srb4k'),
     ('4K plate', 'K '): ('temperatures', '4k plate'),
 
-#    ('loop time', 's'): ('debug', 'loop'),
-#    ('uptime', 'hr'): ('debug', 'uptime'),
+
+    ('beam center x (from camera)', '% '): ('center', 'x'),
+    ('beam center y (from camera)', '% '): ('center', 'y'),
+
+    ('loop time', 's'): ('debug', 'loop'),
+    ('uptime', 'hr'): ('debug', 'uptime'),
+    ('memory usage', 'KB'): ('debug', 'memory'),
 }
 
 axis_labels = [
-    'GHz',
-#    'GHz ',
+#    'GHz',
+    'GHz ',
 
     'torr',
     'sccm',
@@ -96,15 +110,20 @@ axis_labels = [
     'V',
     '%',
     'nm',
+    'micron',
+    'fringes',
+    '%  ',
 
-#    '% ',
+    'V ',
+    '% ',
 
     'W',
     'K',
     'K ',
 
-#    's',
-#    'hr'
+    's',
+    'hr',
+    'KB',
 ]
 
 
@@ -132,12 +151,12 @@ print(f'Showing last {num_points * skip_points} points (skip every {skip_points}
 
 if not HEADLESS: plt.ion()
 
-figsize = (6, 16) if HEADLESS else (10, 8)
+figsize = (6, 32) if HEADLESS else (10, 8)
 fig = plt.figure(figsize=figsize)
 gs = fig.add_gridspec(
     len(axis_labels),
     hspace=0.1,
-    left=0.1, right=0.95, top=0.95, bottom=0.05)
+    left=0.15, right=0.95, top=0.95, bottom=0.05)
 axes = gs.subplots(sharex=True, sharey=False)
 
 # Initialize empty plots

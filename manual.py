@@ -17,11 +17,12 @@ T2 = CTC100(31416)
 mfc = MFC(31417)
 
 ## Uncomment whatever commands you want and run the file ##
-mfc.flow_rate_cell = 10
-mfc.flow_rate_neon_line = 2
+#mfc.flow_rate_cell = 10
+#mfc.flow_rate_neon_line = 1
 #mfc.off()
 
 #T1.enable_output()
-#T1.ramp_temperature('heat saph', 5.0, 0.1)
+T1.ramp_temperature('heat saph', 6.2, 0.1)
+#T1.ramp_temperature('heat coll', 60.0, 1.0)
 
 #T1.disable_output()

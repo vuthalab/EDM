@@ -1,42 +1,65 @@
+import sys
 import time
+import itertools
 from pathlib import Path
 
 import numpy as np
 import matplotlib.pyplot as plt
 
-from headers.oceanfx import OceanFX
+from colorama import Fore, Style
 
-from headers.util import nom, std, plot
+from headers.oceanfx import OCEANFX_WAVELENGTHS
+from headers.zmq_client_socket import zmq_client_socket
+
+from headers.util import uarray, nom, std, plot
+
+
+if len(sys.argv) > 1:
+    DURATION = float(sys.argv[1])
+    print(f'Collecting data for {DURATION:.1f} hours.')
+else:
+    DURATION = None
+    print('Collecting data indefinitely.')
+
 
 
 ##### Parameters #####
 root_dir = Path('~/Desktop/edm_data/logs/oceanfx/').expanduser()
 log_file = root_dir / (time.strftime('%Y-%m-%d %H꞉%M꞉%S') + '.txt')
 
-def format_array(arr):
-    return ' '.join(f'{x:.6f}' for x in arr)
-
-spec = OceanFX()
-
-# Liveplot
-if False:
-    plt.ion()
-    fig = plt.figure()
-    while True:
-        spec.capture(32)
-        plot(spec.wavelengths, spec.intensities, continuous=True)
-        fig.canvas.draw()
-        fig.canvas.flush_events()
-        time.sleep(0.5)
+N = 16 # number of samples to average. Each 'sample' is actually several captures, see publisher.
 
 
+
+
+## connect to publisher
+connection_settings = {
+    'ip_addr': 'localhost', # ip address
+    'port': 5553, # our open port
+    'topic': 'spectrometer', # device
+}
+monitor_socket = zmq_client_socket(connection_settings)
+monitor_socket.make_connection()
+
+
+start_time = time.monotonic()
+
+def format_array(arr): return ' '.join(f'{x:.6f}' for x in arr)
 with open(log_file, 'a') as f:
-    print(format_array(spec.wavelengths), file=f)
-    while True:
-        start = time.monotonic()
-        spec.capture(n_samples=16384)
+    print(format_array(OCEANFX_WAVELENGTHS), file=f)
+    for n in itertools.count(1):
+        samples = []
 
-        print(time.time(), format_array(nom(spec.intensities)), format_array(std(spec.intensities)), file=f)
+        # Average a few samples
+        for i in range(N):
+            print(f'\r{Fore.YELLOW}Capture {n}{Style.RESET_ALL}: {100*(i+1)/N:.0f}%', end='')
+            _, data = monitor_socket.blocking_read()
+            sample = data['intensities']
+            samples.append(uarray(sample['nom'], sample['std']))
+        print(f'  [{Fore.GREEN}SAVED{Style.RESET_ALL}]')
 
-        elapsed = time.monotonic() - start
-        time.sleep(max(0, 20 - elapsed))
+        spectrum = sum(samples) / len(samples)
+        print(time.time(), format_array(nom(spectrum)), format_array(std(spectrum)), file=f)
+
+        if DURATION is not None and time.monotonic() - start_time > DURATION * 3600:
+            break

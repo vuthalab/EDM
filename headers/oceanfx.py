@@ -27,12 +27,6 @@ PROBE_PACKET = (
 )
 SPECTRUM_LENGTH = 2136
 
-
-# Load previously recorded background and baseline
-background = uarray(*np.loadtxt('calibration/background.txt'))
-baseline = uarray(*np.loadtxt('calibration/baseline.txt'))
-baseline -= background
-
 OCEANFX_WAVELENGTHS = np.loadtxt('calibration/wavelengths.txt')
 
 
@@ -50,7 +44,7 @@ def fit_roughness(wavelengths, transmission):
         roughness_model,
         wavelengths,
         y, sigma=y_err,
-        p0=[100, 400]
+        p0=[100, 1000]
     )
     return (
         ufloat(popt[0], np.sqrt(pcov[0][0])),
@@ -70,6 +64,13 @@ class OceanFX:
             self.sock = None
 
         self._cache = None
+        self.load_calibration()
+
+
+    def load_calibration(self):
+        self.background = uarray(*np.loadtxt('calibration/background.txt'))
+        self.baseline = uarray(*np.loadtxt('calibration/baseline.txt'))
+        self.baseline -= self.background
     
     def close(self):
         if self.sock is not None:
@@ -78,9 +79,13 @@ class OceanFX:
     def capture(self, n_samples = 128):
         if self.sock is None: return
 
-        spectrum = np.zeros((n_samples, SPECTRUM_LENGTH), dtype=float)
+        try:
+            self.load_calibration()
+        except:
+            pass
 
         # Average some spectra
+        spectrum = np.zeros((n_samples, SPECTRUM_LENGTH), dtype=float)
         for i in range(n_samples):
             # Send the same 64 data bytes from packet capture
             self.sock.send(PROBE_PACKET)
@@ -116,14 +121,14 @@ class OceanFX:
     @property
     def transmission(self):
         """Return the transmission (in percent) at each wavelength."""
-        return 100 * (self.intensities - background) / baseline
+        return 100 * (self.intensities - self.background) / self.baseline
 
     @property
     def transmission_scalar(self):
         """Return the overall percent transmission."""
         if self.sock is None: return None
 
-        return 100 * (self.intensities - background).sum() / baseline.sum()
+        return 100 * (self.intensities - self.background).sum() / self.baseline.sum()
 
     @property
     def optical_density(self):
@@ -136,11 +141,8 @@ class OceanFX:
         if self.sock is None: return (None, None)
 
         wavelengths = self.wavelengths
-        mask = (wavelengths > 450) & (wavelengths < 750)
-        hene_mask = (wavelengths < 650) & (wavelengths > 600)
-
-        # Filter out hene
-        mask = mask & ~hene_mask
+#        mask = ((wavelengths > 460) & (wavelengths < 600)) | ((wavelengths > 750) & (wavelengths < 900))
+        mask = (wavelengths > 400) & (wavelengths < 600)
 
         try:
             I0, roughness = fit_roughness(self.wavelengths[mask], self.transmission[mask])
@@ -149,7 +151,7 @@ class OceanFX:
             I0, roughness = self.transmission_scalar, ufloat(0, 0)
 
         max_transmission = max(nominal_values(self.transmission[mask]))
-        if roughness.s > roughness.n or max_transmission < 20:
+        if roughness.s > roughness.n or max_transmission < 5 or I0.n < 0:
             I0, roughness = self.transmission_scalar, ufloat(0, 0)
         return I0, roughness
 
