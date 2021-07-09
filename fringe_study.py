@@ -58,6 +58,9 @@ shutil.copy(__file__, filename)
 MINUTE = 60
 HOUR = 60 * MINUTE
 
+def _sleep_until(end_time):
+    time.sleep(max(end_time - time.monotonic(), 0))
+
 def deep_clean():
     print('Starting deep clean. Melting crystal.')
     T1.ramp_temperature('heat saph', 40, 0.5)
@@ -76,11 +79,10 @@ def deep_clean():
 # total time: 1.5 minutes.
 # for internal use only
 def _melt_internal():
-    print('Melting crystal + holding for 30 seconds.')
     end_time = time.monotonic() + 1.5 * MINUTE
+    print('Melting crystal + holding for 30 seconds.')
     T1.ramp_temperature('heat saph', 35, 0.4)
-    calibrate_oceanfx('baseline', num_samples=50)
-    time.sleep(max(end_time - time.monotonic(), 0))
+    _sleep_until(end_time)
 
 
 # Total time: 5 minutes
@@ -88,17 +90,21 @@ def melt_only(end_temp = 8):
     _melt_internal()
 
     print('Cooling crystal.')
+    end_time = time.monotonic() + 3.5 * MINUTE
     T1.ramp_temperature('heat saph', end_temp, 0.15)
-    time.sleep(3.5 * MINUTE)
+    calibrate_oceanfx('baseline', num_samples=100)
+    _sleep_until(end_time)
 
 
 # total time: 6 minutes
 def melt_and_anneal(neon_flow = 4, end_temp = 8):
     _melt_internal()
 
+    end_time = time.monotonic() + 3 * MINUTE
     print('Cooling crystal.')
     T1.ramp_temperature('heat saph', 9.4, 0.15)
-    time.sleep(3 * MINUTE)
+    calibrate_oceanfx('baseline', num_samples=100)
+    _sleep_until(end_time)
 
     print('Annealing (starting neon line).')
     mfc.flow_rate_neon_line = neon_flow
@@ -142,7 +148,7 @@ def wait_for_roughness(target_roughness, time_limit=None):
     start = time.monotonic()
     while True:
         _, data = monitor_socket.blocking_read()
-        roughness = data['rough']
+        roughness = data['rough']['surf']
         if roughness is None:
             print('OceanFX is down!')
             break
@@ -159,42 +165,6 @@ def wait_for_roughness(target_roughness, time_limit=None):
             print('Time limit exceeded.')
             break
     monitor_socket.socket.close()
-
-
-def polish(
-    polish_temp = 10.5, # K
-    target_roughness = 300, # nm
-
-    time_limit = None,
-
-    grow_coat = True,
-    coat_sccm = 10, # flow rate for neon coat
-    coat_time = 5 * MINUTE, # duration of neon coat
-    coat_temp = 9, # saph temperature for neon coat
-):
-    """Grow a sacrificial coat of neon, then slowly melt until the desired roughness is achieved."""
-
-    if grow_coat:
-        print('Setting temperature.')
-        T1.ramp_temperature('heat saph', coat_temp, 0.5)
-        time.sleep(10)
-
-        print('Growing neon coat.')
-        mfc.flow_rate_neon_line = coat_sccm
-        time.sleep(coat_time)
-        mfc.off()
-
-
-    print('Annealing surface.')
-    T1.ramp_temperature('heat saph', polish_temp, 0.2)
-
-    wait_for_roughness(target_roughness, time_limit=time_limit)
-    
-
-    print('Cooling...')
-    T1.ramp_temperature('heat saph', 4, 0.5)
-    time.sleep(10)
-    print('Done.')
 
 
 E_a = 19.94e-3 # eV
@@ -217,6 +187,7 @@ def stationary_polish(
 
     print('Cooling...')
     T1.ramp_temperature('heat saph', 4, 0.5)
+    mfc.flow_rate_neon_line = 0
     time.sleep(10)
     print('Done.')
 
@@ -246,14 +217,21 @@ T1.enable_output()
 
 try:
 #    deep_clean()
-#    polish(polish_temp=10.3, target_roughness=1500, grow_coat=False)
-#    polish(target_roughness=0, polish_temp=15, time_limit=20*MINUTE, grow_coat=False)
+#    melt_and_grow(neon_flow=0, buffer_flow=10)
 
-#    grow_only(start_temp=5, neon_flow=10, buffer_flow=10)
-#    stationary_polish(flow_rate=8)
+    for duration in [50, 30, 40]:
+        melt_and_grow(
+            neon_flow=8,
+            growth_time=duration * MINUTE,
+            anneal=False
+        )
+        stationary_polish(
+            flow_rate=8,
+            target_roughness=0,
+            time_limit=1 * HOUR
+        )
 
 #    grow_only(neon_flow=3, buffer_flow=0, growth_time=3*HOUR)
-    polish(target_roughness=0, time_limit=3*HOUR, grow_coat=False)
 
 
 finally:

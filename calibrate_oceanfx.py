@@ -9,36 +9,10 @@ from headers.zmq_client_socket import zmq_client_socket
 from headers.util import nom, std, plot, uarray
 
 
-N_SAMPLES = 100
+N_SAMPLES = 100 # number of samples to calibrate with.
 
 
-# Use this function in an emergency
-# if you can't start the publisher.
-# Might bias results a bit.
-def calibrate_bare(name):
-    spec = OceanFX()
-
-    samples = []
-    for i in range(N_SAMPLES):
-        print('Sample', i+1)
-        spec.capture()
-        samples.append(spec.intensities)
-    spectrum = sum(samples) / len(samples)
-
-    print('Plotting...')
-    plot(spec.wavelengths, spectrum, continuous=True)
-    plt.xlim(300, 900)
-    plt.xlabel('Wavelength (nm)')
-    plt.ylabel('Intensity (%)')
-    plt.title(name)
-    plt.show()
-
-    print('Saving...')
-    np.savetxt(f'calibration/{name}.txt', [nom(spectrum), std(spectrum)])
-
-
-
-
+spec = OceanFX()
 
 connection_settings = {
     'ip_addr': 'localhost', # ip address
@@ -46,8 +20,13 @@ connection_settings = {
     'topic': 'spectrometer', # device
 }
 
-def calibrate(name, num_samples=N_SAMPLES, plot=False):
+def calibrate(
+    name,
+    num_samples=N_SAMPLES,
+    show_plot=False,
+):
     print(f'Calibrating OceanFX {name}...')
+
     # connect to publisher
     monitor_socket = zmq_client_socket(connection_settings)
     monitor_socket.make_connection()
@@ -64,7 +43,7 @@ def calibrate(name, num_samples=N_SAMPLES, plot=False):
     print()
 
 
-    if plot:
+    if show_plot:
         print('Plotting...')
         plot(wavelengths, spectrum, continuous=True)
         plt.xlim(300, 900)
@@ -75,11 +54,13 @@ def calibrate(name, num_samples=N_SAMPLES, plot=False):
 
     print(f'Saving {name} OceanFX calibration...')
     np.savetxt(f'calibration/{name}.txt', [nom(spectrum), std(spectrum)])
+    print('Done.')
 
 
 
 if __name__ == '__main__':
-    input('Unblock OceanFX, then press Enter.')
-    calibrate('baseline', plot=True)
-    input('Block OceanFX, then press Enter.')
-    calibrate('background', plot=True)
+    if len(sys.argv) < 2:
+        input('Unblock OceanFX, then press Enter.')
+        calibrate('baseline', plot=True)
+        input('Block OceanFX, then press Enter.')
+        calibrate('background', show_plot=True)

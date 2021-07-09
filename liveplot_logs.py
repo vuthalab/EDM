@@ -73,7 +73,7 @@ fields = {
 #    ('BaF Laser', 'GHz'): ('freq', 'baf'),
     ('Ca Laser', 'GHz '): ('freq', 'calcium'),
 
-    ('rms roughness (from spectrometer)', 'nm'): ('rough',),
+    ('rms roughness (from spectrometer)', 'nm'): ('rough', 'surf'),
     ('crystal thickness (dead reckoning)', 'micron'): ('model', 'height'),
 
     ('saph heat', 'W'): ('heaters', 'heat saph'),
@@ -95,6 +95,8 @@ fields = {
     ('beam center x (from camera)', '% '): ('center', 'x'),
     ('beam center y (from camera)', '% '): ('center', 'y'),
 
+    ('spectrometer integration time', 'μs'): ('debug', 'ofx_exposure'),
+    ('camera integration time', 'μs'): ('center', 'exposure'),
     ('loop time', 's'): ('debug', 'loop'),
     ('uptime', 'hr'): ('debug', 'uptime'),
     ('memory usage', 'KB'): ('debug', 'memory'),
@@ -121,6 +123,7 @@ axis_labels = [
     'K',
     'K ',
 
+    'μs',
     's',
     'hr',
     'KB',

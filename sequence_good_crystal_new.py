@@ -58,6 +58,9 @@ shutil.copy(__file__, filename)
 MINUTE = 60
 HOUR = 60 * MINUTE
 
+def _sleep_until(end_time):
+    time.sleep(max(end_time - time.monotonic(), 0))
+
 def deep_clean():
     print('Starting deep clean. Melting crystal.')
     T1.ramp_temperature('heat saph', 40, 0.5)
@@ -76,13 +79,10 @@ def deep_clean():
 # total time: 1.5 minutes.
 # for internal use only
 def _melt_internal():
-    print('Melting crystal + holding for 30 seconds.')
     end_time = time.monotonic() + 1.5 * MINUTE
-
+    print('Melting crystal + holding for 30 seconds.')
     T1.ramp_temperature('heat saph', 35, 0.4)
-    calibrate_oceanfx('baseline', num_samples=50)
-
-    time.sleep(max(end_time - time.monotonic(), 0))
+    _sleep_until(end_time)
 
 
 # Total time: 5 minutes
@@ -90,17 +90,21 @@ def melt_only(end_temp = 8):
     _melt_internal()
 
     print('Cooling crystal.')
+    end_time = time.monotonic() + 3.5 * MINUTE
     T1.ramp_temperature('heat saph', end_temp, 0.15)
-    time.sleep(3.5 * MINUTE)
+    calibrate_oceanfx('baseline', num_samples=100)
+    _sleep_until(end_time)
 
 
 # total time: 6 minutes
 def melt_and_anneal(neon_flow = 4, end_temp = 8):
     _melt_internal()
 
+    end_time = time.monotonic() + 3 * MINUTE
     print('Cooling crystal.')
     T1.ramp_temperature('heat saph', 9.4, 0.15)
-    time.sleep(3 * MINUTE)
+    calibrate_oceanfx('baseline', num_samples=100)
+    _sleep_until(end_time)
 
     print('Annealing (starting neon line).')
     mfc.flow_rate_neon_line = neon_flow
@@ -144,7 +148,7 @@ def wait_for_roughness(target_roughness, time_limit=None):
     start = time.monotonic()
     while True:
         _, data = monitor_socket.blocking_read()
-        roughness = data['rough']
+        roughness = data['rough']['surf']
         if roughness is None:
             print('OceanFX is down!')
             break
@@ -219,6 +223,7 @@ def stationary_polish(
 
     print('Cooling...')
     T1.ramp_temperature('heat saph', 4, 0.5)
+    mfc.flow_rate_neon_line = 0
     time.sleep(10)
     print('Done.')
 
@@ -249,8 +254,9 @@ T1.enable_output()
 try:
 #    deep_clean()
 
-    melt_and_grow(neon_flow=0, buffer_flow=10, growth_time=1.5 * HOUR)
-    stationary_polish(target_roughness = 2000)
+    melt_and_grow(neon_flow=0, buffer_flow=10, growth_time=3.0 * HOUR)
+    stationary_polish(target_roughness=0, time_limit=1.0*HOUR)
+    time.sleep(2.0*HOUR)
 
 
 finally:

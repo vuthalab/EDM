@@ -17,6 +17,12 @@ SECONDS_PER_SIXTEENTH = 1/(1.4 * 8) # tempo, chosen to match pulsetube
 
 DIP_CHANNEL = 'ch1'
 
+# 'Temperature' of the dip optimization algorithm.
+# Higher values cause the motion to be more random.
+# Lower values cause the algorithm to optimize harder for dip size,
+# but increase sensitivity to noise.
+TEMPERATURE = 100
+
 
 connection_settings = {
     'ip_addr': 'localhost',
@@ -670,7 +676,7 @@ class microcontroller:
             samples.append(data['dip'][DIP_CHANNEL])
 
         if len(samples) > 0:
-            return np.mean(samples)
+            return 10 * np.log(np.mean(samples))
         else:
             return None
 
@@ -704,9 +710,10 @@ class microcontroller:
 #                sign = 1 if (i//2) % 2 == 0 else -1
 
                 # Go in direction of maximum gradient
-                gradient = self.model.gradient
-                motor = 1
-                sign = 1 if gradient[motor] > 0 else -1
+                gradient = np.array(self.model.gradient) * 6e4/TEMPERATURE
+                motor = i % 2
+                threshold = np.arctan(gradient[motor]) * 2/np.pi
+                sign = 1 if np.random.uniform(-1, 1) < threshold else -1
 
                 if note != 'X':
                     freq = round(NOTES[note] * transpose) * amplitude 
@@ -716,7 +723,7 @@ class microcontroller:
                     self.move_with_speed(motor + 1, pos[motor], freq)
 
                 # Log position
-                if np.hypot(*(pos - last[0])) > 500:
+                if np.hypot(*(pos - last[0])) > 200:
                     real_pos = np.array(self.get_xy_position(), dtype=int)
                     curr_dip = self._dip_size
 
@@ -730,7 +737,7 @@ class microcontroller:
                             '|',
                             'Dip Size', curr_dip,
                             '|',
-                            'Gradient:', self.model.gradient
+                            'Gradient:', gradient,
                         )
                         print(delta_pos, delta_dip)
                         last = (np.array(real_pos, dtype=int), curr_dip)

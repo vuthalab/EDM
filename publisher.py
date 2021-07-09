@@ -110,7 +110,7 @@ async def run_publisher():
     spectrometer = OceanFX()
     spectrometer_publisher = zmq_server_socket(5553, 'spectrometer')
 
-    camera = Camera()
+    camera = Camera(1)
     camera.init()
     try:
         camera.start()
@@ -188,17 +188,26 @@ async def run_publisher():
                 
                 ##### Read spectrometer (Async) #####
                 trans = {}
+                rough = {}
                 spectrum = None
-                roughness = None
+                raw_spectrum = None
                 def oceanfx_getter():
-                    nonlocal roughness, spectrum
+                    nonlocal spectrum, raw_spectrum
                     with Timer('spectrometer'):
-                        spectrometer.capture(n_samples=128)
-                        spectrum = (spectrometer.wavelengths, spectrometer.intensities)
+                        try:
+                            spectrometer.capture(n_samples=10000, time_limit=0.8)
+                        except:
+                            return
+
+                        spectrum = spectrometer.intensities
+                        raw_spectrum = spectrometer.raw_intensities
                         I0, roughness = spectrometer.roughness_full
 
                         trans['spec'] = deconstruct(spectrometer.transmission_scalar)
                         trans['unexpl'] = deconstruct(I0)
+
+                        rough['surf'] = deconstruct(roughness)
+
                 async_getters.append(loop.run_in_executor(None, oceanfx_getter))
 
 
@@ -210,6 +219,8 @@ async def run_publisher():
                     camera_samples = []
 
                     with Timer('camera'):
+                        exposure = camera.ExposureTime
+
                         while True:
                             capture_start = time.monotonic()
                             image = camera.get_array()
@@ -221,8 +232,11 @@ async def run_publisher():
                             if capture_time > 20e-3: break
 
                         # Track fringes
-                        fringe_model.update(image)
-                        center_x, center_y, cam_refl, saturation = [unweighted_mean(arr) for arr in np.array(camera_samples).T]
+                        fringe_model.update(image, exposure)
+                        center_x, center_y, cam_refl, saturation = [
+                            unweighted_mean(arr) for arr in np.array(camera_samples).T
+                        ]
+                        cam_refl *= 5000/exposure
 
                         # Downsample if 16-bit
                         if isinstance(image[0][0], np.uint16):
@@ -237,8 +251,15 @@ async def run_publisher():
                     center['x'] = deconstruct(center_x)
                     center['y'] = deconstruct(center_y)
                     center['saturation'] = deconstruct(saturation)
+                    center['exposure'] = exposure
                     refl['cam'] = deconstruct(2 * cam_refl)
                     refl['ai'] = deconstruct(fringe_model.reflection)
+
+                    # Set camera integration time to normalize
+                    target = 90/(saturation.n + 1e-5) * exposure
+                    target = round(min(max(target, 0), 49999))
+                    camera.ExposureTime = target
+
                 async_getters.append(loop.run_in_executor(None, camera_getter))
 
 
@@ -294,7 +315,7 @@ async def run_publisher():
                     'heaters': heaters,
 
                     'center': center,
-                    'rough': deconstruct(roughness),
+                    'rough': rough,
                     'trans': trans,
                     'refl': refl,
                     'fringe': {
@@ -314,6 +335,7 @@ async def run_publisher():
                         'loop': time.monotonic() - loop_start,
                         'uptime': uptime if loop_iteration > 1 else None,
                         'memory': memory_usage(),
+                        'ofx_exposure': spectrometer.integration_time,
                     }
                 }
                 print_tree(data_dict)
@@ -398,15 +420,22 @@ async def run_publisher():
                 ### Limit publishing speed ###
                 target_end = PUBLISH_INTERVAL * loop_iteration + publisher_start
                 time.sleep(max(target_end - time.monotonic(), 0))
+
                 publisher.send(data_dict)
                 camera_publisher.send(png)
-                spectrometer_publisher.send({
-                    'wavelengths': list(spectrum[0]),
-                    'intensities': {
-                        'nom': list(nom(spectrum[1])),
-                        'std': list(std(spectrum[1])),
-                    }
-                })
+                if spectrum is not None:
+                    spectrometer_publisher.send({
+                        'wavelengths': list(spectrometer.wavelengths),
+                        'intensities': {
+                            'nom': list(nom(spectrum)),
+                            'std': list(std(spectrum)),
+                        },
+                        'raw_intensities': {
+                            'nom': list(nom(raw_spectrum)),
+                            'std': list(std(raw_spectrum)),
+                        },
+                        'integration_time': spectrometer.integration_time,
+                    })
                 print()
                 print()
     finally:

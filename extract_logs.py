@@ -12,8 +12,8 @@ from colorama import Style, Fore
 # Date format must be YYYY-MM-DD
 # Time format must be HH:MM:SS (24-hour format)
 # End time can be in the future to get all data after a certain point
-START_TIME = ('2021-06-28', '15:10:00')
-END_TIME = ('2021-06-28', '23:00:00')
+START_TIME = ('2021-07-08', '10:00:00')
+END_TIME = ('2021-07-08', '23:00:00')
 
 # Map from plot labels (name, unit) to paths in data
 # Choose which fields you want to extract here
@@ -41,7 +41,7 @@ fields = {
 #    ('BaF Laser', 'GHz'): ('freq', 'baf'),
 #    ('Ca Laser', 'GHz'): ('freq', 'calcium'),
 
-    ('rms roughness (spectrometer)', 'nm'): ('rough',),
+    ('rms roughness (spectrometer)', 'nm'): ('rough', 'surf'),
 
 #    ('saph heat', 'W'): ('heaters', 'heat saph'),
 #    ('nozzle heat', 'W'): ('heaters', 'heat coll'),

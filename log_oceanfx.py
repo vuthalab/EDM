@@ -8,10 +8,13 @@ import matplotlib.pyplot as plt
 
 from colorama import Fore, Style
 
-from headers.oceanfx import OCEANFX_WAVELENGTHS
+from headers.oceanfx import OCEANFX_WAVELENGTHS, SYSTEMATIC_BACKGROUND
 from headers.zmq_client_socket import zmq_client_socket
 
 from headers.util import uarray, nom, std, plot
+
+
+INTEGRATION_TIME = 20000 # us
 
 
 if len(sys.argv) > 1:
@@ -59,6 +62,12 @@ with open(log_file, 'a') as f:
         print(f'  [{Fore.GREEN}SAVED{Style.RESET_ALL}]')
 
         spectrum = sum(samples) / len(samples)
+
+        # TODO TEMPORARY, to keep consistency with previous runs
+        spectrum *= INTEGRATION_TIME
+        spectrum += SYSTEMATIC_BACKGROUND
+        spectrum *= 100/65536
+
         print(time.time(), format_array(nom(spectrum)), format_array(std(spectrum)), file=f)
 
         if DURATION is not None and time.monotonic() - start_time > DURATION * 3600:

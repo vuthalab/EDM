@@ -3,7 +3,7 @@ import numpy as np
 # Keeps track of a local gradient estimate for dip size vs mirror displacement.
 
 class MirrorModel:
-    def __init__(self, buffer_size=16):
+    def __init__(self, buffer_size=10):
         self._dI_dr = []
         self.buffer_size = buffer_size
 
@@ -19,10 +19,10 @@ class MirrorModel:
         data = np.array(self._dI_dr).T
 
         # 1D
-        X, Y = data[1:2], data[-1]
-        return [0, np.linalg.inv(X @ X.T) @ X @ Y]
+#        X, Y = data[1:2], data[-1]
+#        return [0, np.linalg.inv(X @ X.T) @ X @ Y]
 
         # 2D
-#        X, Y = data[:2], data[-1]
-#        return np.linalg.inv(X @ X.T) @ X @ Y
+        X, Y = data[:2], data[-1]
+        return np.linalg.inv(X @ X.T) @ X @ Y
 

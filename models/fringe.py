@@ -41,7 +41,7 @@ class FringeModel:
         self.has_fringes = False
 
 
-    def update(self, frame):
+    def update(self, frame, exposure):
         frame = frame[:, 300:-300]
         scale = 255 if isinstance(frame[0][0], np.uint8) else 65535
 
@@ -72,6 +72,9 @@ class FringeModel:
         # Normalize and blur
         frame = cv2.resize(frame, (512, 512))/scale
         frame = cv2.GaussianBlur(frame, (81, 81), 0) + 1e-3
+
+        # Normalize to exposure time
+        frame *= 5000/exposure
 
         # Keep a rolling buffer of the last 32 frames.
         self.baseline_buffer.append(frame)
