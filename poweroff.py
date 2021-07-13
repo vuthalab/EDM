@@ -28,10 +28,5 @@ turbo.off()
 
 
 # Wait for turbo to spin down, then turn off pulsetube.
-while True:
-    time.sleep(10)
-    speed = turbo.speed
-    print('Turbo Speed:', speed, 'Hz', end='\r')
-    if speed < 200: break
-print()
+time.sleep(10 * MINUTE)
 pt.off()

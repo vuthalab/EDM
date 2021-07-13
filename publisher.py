@@ -1,6 +1,7 @@
 import time, pprint, traceback
 import itertools
-import resource
+import resource, psutil
+import threading
 
 import asyncio
 from colorama import Fore, Style
@@ -12,15 +13,17 @@ from uncertainties import ufloat
 from simple_pyspin import Camera
 
 #Import class objects
+from headers.zmq_server_socket import zmq_server_socket
+from headers.zmq_client_socket import zmq_client_socket
 
 from headers.FRG730 import FRG730
 from headers.CTC100 import CTC100
 from headers.labjack_device import Labjack
 from headers.mfc import MFC
-from headers.zmq_server_socket import zmq_server_socket
 from headers.wavemeter import WM
 from headers.oceanfx import OceanFX
 from headers.turbo import TurboPump
+from headers.ximea_camera import Ximea
 from pulsetube_compressor import PulseTube
 
 from headers.util import display, unweighted_mean, nom, std
@@ -33,7 +36,7 @@ from models.growth_rate import GrowthModel
 
 
 
-PUBLISH_INTERVAL = 2/1.4 # publish every x seconds.
+PUBLISH_INTERVAL = 3/1.4 # publish every x seconds.
 
 
 
@@ -76,8 +79,9 @@ growth_model = GrowthModel()
 
 class Timer:
     """Context manager for timing code."""
-    def __init__(self, name=None):
+    def __init__(self, name=None, times=None):
         self.name = name
+        self._times = times
 
     def __enter__(self):
         self.start = time.monotonic()
@@ -86,11 +90,53 @@ class Timer:
     def __exit__(self, exc_type, exc_value, traceback):
         dt = time.monotonic() - self.start
         print(f'  [{Fore.BLUE}INFO{Style.RESET_ALL}] {Style.DIM}Reading {self.name} took {Style.RESET_ALL}{Style.BRIGHT}{dt:.3f} seconds{Style.RESET_ALL}')
+        if self._times is not None:
+            self._times[self.name] = round(1e3 * dt)
 
 
 def memory_usage():
     """Get the current memory usage, in KB."""
     return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+
+
+##### SPECTROMETER THREAD #####
+def spectrometer_thread():
+    spectrometer = OceanFX()
+    with zmq_server_socket(5553, 'spectrometer') as publisher:
+        while True:
+            trans = {}
+            rough = {}
+
+            try:
+                spectrometer.capture()
+            except:
+                print('Spectrometer capture failed!')
+                continue
+
+            spectrum = spectrometer.intensities
+            I0, roughness, fourth_order = spectrometer.roughness_full
+
+            trans['spec'] = deconstruct(spectrometer.transmission_scalar)
+            trans['unexpl'] = deconstruct(I0)
+
+            rough['surf'] = deconstruct(roughness)
+            rough['fourth-order'] = deconstruct(fourth_order)
+
+            publisher.send({
+                'wavelengths': list(spectrometer.wavelengths),
+                'intensities': {
+                    'nom': list(nom(spectrum)),
+                    'std': list(std(spectrum)),
+                },
+                'intercepts': {
+                    'nom': list(nom(spectrometer._intercepts)),
+                    'std': list(std(spectrometer._intercepts)),
+                },
+                'num-points': list(nom(spectrometer._points)),
+                'rough': rough,
+                'trans': trans,
+            })
+
 
 
 
@@ -106,9 +152,6 @@ async def run_publisher():
     mfc = MFC(31417)
     wm = WM(publish=False) #wavemeter class used for reading frequencies from high finesse wavemeter
     pt = PulseTube()
-
-    spectrometer = OceanFX()
-    spectrometer_publisher = zmq_server_socket(5553, 'spectrometer')
 
     camera = Camera(1)
     camera.init()
@@ -126,21 +169,42 @@ async def run_publisher():
     pt_last_off = time.monotonic()
     heaters_last_safe = time.monotonic()
 
+
+    try:
+        cbs_cam = Ximea(exposure=1e6)
+        cbs_cam.set_roi(500, 500, 700, 700)
+    except:
+        cbs_cam = None
+        print(f'{Fore.RED}ERROR: Ximea camera is unplugged!{Style.RESET_ALL}')
+    cbs_publisher = zmq_server_socket(5555, 'cbs-camera')
+
+    spectrometer_monitor = zmq_client_socket({
+        'ip_addr': 'localhost',
+        'port': 5553,
+        'topic': 'spectrometer',
+    })
+    spectrometer_monitor.make_connection()
+
+
     print('Starting publisher')
     publisher_start = time.monotonic()
     loop = asyncio.get_running_loop()
     try:
         with zmq_server_socket(5551, 'edm-monitor') as publisher:
+            rough = {}
+            trans = {}
+
             for loop_iteration in itertools.count(1):
                 loop_start = time.monotonic()
                 async_getters = []
 
+                times = {}
 
                 ##### Read pressure gauge (Async) #####
                 chamber_pressure = None
                 def pressure_getter():
-                    nonlocal chamber_pressure
-                    with Timer('pressure'):
+                    nonlocal chamber_pressure, times
+                    with Timer('pressure', times):
                         chamber_pressure = pressure_gauge.pressure
                 async_getters.append(loop.run_in_executor(None, pressure_getter))
 
@@ -152,7 +216,7 @@ async def run_publisher():
                     """Record data from the given thermometer."""
                     obj, temp_channels, heater_channels = thermometer
 
-                    with Timer(f'CTC{obj._address[1]}'):
+                    with Timer(f'CTC{obj._address[1]}', times):
                         for channel in temp_channels:
                             temperatures[channel] = await obj.async_read(channel)
 
@@ -169,7 +233,7 @@ async def run_publisher():
                 flows = {}
                 async def flow_getter():
                     """Record the flow rates from the MFC."""
-                    with Timer('MFC'):
+                    with Timer('MFC', times):
                         flows['cell'] = deconstruct(await mfc.async_get_flow_rate_cell())
                         flows['neon'] = deconstruct(await mfc.async_get_flow_rate_neon_line())
                 async_getters.append(flow_getter())
@@ -180,35 +244,11 @@ async def run_publisher():
                 frequencies = {}
                 async def frequency_getter():
                     """Record the frequencies from the wavemeter."""
-                    with Timer('wavemeter'):
+                    with Timer('wavemeter', times):
                         frequencies['baf'] = await with_uncertainty(lambda: wm.read_frequency(8))
                         frequencies['calcium'] = await with_uncertainty(lambda: wm.read_frequency(6))
                 async_getters.append(frequency_getter())
 
-                
-                ##### Read spectrometer (Async) #####
-                trans = {}
-                rough = {}
-                spectrum = None
-                raw_spectrum = None
-                def oceanfx_getter():
-                    nonlocal spectrum, raw_spectrum
-                    with Timer('spectrometer'):
-                        try:
-                            spectrometer.capture(n_samples=10000, time_limit=0.8)
-                        except:
-                            return
-
-                        spectrum = spectrometer.intensities
-                        raw_spectrum = spectrometer.raw_intensities
-                        I0, roughness = spectrometer.roughness_full
-
-                        trans['spec'] = deconstruct(spectrometer.transmission_scalar)
-                        trans['unexpl'] = deconstruct(I0)
-
-                        rough['surf'] = deconstruct(roughness)
-
-                async_getters.append(loop.run_in_executor(None, oceanfx_getter))
 
 
                 ##### Read Camera (Async) #####
@@ -218,15 +258,18 @@ async def run_publisher():
                 def camera_getter():
                     camera_samples = []
 
-                    with Timer('camera'):
+                    with Timer('camera', times):
                         exposure = camera.ExposureTime
 
+                        image = None
                         while True:
                             capture_start = time.monotonic()
-                            image = camera.get_array()
+                            sample = camera.get_array()
                             capture_time = time.monotonic() - capture_start
 
-                            camera_samples.append(fit_image(image))
+                            camera_samples.append(fit_image(sample))
+
+                            if image is None: image = sample
 
                             # Clear buffer (force new acquisition)
                             if capture_time > 20e-3: break
@@ -255,10 +298,12 @@ async def run_publisher():
                     refl['cam'] = deconstruct(2 * cam_refl)
                     refl['ai'] = deconstruct(fringe_model.reflection)
 
-                    # Set camera integration time to normalize
-                    target = 90/(saturation.n + 1e-5) * exposure
-                    target = round(min(max(target, 0), 49999))
-                    camera.ExposureTime = target
+                    if saturation.n > 99:
+                        camera.ExposureTime = exposure // 2
+                    elif saturation.n > 85:
+                        camera.ExposureTime = round(exposure * 0.999)
+                    elif saturation.n < 75:
+                        camera.ExposureTime = min(round(exposure * 1.001), 49999)
 
                 async_getters.append(loop.run_in_executor(None, camera_getter))
 
@@ -268,7 +313,7 @@ async def run_publisher():
                 running = {'pt': pt_on}
                 async def turbo_getter():
                     """Record the operational status of the turbo pump."""
-                    with Timer('turbo'):
+                    with Timer('turbo', times):
                         status = await turbo.async_operation_status()
                         running['turbo'] = (status == 'normal')
                 async_getters.append(turbo_getter())
@@ -278,12 +323,11 @@ async def run_publisher():
                 ##### Read labjack (Async) #####
                 intensities = {}
                 def labjack_getter():
-                    with Timer('labjack'):
+                    with Timer('labjack', times):
 #                        refl['pd'] = deconstruct(labjack.read('AIN1'))
                         intensities['broadband'] = deconstruct(labjack.read('AIN0'))
                         intensities['LED'] = deconstruct(labjack.read('AIN2'))
                 async_getters.append(loop.run_in_executor(None, labjack_getter))
-
 
 
                 # Await all async data getters.
@@ -293,6 +337,24 @@ async def run_publisher():
                     await asyncio.wait_for(gather_task, timeout=5)
                 except:
                     raise ValueError(gather_task.exception())
+
+
+                ##### Read CBS camera (Sync) #####
+                cbs_png = None
+                cbs_raw_png = None
+
+                with Timer('CBS Camera', times):
+                    if cbs_cam is not None and cbs_cam.capture():
+                        cbs_png = cv2.imencode('.png', cbs_cam.image)[1].tobytes()
+                        cbs_raw_png = cv2.imencode('.png', cbs_cam.raw_image)[1].tobytes()
+
+                
+                # Read spectrometer thread.
+                _, spec_data = spectrometer_monitor.grab_json_data()
+                if spec_data is not None:
+                    rough = spec_data['rough']
+                    trans = spec_data['trans']
+
 
 
                 ### Update models ###
@@ -305,6 +367,7 @@ async def run_publisher():
 
 
                 # Construct final data packet
+                times['loop'] = round(1e3 * (time.monotonic() - loop_start))
                 uptime = (time.monotonic() - publisher_start)/3600
                 data_dict = {
                     'pressure': deconstruct(chamber_pressure),
@@ -332,10 +395,11 @@ async def run_publisher():
                     
                     'running': running,
                     'debug': {
-                        'loop': time.monotonic() - loop_start,
+                        'times': times,
                         'uptime': uptime if loop_iteration > 1 else None,
                         'memory': memory_usage(),
-                        'ofx_exposure': spectrometer.integration_time,
+                        'system-memory': round(psutil.virtual_memory().used / 1024),
+                        'cpu': psutil.cpu_percent(),
                     }
                 }
                 print_tree(data_dict)
@@ -417,24 +481,18 @@ async def run_publisher():
                     )
 
 
+
                 ### Limit publishing speed ###
                 target_end = PUBLISH_INTERVAL * loop_iteration + publisher_start
                 time.sleep(max(target_end - time.monotonic(), 0))
 
                 publisher.send(data_dict)
                 camera_publisher.send(png)
-                if spectrum is not None:
-                    spectrometer_publisher.send({
-                        'wavelengths': list(spectrometer.wavelengths),
-                        'intensities': {
-                            'nom': list(nom(spectrum)),
-                            'std': list(std(spectrum)),
-                        },
-                        'raw_intensities': {
-                            'nom': list(nom(raw_spectrum)),
-                            'std': list(std(raw_spectrum)),
-                        },
-                        'integration_time': spectrometer.integration_time,
+
+                if cbs_png is not None:
+                    cbs_publisher.send({
+                        'raw': cbs_raw_png,
+                        'image': cbs_png,
                     })
                 print()
                 print()
@@ -444,12 +502,12 @@ async def run_publisher():
         camera.close()
         camera_publisher.close()
 
-        spectrometer.close()
-        spectrometer_publisher.close()
-
         pressure_gauge.close()
         mfc.close()
         turbo.close()
+
+        cbs_cam.close()
+        cbs_publisher.close()
 
 
 
@@ -458,6 +516,9 @@ async def run_publisher():
 
 
 if __name__ == '__main__':
+    spec_thread = threading.Thread(target=spectrometer_thread)
+    spec_thread.start()
+
     while True:
         try:
             asyncio.run(run_publisher())

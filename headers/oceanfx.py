@@ -18,46 +18,82 @@ from uncertainties.unumpy import uarray, nominal_values, std_devs
 
 
 # Dumped from packet capture
-PROBE_PACKET = (
-    b'\xc1\xc0\x00\x00\x00\x00\x00\x00\x80\x09\x10\x00\x00\x00'
-    + b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x04\x01\x00\x00\x00\x00\x00'
-    + b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x14\x00\x00\x00\x00\x00'
-    + b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xc5\xc4'
-    + b'\xc3\xc2'
+def pad_packet(message_type, content):
+    return (
+        b'\xc1\xc0' # Constant start bytes
+        + b'\x00\x00' # Protocol Version
+        + b'\x00\x00' # Flags
+        + b'\x00\x00' # Error number
+        + message_type
+        + b'\x00\x00\x00\x00' # Request ID (will be echoed back)
+        + b'\x00\x00\x00\x00\x00\x00' # Useless, reserved
+        + b'\x00' # Checksum type (useless)
+        + content
+        + b'\x14\x00\x00\x00\x00\x00' # Bytes remaining (incl. checksum + footer)
+        + b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' # Checksum
+        + b'\xc5\xc4\xc3\xc2' # Footer
+    )
+
+FLAGS = [
+    'Response',
+    'ACK',
+    'ACK Request',
+    'NACK',
+    'Exception',
+    'Deprecated Protocol',
+    'Deprecated Message'
+]
+def parse_packet(packet):
+    flag = FLAGS[int(packet[4])]
+    error = int.from_bytes(packet[6:8], byteorder='little')
+    msg_type = packet[8:12]
+
+    immediate_data_length = int(packet[23])
+    immediate_data = packet[24:24 + immediate_data_length]
+
+    payload_length = int.from_bytes(packet[40:44], byteorder='little') - 20
+    payload = packet[44:44 + payload_length]
+    return {
+        'flag': flag,
+        'error': error,
+        'type': msg_type,
+        'immediate': immediate_data,
+        'payload': payload
+    }
+
+
+INTEGRATION_MESSAGE_TYPE = b'\x10\x00\x11\x00'
+RESET_PACKET = pad_packet(
+    b'\x00\x00\x00\x00',
+    b'\x00' # Length of immediate data
+    + b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' # Immediate data
 )
-INTEGRATION_HEADER = (
-    b'\xc1\xc0\x00\x00\x04\x00\x00\x00\x10\x00\x11\x00\x00\x00\x00\x00'
-    + b'\x00\x00\x00\x00\x00\x00\x00\x04'
-)
-INTEGRATION_FOOTER = (
-    b'\x00\x00\x00\x00\x00\x00'
-    + b'\x00\x00\x00\x00\x00\x00\x00\x00\x14\x00\x00\x00\x00\x00\x00\x00'
-    + b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xc5\xc4\xc3\xc2'
-)
+
+
+
 
 SPECTRUM_LENGTH = 2136
-
 OCEANFX_WAVELENGTHS, SYSTEMATIC_BACKGROUND, _ = np.loadtxt('calibration/systematic-background.txt').T
-
 HENE_MASK = (OCEANFX_WAVELENGTHS < 610) | (OCEANFX_WAVELENGTHS > 650)
 
 
 # Utilities for fitting surface roughness
 ior = 1.23
-rayleigh_constant = 2/3 * np.pi**5 * np.square((ior*ior-1)/(ior*ior+2))
 def roughness_model(
         wavelength, # nm
         I0,
         roughness, # nm
-#        rayleigh_strength, # nm^3 * micron
+        fourth_order_coefficient, # nm^3 * micron
     ):
     wavenumber = 2*np.pi/wavelength
-    theta = 45 * np.pi/180
-    delta_n = ior - 1
+    theta = np.arcsin(np.sin(45*np.pi/180) * ior)
 
-    roughness_factor = np.exp(-0.5 * np.square(wavenumber * roughness * delta_n * np.cos(theta)))
-#    rayleigh_factor = np.exp(-1e3 * rayleigh_strength * wavenumber**4 * rayleigh_constant)
-    return I0 * roughness_factor
+    delta_n = ior - 1
+    effective_roughness = roughness * np.cos(theta)
+
+    roughness_factor = np.exp(-0.5 * np.square(wavenumber * effective_roughness * delta_n))
+    fourth_order_factor = np.exp(-1e3 * fourth_order_coefficient * wavenumber**4)
+    return I0 * roughness_factor * fourth_order_factor
 
 
 def fit_roughness(wavelengths, transmission):
@@ -67,15 +103,16 @@ def fit_roughness(wavelengths, transmission):
         roughness_model,
         wavelengths,
         y, sigma=y_err,
-        p0=[100, 1e3],
+        p0=[100, 1e3, 0],
         bounds=[
-            (0, 0),
-            (200, 5e3)
+            (0, 0, -1e6),
+            (200, 5e3, 1e6)
         ]
     )
     return [
         ufloat(popt[0], np.sqrt(pcov[0][0])),
-        ufloat(popt[1], np.sqrt(pcov[1][1]))
+        ufloat(abs(popt[1]), np.sqrt(pcov[1][1])),
+        ufloat(popt[2], np.sqrt(pcov[2][2])),
     ]
 
 
@@ -94,6 +131,9 @@ class OceanFX:
         self._integration_time = None
         self.load_calibration()
 
+        # Disable buffering
+        self.send(b'\x10\x08\x10\x00', 0, data_length=1)
+
 
     def load_calibration(self):
         self.background = uarray(*np.loadtxt('calibration/background.txt'))
@@ -104,7 +144,87 @@ class OceanFX:
         if self.sock is not None:
             self.sock.close()
 
-    def capture(self, n_samples = 256, time_limit = None):
+    def reset(self): self.sock.send(RESET_PACKET)
+
+    def ping(self):
+        self.send(b'\x01\xF1\x0F\x00', 31415)
+        return parse_packet(self.sock.recv(8192))
+
+    def send(self, message_type, data, data_length=4):
+        self.sock.send(pad_packet(
+            message_type,
+            data_length.to_bytes(1, byteorder='little')
+            + int(data).to_bytes(16, byteorder='little')
+        ))
+
+    def set_averaging(self, n_scans: int):
+        """Set the OceanFX to internally average `n_scans` scans for each returned spectra."""
+        self.send(b'\x10\x00\x12\x00', n_scans, data_length=2)
+
+
+    def _capture_sample(self):
+        # Get 3 spectra (up to 15)
+        self.send(b'\x80\x09\x10\x00', 3)
+
+        # Get the response. Read packets until the checksum.
+        data = b''
+        while not data.endswith(b'\xc5\xc4\xc3\xc2'):
+            data += self.sock.recv(8192)
+        data = parse_packet(data)
+
+        # Check if spectrum is valid
+        error = data['error']
+        if error != 0:
+            self.reset()
+            raise RuntimeError(f'OceanFX in error state {error}')
+
+        payload = data['payload']
+        segment_length = 64 + 2 * SPECTRUM_LENGTH + 4
+        n_spectra, checksum = divmod(len(payload), segment_length)
+        if checksum != 0:
+            raise RuntimeError('Invalid packet length!')
+
+        # Extract metadata, then decode
+        # from little-endian 16-byte unsigned int.
+        integration_times = []
+        samples = []
+        for i in range(n_spectra):
+            segment = payload[segment_length*i : segment_length*(i+1)]
+            metadata = segment[:64]
+            sample = np.frombuffer(segment[64:-4], dtype=np.uint16)
+
+            # Extract spectrum length and integration time.
+            spectrum_length = int.from_bytes(metadata[4:8], byteorder='little')
+            integration_time = int.from_bytes(metadata[16:20], byteorder='little')
+
+            # Return if spectrum has expected length.
+            if spectrum_length == 2 * SPECTRUM_LENGTH:
+                integration_times.append(integration_time)
+                samples.append(sample)
+
+        return integration_times, samples
+
+
+    def _capture_samples(self, integration_time, time_limit=0.2):
+        self._set_integration_time(integration_time)
+
+        # Average some spectra
+        start_time = time.monotonic()
+        samples = []
+        while True:
+            for sample_integration_time, spectrum in zip(*self._capture_sample()):
+                if integration_time != sample_integration_time: continue
+                samples.append(spectrum)
+            if time.monotonic() - start_time > time_limit: break
+
+        samples = np.array(samples)
+
+        # Return mean + std
+        print(f'  [{Fore.BLUE}INFO{Style.RESET_ALL}] {Style.DIM}Captured{Style.RESET_ALL} {Style.BRIGHT}{len(samples)}{Style.RESET_ALL} {Style.DIM}spectra at{Style.RESET_ALL} {Style.BRIGHT}{integration_time}{Style.RESET_ALL} {Style.DIM}μs exposure.{Style.RESET_ALL}')
+        return uarray(samples.mean(axis=0), samples.std(axis=0, ddof=1))
+
+
+    def capture(self, time_limit = 1):
         if self.sock is None: return
 
         try:
@@ -112,65 +232,71 @@ class OceanFX:
         except:
             pass
 
-        # Average some spectra
-        start_time = time.monotonic()
-        spectrum = np.zeros((n_samples, SPECTRUM_LENGTH), dtype=float)
-        for i in range(n_samples):
-            # Get spectra until we get a stable one (full integration time)
-            while True:
-                # Send the same 64 data bytes from packet capture
-                self.sock.send(PROBE_PACKET)
-
-                # Get the response. Read packets until we have 4404 bytes.
-                data = b''
-                while len(data) < 4404: data += self.sock.recv(8192)
-
-                # Decode from little-endian 16-byte unsigned int,
-                # and discard metadata.
-                sample = np.frombuffer(data, dtype=np.uint16)
-
-                # Set integration time if valid spectrum
-                canary, integration_time = sample[29:31]
-                if canary == 5: break
-
-            raw_spectrum = sample[54:2190]
-            spectrum[i] = (raw_spectrum  - SYSTEMATIC_BACKGROUND) / integration_time
-            saturation = max(raw_spectrum[HENE_MASK])
-
-#            spectrum[i] = raw_spectrum * 100/65536 # legacy, delete this line soon.
-
-            if i % 200 == 0 and i > 0:
-                print(f'{i}/{n_samples}')
-
-            if time_limit is not None and time.monotonic() - start_time > time_limit:
-                spectrum = spectrum[:i+1]
-                break
-
-        # Return mean + std
-        self._cache = uarray(spectrum.mean(axis=0), spectrum.std(axis=0))
-        self._raw_cache = self._cache * integration_time + SYSTEMATIC_BACKGROUND
-
-        # Auto-set integration time to get good dynamic range
-        target = integration_time * 50000/saturation
-        target = round(max(min(target, 20000), 50))
-        if self.integration_time != target: self.integration_time = target
+        self.set_averaging(1)
 
 
-    @property
-    def integration_time(self) -> int:
-        return self._integration_time
+        # Capture over a range of integration times.
+        integration_times = np.array([
+            10, 15, 20, 25, 30,
+            50,
+            100,
+            200,
+            500,
+            1000,
+            3000,
+            10000,
+            30000,
+            100000,
+            300000
+        ])
+        samples = []
+        for integration_time in integration_times:
+            sample = self._capture_samples(
+                integration_time,
+                time_limit/len(integration_times)
+            )
+            samples.append(sample)
+        samples = np.array(samples).T
 
-    @integration_time.setter
-    def integration_time(self, val: int):
+        # Fit a linear slope at each wavelength, excluding saturated spectra.
+        points = []
+        intercepts = []
+        slopes = []
+        curvature = []
+        for i in range(SPECTRUM_LENGTH):
+            y = samples[i]
+            mask = (nominal_values(y) + 2 * std_devs(y)) < 64000
+            y = y[mask]
+            x = integration_times[mask]
+
+            if len(y) < 5:
+                print(f'Saturated at {OCEANFX_WAVELENGTHS[i]:.2f} nm!')
+            popt, pcov = np.polyfit(
+                x, nominal_values(y), 3,
+                w=1/np.maximum(std_devs(y), 10),
+                cov=True
+            )
+            perr = np.sqrt(np.diag(pcov))
+            perr[np.isinf(perr)] = 10
+
+            points.append(len(y))
+            intercepts.append(ufloat(popt[-1], perr[-1]))
+            slopes.append(ufloat(popt[-2], perr[-2]))
+            curvature.append(ufloat(popt[-3], perr[-3]))
+
+
+        # Return mean + std slopes
+        self._cache = np.array(slopes)
+        self._intercepts = np.array(intercepts)
+        self._curvature = np.array(curvature)
+        self._points = np.array(points)
+
+
+    def _set_integration_time(self, val: int):
         """Sets the integration time, in microseconds."""
-        packet = (
-            INTEGRATION_HEADER
-            + val.to_bytes(2, byteorder='little')
-            + INTEGRATION_FOOTER
-        )
-        print(f'  [{Fore.RED}SEND{Style.RESET_ALL}] Setting OceanFX integration time to {val} μs')
-        self.sock.send(packet)
-        self._integration_time = val
+        assert val >= 10
+        assert val <= 1e6
+        self.send(b'\x10\x00\x11\x00', round(val))
         
 
     @property
@@ -178,18 +304,18 @@ class OceanFX:
         # Taken from an OceanFX save file
         return OCEANFX_WAVELENGTHS
 
+
     @property
     def intensities(self):
         if self._cache is None: self.capture()
         return self._cache
 
-    @property
-    def raw_intensities(self): return self._raw_cache
 
     @property
     def transmission(self):
         """Return the transmission (in percent) at each wavelength."""
         return 100 * (self.intensities - self.background) / self.baseline
+
 
     @property
     def transmission_scalar(self):
@@ -198,10 +324,6 @@ class OceanFX:
 
         return 100 * (self.intensities - self.background).sum() / self.baseline.sum()
 
-    @property
-    def optical_density(self):
-        """Return the optical density at each wavelength."""
-        return -np.log10(transmission/100)
 
     @property
     def roughness_full(self):
@@ -213,15 +335,11 @@ class OceanFX:
 #        mask = (wavelengths > 430) & (wavelengths < 600)
 
         try:
-            I0, roughness = fit_roughness(self.wavelengths[mask], self.transmission[mask])
+            return fit_roughness(self.wavelengths[mask], self.transmission[mask])
         except Exception as e:
             print(e)
-            I0, roughness = self.transmission_scalar, ufloat(0, 0)
+            return self.transmission_scalar, ufloat(0, 0), ufloat(0, 0)
 
-        max_transmission = max(nominal_values(self.transmission[mask]))
-        if roughness.s > roughness.n or max_transmission < 3 or I0.n < 0:
-            I0, roughness = self.transmission_scalar, ufloat(0, 0)
-        return I0, roughness
 
     @property
     def roughness(self):

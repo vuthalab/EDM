@@ -36,6 +36,9 @@ mfc = MFC(31417)
 #T2.ramp_temperature('srb45k out', 320.0, 1.0)
 
 #time.sleep(2 * HOUR)
-
-#T1.disable_output()
-#T2.disable_output()
+T1.disable_PID('heat saph')
+T1.disable_PID('heat coll')
+T2.disable_PID('srb4k out')
+T2.disable_PID('srb45k out')
+T1.disable_output()
+T2.disable_output()

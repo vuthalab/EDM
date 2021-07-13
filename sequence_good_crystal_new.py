@@ -92,7 +92,7 @@ def melt_only(end_temp = 8):
     print('Cooling crystal.')
     end_time = time.monotonic() + 3.5 * MINUTE
     T1.ramp_temperature('heat saph', end_temp, 0.15)
-    calibrate_oceanfx('baseline', num_samples=100)
+    calibrate_oceanfx('baseline', time_limit=3 * MINUTE)
     _sleep_until(end_time)
 
 

@@ -23,7 +23,10 @@ pt = PulseTube()
 
 
 # Ensure turbo is running.
-assert turbo.operation_status == 'normal'
+if turbo.operation_status != 'normal':
+    # If not started, turn on and wait for spinup.
+    turbo.on()
+    time.sleep(10 * MINUTE)
 
 
 # Make sure MFC is on. Slowly ramp down the saph temperature to liquid nitrogen temp.

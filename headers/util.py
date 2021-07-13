@@ -185,7 +185,10 @@ def display(value: ufloat,
         scientific = False
 
     if digits is None:
-        digits = max(int(-np.floor(np.log10(value.s / 1.9))), 0) if value.s > 0 else 3
+        try:
+            digits = max(int(-np.floor(np.log10(value.s / 1.9))), 0) if value.s > 0 else 3
+        except:
+            digits = 10
     template_string = f'{{:.{digits}f}}'
 
     n_str = template_string.format(value.n)

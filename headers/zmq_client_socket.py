@@ -31,6 +31,12 @@ class zmq_client_socket:
         self.load_settings(connection_settings)
         self.make_connection()
         self.current_data = self.grab_data()
+
+
+    def grab_json_data(self):
+        data = self.grab_data()
+        if data is None: return (None, None)
+        return self._decode(data)
         
                 
     def grab_data(self):

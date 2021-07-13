@@ -14,8 +14,6 @@ from headers.zmq_client_socket import zmq_client_socket
 from headers.util import uarray, nom, std, plot
 
 
-INTEGRATION_TIME = 20000 # us
-
 
 if len(sys.argv) > 1:
     DURATION = float(sys.argv[1])
@@ -30,7 +28,7 @@ else:
 root_dir = Path('~/Desktop/edm_data/logs/oceanfx/').expanduser()
 log_file = root_dir / (time.strftime('%Y-%m-%d %H꞉%M꞉%S') + '.txt')
 
-N = 16 # number of samples to average. Each 'sample' is actually several captures, see publisher.
+N = 10 # number of samples to average. Each 'sample' is actually several captures, see publisher.
 
 
 
@@ -62,12 +60,6 @@ with open(log_file, 'a') as f:
         print(f'  [{Fore.GREEN}SAVED{Style.RESET_ALL}]')
 
         spectrum = sum(samples) / len(samples)
-
-        # TODO TEMPORARY, to keep consistency with previous runs
-        spectrum *= INTEGRATION_TIME
-        spectrum += SYSTEMATIC_BACKGROUND
-        spectrum *= 100/65536
-
         print(time.time(), format_array(nom(spectrum)), format_array(std(spectrum)), file=f)
 
         if DURATION is not None and time.monotonic() - start_time > DURATION * 3600:

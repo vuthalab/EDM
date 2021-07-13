@@ -10,6 +10,7 @@ Date: May 17, 2021
 
 import time
 import os, shutil
+import random
 from pathlib import Path
 
 import numpy as np
@@ -92,7 +93,7 @@ def melt_only(end_temp = 8):
     print('Cooling crystal.')
     end_time = time.monotonic() + 3.5 * MINUTE
     T1.ramp_temperature('heat saph', end_temp, 0.15)
-    calibrate_oceanfx('baseline', num_samples=100)
+    calibrate_oceanfx('baseline', time_limit=3.3 * MINUTE)
     _sleep_until(end_time)
 
 
@@ -103,7 +104,7 @@ def melt_and_anneal(neon_flow = 4, end_temp = 8):
     end_time = time.monotonic() + 3 * MINUTE
     print('Cooling crystal.')
     T1.ramp_temperature('heat saph', 9.4, 0.15)
-    calibrate_oceanfx('baseline', num_samples=100)
+    calibrate_oceanfx('baseline', time_limit=2.8 * MINUTE)
     _sleep_until(end_time)
 
     print('Annealing (starting neon line).')
@@ -219,19 +220,17 @@ try:
 #    deep_clean()
 #    melt_and_grow(neon_flow=0, buffer_flow=10)
 
-    for duration in [50, 30, 40]:
+    temps = [9.2, 9.4, 9.6, 9.8, 10]
+    random.shuffle(temps)
+
+    for temp in temps:
+        print(temp)
         melt_and_grow(
             neon_flow=8,
-            growth_time=duration * MINUTE,
-            anneal=False
+            growth_time=10 * MINUTE,
         )
-        stationary_polish(
-            flow_rate=8,
-            target_roughness=0,
-            time_limit=1 * HOUR
-        )
-
-#    grow_only(neon_flow=3, buffer_flow=0, growth_time=3*HOUR)
+        T1.ramp_temperature('heat saph', temp, 0.5)
+        time.sleep(10 * MINUTE)
 
 
 finally:

@@ -1,3 +1,6 @@
+import time
+import itertools
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -8,8 +11,6 @@ from headers.zmq_client_socket import zmq_client_socket
 
 from headers.util import nom, std, plot, uarray
 
-
-N_SAMPLES = 100 # number of samples to calibrate with.
 
 
 spec = OceanFX()
@@ -22,23 +23,27 @@ connection_settings = {
 
 def calibrate(
     name,
-    num_samples=N_SAMPLES,
+    time_limit=60,
     show_plot=False,
 ):
-    print(f'Calibrating OceanFX {name}...')
+    print(f'Calibrating OceanFX {name} for {time_limit} seconds...')
 
     # connect to publisher
     monitor_socket = zmq_client_socket(connection_settings)
     monitor_socket.make_connection()
 
     samples = []
-    for i in range(num_samples):
+    start_time = time.monotonic()
+    for i in itertools.count():
         _, data = monitor_socket.blocking_read()
-        print(f'\rSample {Style.BRIGHT}{i+1}/{num_samples}{Style.RESET_ALL}', end='')
+        print(f'\rSample {Style.BRIGHT}{i+1}{Style.RESET_ALL}', end='')
         wavelengths = data['wavelengths']
         spectrum = data['intensities']
         samples.append(uarray(spectrum['nom'], spectrum['std']))
+
+        if time.monotonic() - start_time > time_limit: break
     monitor_socket.socket.close()
+
     spectrum = sum(samples) / len(samples)
     print()
 
@@ -59,8 +64,8 @@ def calibrate(
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        input('Unblock OceanFX, then press Enter.')
-        calibrate('baseline', plot=True)
-        input('Block OceanFX, then press Enter.')
-        calibrate('background', show_plot=True)
+#    input('Unblock OceanFX, then press Enter.')
+#    calibrate('baseline', show_plot=True)
+
+    input('Block OceanFX, then press Enter.')
+    calibrate('background', show_plot=True)

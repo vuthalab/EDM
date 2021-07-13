@@ -41,7 +41,7 @@ skip_points = max(1, round(duration / (2 * HOUR)))
 
 
 # how fast the publisher is
-publisher_rate = 1.4/2 # Hertz
+publisher_rate = 1.4/3 # Hertz
 
 
 # how often to update plot.
@@ -74,6 +74,7 @@ fields = {
     ('Ca Laser', 'GHz '): ('freq', 'calcium'),
 
     ('rms roughness (from spectrometer)', 'nm'): ('rough', 'surf'),
+    ('fourth-order roughness coefficient (rayleigh $- K \sigma^4$)', 'micron nm$^3$'): ('rough', 'fourth-order'),
     ('crystal thickness (dead reckoning)', 'micron'): ('model', 'height'),
 
     ('saph heat', 'W'): ('heaters', 'heat saph'),
@@ -95,11 +96,23 @@ fields = {
     ('beam center x (from camera)', '% '): ('center', 'x'),
     ('beam center y (from camera)', '% '): ('center', 'y'),
 
-    ('spectrometer integration time', 'μs'): ('debug', 'ofx_exposure'),
     ('camera integration time', 'μs'): ('center', 'exposure'),
-    ('loop time', 's'): ('debug', 'loop'),
     ('uptime', 'hr'): ('debug', 'uptime'),
-    ('memory usage', 'KB'): ('debug', 'memory'),
+    ('publisher memory usage', 'KB'): ('debug', 'memory'),
+    ('system memory usage', 'KB'): ('debug', 'system-memory'),
+
+
+    # Device read times
+    ('loop total', 'ms'): ('debug', 'times', 'loop'),
+    ('fringe camera', 'ms'): ('debug', 'times', 'camera'),
+    ('cbs camera', 'ms'): ('debug', 'times', 'CBS Camera'),
+#    ('pressure gauge', 'ms'): ('debug', 'times', 'pressure'),
+#    ('turbo pump', 'ms'): ('debug', 'times', 'turbo'),
+#    ('mfc', 'ms'): ('debug', 'times', 'MFC'),
+#    ('temp controller #1', 'ms'): ('debug', 'times', 'CTC31415'),
+#    ('temp controller #2', 'ms'): ('debug', 'times', 'CTC31416'),
+#    ('led monitor labjack', 'ms'): ('debug', 'times', 'labjack'),
+    ('wavemeter', 'ms'): ('debug', 'times', 'wavemeter'),
 }
 
 axis_labels = [
@@ -112,6 +125,7 @@ axis_labels = [
     'V',
     '%',
     'nm',
+    'micron nm$^3$',
     'micron',
     'fringes',
     '%  ',
@@ -124,7 +138,7 @@ axis_labels = [
     'K ',
 
     'μs',
-    's',
+    'ms',
     'hr',
     'KB',
 ]
@@ -192,8 +206,8 @@ locator = mpdates.AutoDateLocator()
 formatter = mpdates.ConciseDateFormatter(locator)
 plt.gca().xaxis.set_major_formatter(formatter)
 
-axes[axis_labels.index('torr')].set_yscale('log') # set pressure as log
-#axes[axis_labels.index('V')].set_yscale('log') # set reflection as log
+for label in ['torr', 'μs']:
+    axes[axis_labels.index(label)].set_yscale('log')
 
 ##### animated plot #####
 times = np.array([datetime.datetime.now()] * num_points)
