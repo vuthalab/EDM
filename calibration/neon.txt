@@ -1,0 +1,2 @@
+# neon remaining [L], buffer gas used [L], neon line used [L]
+3.590257852921527615e+01 1.964541032420802935e+01 4.445201114657770347e+01
