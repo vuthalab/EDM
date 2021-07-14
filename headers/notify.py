@@ -2,8 +2,8 @@ import os, time
 import requests
 
 
-with open('.mailgun.key', 'r') as f:
-    API_KEY = f.read().strip()
+#with open('.mailgun.key', 'r') as f:
+#    API_KEY = f.read().strip()
 
 
 cache = {}
@@ -13,6 +13,7 @@ def send_email(
     cooldown: float = 12,
     high_priority: bool = True 
 ):
+    return
     """
     Sends a notification email.
     Does nothing if an email with the same subject was sent

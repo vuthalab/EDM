@@ -41,7 +41,7 @@ skip_points = max(1, round(duration / (2 * HOUR)))
 
 
 # how fast the publisher is
-publisher_rate = 1.4/3 # Hertz
+publisher_rate = 1.4/2 # Hertz
 
 
 # how often to update plot.

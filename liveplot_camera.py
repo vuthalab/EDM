@@ -11,10 +11,10 @@ from headers.zmq_client_socket import zmq_client_socket
 
 # Select which cameras to show here.
 SHOW_CAMERAS = {
-    'webcam': False,
+    'webcam': True,
     'plume': False,
     'fringe': False,
-    'cbs': True,
+    'cbs': False,
 }
 
 

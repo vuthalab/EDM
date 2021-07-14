@@ -188,7 +188,7 @@ if __name__ == '__main__':
     TC1 = telnetlib.Telnet('192.168.0.104', port=23, timeout=2)
     TC2 = telnetlib.Telnet('192.168.0.107', port=23, timeout=2)
     mfc = Labjack('470017292')
-    turbo = serial.Serial('/dev/ttyUSB3', 9600, timeout=0.5)
+    turbo = serial.Serial('/dev/ttyUSB1', 9600, timeout=0.5)
 
     Multiplexer(31415, TC1, telnet_handler).start()
     Multiplexer(31416, TC2, telnet_handler).start()

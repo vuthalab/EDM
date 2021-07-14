@@ -247,7 +247,7 @@ class OceanFX:
             10000,
             30000,
             100000,
-            300000
+#            300000
         ])
         samples = []
         for integration_time in integration_times:

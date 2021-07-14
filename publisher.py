@@ -36,7 +36,7 @@ from models.growth_rate import GrowthModel
 
 
 
-PUBLISH_INTERVAL = 3/1.4 # publish every x seconds.
+PUBLISH_INTERVAL = 2/1.4 # publish every x seconds.
 
 
 
@@ -334,7 +334,7 @@ async def run_publisher():
                 # Tasks will run simultaneously.
                 gather_task = asyncio.gather(*async_getters)
                 try:
-                    await asyncio.wait_for(gather_task, timeout=5)
+                    await asyncio.wait_for(gather_task, timeout=15)
                 except:
                     raise ValueError(gather_task.exception())
 
