@@ -73,8 +73,8 @@ RESET_PACKET = pad_packet(
 
 
 SPECTRUM_LENGTH = 2136
-OCEANFX_WAVELENGTHS, SYSTEMATIC_BACKGROUND, _ = np.loadtxt('calibration/systematic-background.txt').T
-HENE_MASK = (OCEANFX_WAVELENGTHS < 610) | (OCEANFX_WAVELENGTHS > 650)
+OCEANFX_WAVELENGTHS = np.loadtxt('calibration/wavelengths.txt')
+HENE_MASK = (OCEANFX_WAVELENGTHS < 630) | (OCEANFX_WAVELENGTHS > 634)
 
 
 # Utilities for fitting surface roughness
@@ -109,10 +109,17 @@ def fit_roughness(wavelengths, transmission):
             (200, 5e3, 1e6)
         ]
     )
+    perr = np.sqrt(np.diag(pcov))
+
+    y_pred = roughness_model(wavelengths, *popt)
+    chisq = np.square((y - y_pred) / y_err).sum()
+    dof = len(y) - len(popt)
+
     return [
-        ufloat(popt[0], np.sqrt(pcov[0][0])),
-        ufloat(abs(popt[1]), np.sqrt(pcov[1][1])),
-        ufloat(popt[2], np.sqrt(pcov[2][2])),
+        ufloat(popt[0], perr[0]),
+        ufloat(abs(popt[1]), perr[0]),
+        ufloat(popt[2], perr[2]),
+        chisq/dof,
     ]
 
 
@@ -132,7 +139,7 @@ class OceanFX:
         self.load_calibration()
 
         # Disable buffering
-        self.send(b'\x10\x08\x10\x00', 0, data_length=1)
+#        self.send(b'\x10\x08\x10\x00', 0, data_length=1)
 
 
     def load_calibration(self):
@@ -163,8 +170,8 @@ class OceanFX:
 
 
     def _capture_sample(self):
-        # Get 3 spectra (up to 15)
-        self.send(b'\x80\x09\x10\x00', 3)
+        # Get 5 spectra (up to 15)
+        self.send(b'\x80\x09\x10\x00', 5)
 
         # Get the response. Read packets until the checksum.
         data = b''
@@ -236,19 +243,16 @@ class OceanFX:
 
 
         # Capture over a range of integration times.
+        log_integration_times = np.linspace(1.3, 5, 40)
+        log_integration_times += np.random.uniform(-0.02, 0.02, 40)
         integration_times = np.array([
-            10, 15, 20, 25, 30,
-            50,
-            100,
-            200,
-            500,
-            1000,
-            3000,
-            10000,
-            30000,
-            100000,
-#            300000
-        ])
+            10, 11, 12, 13, # Make sure to get hene properly exposed
+            *np.power(10, log_integration_times)
+        ], dtype=int)
+
+        # Randomize
+        np.random.shuffle(integration_times)
+
         samples = []
         for integration_time in integration_times:
             sample = self._capture_samples(
@@ -270,25 +274,31 @@ class OceanFX:
             x = integration_times[mask]
 
             if len(y) < 5:
-                print(f'Saturated at {OCEANFX_WAVELENGTHS[i]:.2f} nm!')
-            popt, pcov = np.polyfit(
-                x, nominal_values(y), 3,
-                w=1/np.maximum(std_devs(y), 10),
-                cov=True
-            )
-            perr = np.sqrt(np.diag(pcov))
-            perr[np.isinf(perr)] = 10
+                print(f'Saturated at {OCEANFX_WAVELENGTHS[i]:.2f} nm! Only {len(y)} valid points')
+
+            degree = 2 if i in HENE_MASK else 1
+            try:
+                popt, pcov = np.polyfit(
+                    x, nominal_values(y), degree,
+                    w=1/np.maximum(std_devs(y), 20),
+                    cov=True
+                )
+                perr = np.sqrt(np.diag(pcov))
+                perr[np.isinf(perr)] = 10
+            except:
+                popt = [0, 1000]
+                perr= [1000, 1000]
 
             points.append(len(y))
             intercepts.append(ufloat(popt[-1], perr[-1]))
             slopes.append(ufloat(popt[-2], perr[-2]))
-            curvature.append(ufloat(popt[-3], perr[-3]))
+#            curvature.append(ufloat(popt[-3], perr[-3]))
 
 
         # Return mean + std slopes
         self._cache = np.array(slopes)
         self._intercepts = np.array(intercepts)
-        self._curvature = np.array(curvature)
+#        self._curvature = np.array(curvature)
         self._points = np.array(points)
 
 
@@ -331,14 +341,18 @@ class OceanFX:
         if self.sock is None: return (None, None)
 
         wavelengths = self.wavelengths
-        mask = ((wavelengths > 430) & (wavelengths < 600)) | ((wavelengths > 750) & (wavelengths < 900))
+        mask = (
+            (wavelengths > 440) & (wavelengths < 620)
+#            | (wavelengths > 640) & (wavelengths < 680)
+            | (wavelengths > 780) & (wavelengths < 870)
+        )
 #        mask = (wavelengths > 430) & (wavelengths < 600)
 
         try:
             return fit_roughness(self.wavelengths[mask], self.transmission[mask])
         except Exception as e:
             print(e)
-            return self.transmission_scalar, ufloat(0, 0), ufloat(0, 0)
+            return self.transmission_scalar, ufloat(0, 0), ufloat(0, 0), None
 
 
     @property

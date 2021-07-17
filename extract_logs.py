@@ -12,8 +12,8 @@ from colorama import Style, Fore
 # Date format must be YYYY-MM-DD
 # Time format must be HH:MM:SS (24-hour format)
 # End time can be in the future to get all data after a certain point
-START_TIME = ('2021-07-08', '10:00:00')
-END_TIME = ('2021-07-08', '23:00:00')
+START_TIME = ('2021-07-16', '21:27:00')
+END_TIME = ('2021-07-16', '23:59:00')
 
 # Map from plot labels (name, unit) to paths in data
 # Choose which fields you want to extract here
@@ -26,13 +26,11 @@ fields = {
 #    ('intensity (broadband)', 'V '): ('intensities', 'broadband'),
 #    ('intensity (LED)', 'V '): ('intensities', 'LED'),
 
-#    ('reflection (from photodiode)', 'V'): ('refl', 'pd'),
 #    ('reflection (from camera, centroid)', 'V'): ('refl', 'cam'),
 #    ('reflection (from camera, neural network)', 'V'): ('refl', 'ai'),
 
     ('fringe count', 'fringes'): ('fringe', 'count'),
     ('fringe amplitude', '%  '): ('fringe', 'ampl'),
-
 
 #    ('transmission (photodiode)', '%'): ('trans', 'pd'),
 #    ('transmission (spectrometer)', '%'): ('trans', 'spec'),
@@ -42,6 +40,8 @@ fields = {
 #    ('Ca Laser', 'GHz'): ('freq', 'calcium'),
 
     ('rms roughness (spectrometer)', 'nm'): ('rough', 'surf'),
+    ('fourth-order roughness coefficient (rayleigh $- K \sigma^4$)', 'micron nm$^3$'): ('rough', 'fourth-order'),
+    ('crystal thickness (dead reckoning)', 'micron'): ('model', 'height'),
 
 #    ('saph heat', 'W'): ('heaters', 'heat saph'),
 #    ('nozzle heat', 'W'): ('heaters', 'heat coll'),
@@ -54,7 +54,7 @@ fields = {
 #    ('45K plate', 'K'): ('temperatures', '45k plate'),
 
     ('sapphire mount', 'K'): ('temperatures', 'saph'),
-    ('nozzle', 'K'): ('temperatures', 'coll'),
+#    ('nozzle', 'K'): ('temperatures', 'coll'),
 #    ('4K sorb', 'K'): ('temperatures', 'srb4k'),
 #    ('4K plate', 'K'): ('temperatures', '4k plate'),
 

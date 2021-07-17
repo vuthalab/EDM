@@ -5,11 +5,12 @@ for record-keeping purposes.
 Systematic study of fringe growth.
 
 Author: Samuel Li
-Date: June 29, 2021
+Date: May 17, 2021
 """
 
 import time
 import os, shutil
+import random
 from pathlib import Path
 
 import numpy as np
@@ -23,28 +24,15 @@ from headers.CTC100 import CTC100
 from headers.mfc import MFC
 
 from headers.util import display
-from headers.zmq_client_socket import zmq_client_socket
+from headers.zmq_client_socket import connect_to
 
 from calibrate_oceanfx import calibrate as calibrate_oceanfx
 
 
 
-# If uncommented, then don't actually do anything
-# usbtmc.DRY_RUN = True
-
-
-LOG_DIR = Path('~/Desktop/edm_data/logs').expanduser()
-
-connection_settings = {
-    'ip_addr': 'localhost', # ip address
-    'port': 5551, # our open port
-    'topic': 'edm-monitor', # device
-}
-
-
-
 
 # Log a copy of this sequence file
+LOG_DIR = Path('~/Desktop/edm_data/logs').expanduser()
 root_dir = LOG_DIR / 'sequences'
 root_dir.mkdir(parents=True, exist_ok=True)
 filename = root_dir / (time.strftime('%Y-%m-%d %H꞉%M꞉%S') + '.py')
@@ -92,7 +80,7 @@ def melt_only(end_temp = 8):
     print('Cooling crystal.')
     end_time = time.monotonic() + 3.5 * MINUTE
     T1.ramp_temperature('heat saph', end_temp, 0.15)
-    calibrate_oceanfx('baseline', time_limit=3 * MINUTE)
+    calibrate_oceanfx('baseline', time_limit=3.3 * MINUTE)
     _sleep_until(end_time)
 
 
@@ -103,7 +91,7 @@ def melt_and_anneal(neon_flow = 4, end_temp = 8):
     end_time = time.monotonic() + 3 * MINUTE
     print('Cooling crystal.')
     T1.ramp_temperature('heat saph', 9.4, 0.15)
-    calibrate_oceanfx('baseline', num_samples=100)
+    calibrate_oceanfx('baseline', time_limit=2.8 * MINUTE)
     _sleep_until(end_time)
 
     print('Annealing (starting neon line).')
@@ -141,10 +129,10 @@ def grow_only(
 
 def wait_for_roughness(target_roughness, time_limit=None):
     ## connect to publisher
-    monitor_socket = zmq_client_socket(connection_settings)
-    monitor_socket.make_connection()
+    monitor_socket = connect_to('spectrometer')
 
     # Stay at temperature until roughness drops
+    buff = []
     start = time.monotonic()
     while True:
         _, data = monitor_socket.blocking_read()
@@ -156,7 +144,12 @@ def wait_for_roughness(target_roughness, time_limit=None):
         roughness = ufloat(*roughness)
         print(f'\rRoughness: {display(roughness)} nm', end='')
 
-        if roughness.n + roughness.s < target_roughness and (roughness.n + roughness.s) > 0:
+        # Keep rolling buffer
+        if roughness.n > 0:
+            buff.append(roughness.n)
+            buff = buff[-32:]
+
+        if np.mean(buff) < target_roughness:
             print()
             break
 
@@ -167,48 +160,12 @@ def wait_for_roughness(target_roughness, time_limit=None):
     monitor_socket.socket.close()
 
 
-def old_polish(
-    polish_temp = 10.5, # K
-    target_roughness = 300, # nm
-
-    time_limit = None,
-
-    grow_coat = True,
-    coat_sccm = 10, # flow rate for neon coat
-    coat_time = 5 * MINUTE, # duration of neon coat
-    coat_temp = 9, # saph temperature for neon coat
-):
-    """Grow a sacrificial coat of neon, then slowly melt until the desired roughness is achieved."""
-
-    if grow_coat:
-        print('Setting temperature.')
-        T1.ramp_temperature('heat saph', coat_temp, 0.5)
-        time.sleep(10)
-
-        print('Growing neon coat.')
-        mfc.flow_rate_neon_line = coat_sccm
-        time.sleep(coat_time)
-        mfc.off()
-
-
-    print('Annealing surface.')
-    T1.ramp_temperature('heat saph', polish_temp, 0.2)
-
-    wait_for_roughness(target_roughness, time_limit=time_limit)
-    
-
-    print('Cooling...')
-    T1.ramp_temperature('heat saph', 4, 0.5)
-    time.sleep(10)
-    print('Done.')
-
-
 E_a = 19.94e-3 # eV
 k_B = 1.381e-23/1.61e-19 # eV/K
 T_0 = 9.6 # K
 growth_factor = 0.488 # micron/min/sccm neon line
 def stationary_polish(
-    flow_rate = 5, # sccm
+    flow_rate = 4, # sccm
     target_roughness = 300, # nm
     time_limit = None,
 ):
@@ -252,12 +209,8 @@ T1.ramp_temperature('heat coll', 60, 0.5) # Keep nozzle at consistent temperatur
 T1.enable_output()
 
 try:
-#    deep_clean()
-
-    melt_and_grow(neon_flow=0, buffer_flow=10, growth_time=3.0 * HOUR)
-    stationary_polish(target_roughness=0, time_limit=1.0*HOUR)
-    time.sleep(2.0*HOUR)
-
+    melt_and_grow(neon_flow=0, buffer_flow=10, growth_time=1.5 * HOUR)
+    stationary_polish(target_roughness=1500, time_limit=30*MINUTE)
 
 finally:
     mfc.off()

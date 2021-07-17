@@ -11,10 +11,9 @@ import json
 import numpy as np
 
 from colorama import Fore, Style
-from uncertainties import ufloat
 
-from headers.util import display
-from headers.zmq_client_socket import zmq_client_socket
+from headers.edm_util import print_tree
+from headers.zmq_client_socket import connect_to
 
 
 ROOT_DIR = Path('~/Desktop/edm_data/logs/system_logs/').expanduser()
@@ -29,27 +28,7 @@ def log_file():
 
 
 ## connect
-connection_settings = {
-    'ip_addr': 'localhost', # ip address
-    'port': 5551, # our open port
-    'topic': 'edm-monitor', # device
-}
-monitor_socket = zmq_client_socket(connection_settings)
-monitor_socket.make_connection()
-
-
-## nice print function
-def print_tree(obj, indent=0):
-    for key, value in sorted(obj.items()):
-        print('   ' * indent + f'{Fore.YELLOW}{key}{Style.RESET_ALL}', end='')
-
-        if isinstance(value, dict):
-            print()
-            print_tree(value, indent=indent+1)
-        else:
-            if isinstance(value, tuple):
-                value = display(ufloat(*value))
-            print(':', value)
+monitor_socket = connect_to('edm-monitor')
 
 
 

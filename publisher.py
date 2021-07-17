@@ -13,26 +13,30 @@ from uncertainties import ufloat
 from simple_pyspin import Camera
 
 #Import class objects
-from headers.zmq_server_socket import zmq_server_socket
-from headers.zmq_client_socket import zmq_client_socket
+from headers.zmq_server_socket import create_server
+from headers.zmq_client_socket import connect_to
 
 from headers.FRG730 import FRG730
 from headers.CTC100 import CTC100
 from headers.labjack_device import Labjack
 from headers.mfc import MFC
 from headers.wavemeter import WM
-from headers.oceanfx import OceanFX
 from headers.turbo import TurboPump
 from headers.ximea_camera import Ximea
 from pulsetube_compressor import PulseTube
 
 from headers.util import display, unweighted_mean, nom, std
+from headers.edm_util import deconstruct, Timer, print_tree
 from headers.notify import send_email
 
 from models.fringe import FringeModel
 from models.fringe_counter import FringeCounter
 from models.image_track import fit_image
 from models.growth_rate import GrowthModel
+from models.cbs import fit_cbs
+
+from threads.spectrometer import spectrometer_thread
+from threads.webcam import webcam_thread
 
 
 
@@ -41,12 +45,6 @@ PUBLISH_INTERVAL = 2/1.4 # publish every x seconds.
 
 
 ##### UTILITY FUNCTIONS #####
-def deconstruct(val): 
-    """Deconstructs an uncertainty object into a tuple (value, uncertainty)"""
-    if val is None: return None
-    return (val.n, val.s)
-
-
 async def with_uncertainty(getter, N=32, delay=5e-3):
     """Call the given getter function N times and return the mean and standard deviation."""
     values = []
@@ -60,83 +58,13 @@ async def with_uncertainty(getter, N=32, delay=5e-3):
     return (np.mean(values), np.std(values))
 
 
-def print_tree(obj, indent=0):
-    for key, value in sorted(obj.items()):
-        print('   ' * indent + f'{Fore.YELLOW}{key}{Style.RESET_ALL}', end='')
-
-        if isinstance(value, dict):
-            print()
-            print_tree(value, indent=indent+1)
-        else:
-            if isinstance(value, tuple):
-                value = display(ufloat(*value))
-            print(':', value)
-
-
 fringe_model = FringeModel()
 fringe_counter = FringeCounter()
 growth_model = GrowthModel()
 
-class Timer:
-    """Context manager for timing code."""
-    def __init__(self, name=None, times=None):
-        self.name = name
-        self._times = times
-
-    def __enter__(self):
-        self.start = time.monotonic()
-        print(f'  [{Fore.BLUE}INFO{Style.RESET_ALL}] {Style.DIM}Reading {Style.RESET_ALL}{Style.BRIGHT}{self.name}{Style.RESET_ALL}')
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        dt = time.monotonic() - self.start
-        print(f'  [{Fore.BLUE}INFO{Style.RESET_ALL}] {Style.DIM}Reading {self.name} took {Style.RESET_ALL}{Style.BRIGHT}{dt:.3f} seconds{Style.RESET_ALL}')
-        if self._times is not None:
-            self._times[self.name] = round(1e3 * dt)
-
-
 def memory_usage():
     """Get the current memory usage, in KB."""
     return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-
-
-##### SPECTROMETER THREAD #####
-def spectrometer_thread():
-    spectrometer = OceanFX()
-    with zmq_server_socket(5553, 'spectrometer') as publisher:
-        while True:
-            trans = {}
-            rough = {}
-
-            try:
-                spectrometer.capture()
-            except:
-                print('Spectrometer capture failed!')
-                continue
-
-            spectrum = spectrometer.intensities
-            I0, roughness, fourth_order = spectrometer.roughness_full
-
-            trans['spec'] = deconstruct(spectrometer.transmission_scalar)
-            trans['unexpl'] = deconstruct(I0)
-
-            rough['surf'] = deconstruct(roughness)
-            rough['fourth-order'] = deconstruct(fourth_order)
-
-            publisher.send({
-                'wavelengths': list(spectrometer.wavelengths),
-                'intensities': {
-                    'nom': list(nom(spectrum)),
-                    'std': list(std(spectrum)),
-                },
-                'intercepts': {
-                    'nom': list(nom(spectrometer._intercepts)),
-                    'std': list(std(spectrometer._intercepts)),
-                },
-                'num-points': list(nom(spectrometer._points)),
-                'rough': rough,
-                'trans': trans,
-            })
-
 
 
 
@@ -159,11 +87,12 @@ async def run_publisher():
         camera.start()
     except:
         pass
-    camera_publisher = zmq_server_socket(5552, 'camera')
+    camera.GainAuto = 'Off'
+    camera.Gain = 10
+    camera.ExposureAuto = 'Off'
+    camera_publisher = create_server('camera')
 
     turbo = TurboPump()
-
-
 
 
     pt_last_off = time.monotonic()
@@ -176,21 +105,16 @@ async def run_publisher():
     except:
         cbs_cam = None
         print(f'{Fore.RED}ERROR: Ximea camera is unplugged!{Style.RESET_ALL}')
-    cbs_publisher = zmq_server_socket(5555, 'cbs-camera')
+    cbs_publisher = create_server('cbs-camera')
 
-    spectrometer_monitor = zmq_client_socket({
-        'ip_addr': 'localhost',
-        'port': 5553,
-        'topic': 'spectrometer',
-    })
-    spectrometer_monitor.make_connection()
+    spectrometer_monitor = connect_to('spectrometer')
 
 
     print('Starting publisher')
     publisher_start = time.monotonic()
     loop = asyncio.get_running_loop()
     try:
-        with zmq_server_socket(5551, 'edm-monitor') as publisher:
+        with create_server('edm-monitor') as publisher:
             rough = {}
             trans = {}
 
@@ -268,7 +192,6 @@ async def run_publisher():
                             capture_time = time.monotonic() - capture_start
 
                             camera_samples.append(fit_image(sample))
-
                             if image is None: image = sample
 
                             # Clear buffer (force new acquisition)
@@ -279,7 +202,7 @@ async def run_publisher():
                         center_x, center_y, cam_refl, saturation = [
                             unweighted_mean(arr) for arr in np.array(camera_samples).T
                         ]
-                        cam_refl *= 5000/exposure
+                        cam_refl *= 1500/exposure
 
                         # Downsample if 16-bit
                         if isinstance(image[0][0], np.uint16):
@@ -298,12 +221,8 @@ async def run_publisher():
                     refl['cam'] = deconstruct(2 * cam_refl)
                     refl['ai'] = deconstruct(fringe_model.reflection)
 
-                    if saturation.n > 99:
-                        camera.ExposureTime = exposure // 2
-                    elif saturation.n > 85:
-                        camera.ExposureTime = round(exposure * 0.999)
-                    elif saturation.n < 75:
-                        camera.ExposureTime = min(round(exposure * 1.001), 49999)
+                    if saturation.n > 99: camera.ExposureTime = exposure // 2
+                    if saturation.n < 30: camera.ExposureTime = exposure * 2
 
                 async_getters.append(loop.run_in_executor(None, camera_getter))
 
@@ -324,8 +243,8 @@ async def run_publisher():
                 intensities = {}
                 def labjack_getter():
                     with Timer('labjack', times):
-#                        refl['pd'] = deconstruct(labjack.read('AIN1'))
                         intensities['broadband'] = deconstruct(labjack.read('AIN0'))
+#                        intensities['hene'] = deconstruct(labjack.read('AIN1'))
                         intensities['LED'] = deconstruct(labjack.read('AIN2'))
                 async_getters.append(loop.run_in_executor(None, labjack_getter))
 
@@ -342,11 +261,33 @@ async def run_publisher():
                 ##### Read CBS camera (Sync) #####
                 cbs_png = None
                 cbs_raw_png = None
+                cbs_info = {'data': None, 'fit': None}
 
                 with Timer('CBS Camera', times):
                     if cbs_cam is not None and cbs_cam.capture():
                         cbs_png = cv2.imencode('.png', cbs_cam.image)[1].tobytes()
                         cbs_raw_png = cv2.imencode('.png', cbs_cam.raw_image)[1].tobytes()
+
+                    try:
+#                        r, I, (peak, width, background), chisq = fit_cbs(cbs_cam.image)
+                        r, I, (peak, width, background), chisq = fit_cbs(cbs_cam.raw_image)
+                        if width.s > 100: raise ValueError
+
+                        cbs_info['data'] = {
+                            'radius': list(r),
+                            'intensity': {
+                                'nom': list(nom(I)),
+                                'std': list(std(I)),
+                            }
+                        }
+                        cbs_info['fit'] = {
+                            'peak': deconstruct(peak),
+                            'width': deconstruct(width),
+                            'background': deconstruct(background),
+                            'chisq': chisq,
+                        }
+                    except:
+                        pass
 
                 
                 # Read spectrometer thread.
@@ -360,8 +301,11 @@ async def run_publisher():
                 ### Update models ###
                 saph_temp = temperatures['saph']
 
-                fringe_counter.update(refl['ai'][0], grow=(saph_temp < 10))
                 growth_model.update(ufloat(*flows['neon']), ufloat(*flows['cell']), saph_temp)
+                fringe_counter.update(
+                    refl['ai'][0],
+                    grow=(growth_model._growth_rate.n > 0)
+                )
 
                 if saph_temp > 13: fringe_counter.reset()
 
@@ -378,6 +322,8 @@ async def run_publisher():
                     'heaters': heaters,
 
                     'center': center,
+                    'cbs': cbs_info['fit'],
+
                     'rough': rough,
                     'trans': trans,
                     'refl': refl,
@@ -493,6 +439,7 @@ async def run_publisher():
                     cbs_publisher.send({
                         'raw': cbs_raw_png,
                         'image': cbs_png,
+                        **cbs_info,
                     })
                 print()
                 print()
@@ -516,8 +463,8 @@ async def run_publisher():
 
 
 if __name__ == '__main__':
-    spec_thread = threading.Thread(target=spectrometer_thread)
-    spec_thread.start()
+#    threading.Thread(target=spectrometer_thread).start()
+    threading.Thread(target=webcam_thread).start()
 
     while True:
         try:

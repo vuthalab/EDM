@@ -4,12 +4,12 @@ from uncertainties import ufloat
 import uncertainties.unumpy as unp
 
 # Linear coefficients, from empirical fits
-neon_coeff = ufloat(0.488, 0.003)  # microns/min/sccm
-buffer_coeff = ufloat(0.084, 0.004) # microns/min/sccm
+neon_coeff = ufloat(0.359, 0.010)  # microns/min/sccm
+buffer_coeff = ufloat(0.060, 0.005) # microns/min/sccm
 
 E_a = ufloat(19.94, 0.09) * 1e-3 # Neon binding energy, from literature (eV)
 k_B = 1.381e-23 / 1.61e-19 # Boltzmann constant, eV/K
-T_0 = ufloat(9.60, 0.02) # Temperature at which evaporation = 1 micron/min
+T_0 = ufloat(9.60, 0.03) # Temperature at which evaporation = 1 micron/min
 
 
 class GrowthModel:
@@ -25,7 +25,8 @@ class GrowthModel:
         if buffer_flow.n < 0.2: buffer_flow = 0
 
         # Update height (create new object to destroy correlations)
-        new_height = self.height + self.growth_rate(neon_flow, buffer_flow, temperature) * dt
+        self._growth_rate = self.growth_rate(neon_flow, buffer_flow, temperature)
+        new_height = self.height + self._growth_rate * dt
         if new_height.n > 0:
             self.height = ufloat(new_height.n, new_height.s)
         else:

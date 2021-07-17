@@ -7,6 +7,13 @@ Created by James Park and Mohit Verma.
 import zmq
 import time
 
+import hashlib
+
+def create_server(topic):
+    # Auto-assign port.
+    port = int.from_bytes(hashlib.md5(topic.encode()).digest(), 'big') % 40000 + 10000
+    return zmq_server_socket(port, topic)
+
 class zmq_server_socket:
     """ 
     Uses zmq to publish a python dictionary on a port with a 

@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 from colorama import Fore, Style
 
-from headers.oceanfx import OCEANFX_WAVELENGTHS, SYSTEMATIC_BACKGROUND
+from headers.oceanfx import OCEANFX_WAVELENGTHS
 from headers.zmq_client_socket import zmq_client_socket
 
 from headers.util import uarray, nom, std, plot

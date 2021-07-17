@@ -24,7 +24,7 @@ from headers.CTC100 import CTC100
 from headers.mfc import MFC
 
 from headers.util import display
-from headers.zmq_client_socket import zmq_client_socket
+from headers.zmq_client_socket import connect_to
 
 from calibrate_oceanfx import calibrate as calibrate_oceanfx
 
@@ -34,18 +34,9 @@ from calibrate_oceanfx import calibrate as calibrate_oceanfx
 # usbtmc.DRY_RUN = True
 
 
-LOG_DIR = Path('~/Desktop/edm_data/logs').expanduser()
-
-connection_settings = {
-    'ip_addr': 'localhost', # ip address
-    'port': 5551, # our open port
-    'topic': 'edm-monitor', # device
-}
-
-
-
 
 # Log a copy of this sequence file
+LOG_DIR = Path('~/Desktop/edm_data/logs').expanduser()
 root_dir = LOG_DIR / 'sequences'
 root_dir.mkdir(parents=True, exist_ok=True)
 filename = root_dir / (time.strftime('%Y-%m-%d %H꞉%M꞉%S') + '.py')
@@ -142,10 +133,10 @@ def grow_only(
 
 def wait_for_roughness(target_roughness, time_limit=None):
     ## connect to publisher
-    monitor_socket = zmq_client_socket(connection_settings)
-    monitor_socket.make_connection()
+    monitor_socket = connect_to('spectrometer')
 
     # Stay at temperature until roughness drops
+    buff = []
     start = time.monotonic()
     while True:
         _, data = monitor_socket.blocking_read()
@@ -157,7 +148,12 @@ def wait_for_roughness(target_roughness, time_limit=None):
         roughness = ufloat(*roughness)
         print(f'\rRoughness: {display(roughness)} nm', end='')
 
-        if roughness.n + roughness.s < target_roughness and (roughness.n + roughness.s) > 0:
+        # Keep rolling buffer
+        if roughness.n > 0:
+            buff.append(roughness.n)
+            buff = buff[-32:]
+
+        if np.mean(buff) < target_roughness:
             print()
             break
 
@@ -218,19 +214,19 @@ T1.enable_output()
 
 try:
 #    deep_clean()
-#    melt_and_grow(neon_flow=0, buffer_flow=10)
 
-    temps = [9.2, 9.4, 9.6, 9.8, 10]
-    random.shuffle(temps)
+    T1.ramp_temperature('heat saph', 14, 0.5)
+    time.sleep(30 * MINUTE)
+    raise ValueError
 
-    for temp in temps:
-        print(temp)
-        melt_and_grow(
-            neon_flow=8,
-            growth_time=10 * MINUTE,
-        )
-        T1.ramp_temperature('heat saph', temp, 0.5)
-        time.sleep(10 * MINUTE)
+#    melt_and_grow(
+#        neon_flow=8,
+#        buffer_flow=10,
+#        growth_time=3*HOUR,
+#        start_temp=8,
+#        anneal=False,
+#    )
+    stationary_polish(flow_rate=8, target_roughness=0, time_limit=1*HOUR)
 
 
 finally:

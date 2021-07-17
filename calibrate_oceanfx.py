@@ -64,8 +64,8 @@ def calibrate(
 
 
 if __name__ == '__main__':
-#    input('Unblock OceanFX, then press Enter.')
-#    calibrate('baseline', show_plot=True)
+    input('Unblock OceanFX, then press Enter.')
+    calibrate('baseline', show_plot=True)
 
-    input('Block OceanFX, then press Enter.')
-    calibrate('background', show_plot=True)
+#    input('Block OceanFX, then press Enter.')
+#    calibrate('background', show_plot=True)

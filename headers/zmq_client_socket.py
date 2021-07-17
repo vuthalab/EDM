@@ -8,6 +8,19 @@ import zmq
 import ast
 import time
 
+import hashlib
+
+
+def connect_to(topic):
+    # Quick connect to localhost, on auto-assigned port.
+    port = int.from_bytes(hashlib.md5(topic.encode()).digest(), 'big') % 40000 + 10000
+    socket = zmq_client_socket({
+        'ip_addr': 'localhost',
+        'port': port,
+        'topic': topic,
+    })
+    return socket
+
 
 class zmq_client_socket:    
     """
@@ -31,6 +44,8 @@ class zmq_client_socket:
         self.load_settings(connection_settings)
         self.make_connection()
         self.current_data = self.grab_data()
+
+        print('Connecting to', connection_settings['topic'], 'on port', connection_settings['port'])
 
 
     def grab_json_data(self):

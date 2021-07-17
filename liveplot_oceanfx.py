@@ -15,7 +15,7 @@ from headers.util import plot, uarray, nom
 
 
 ## SETTINGS ##
-PLOT_TRANSMISSION = False
+PLOT_TRANSMISSION = True
 LOG_SCALE = True
 
 
@@ -54,10 +54,19 @@ while True:
             # Transmission
             plot(wavelengths, 100 * intensities/spec.baseline, continuous=True, color='C0')
 
-            model_pred = roughness_model(wavelengths, I0, rough, fourth_order_coefficient)
+            model_pred = roughness_model(
+                wavelengths,
+                I0, rough,
+                fourth_order_coefficient,
+            )
             plt.plot(wavelengths, model_pred, alpha=0.5, color='C1', zorder=20)
             plt.ylabel('Transmission (%)')
-            plt.ylim(0, 110)
+
+            if LOG_SCALE:
+                plt.ylim(1e-3, 110)
+                plt.yscale('log')
+            else:
+                plt.ylim(0, 110)
         else:
             # Intensity
             plot(wavelengths, intensities, continuous=True)

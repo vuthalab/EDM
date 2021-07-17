@@ -3,7 +3,7 @@ import numpy as np
 class FringeCounter:
     """Fringe counter based on hysterisis around 1."""
 
-    def __init__(self, threshold=0.02, buffer_size=50):
+    def __init__(self, threshold=0.05, buffer_size=50):
         self.threshold = threshold
         self.buffer_size = buffer_size
 

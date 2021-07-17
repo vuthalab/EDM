@@ -77,6 +77,12 @@ fields = {
     ('fourth-order roughness coefficient (rayleigh $- K \sigma^4$)', 'micron nm$^3$'): ('rough', 'fourth-order'),
     ('crystal thickness (dead reckoning)', 'micron'): ('model', 'height'),
 
+    ('coherent backscatter peak intensity', 'counts'): ('cbs', 'peak'),
+    ('coherent backscatter width', 'pixels'): ('cbs', 'width'),
+
+    ('coherent backscatter reduced-$\\chi^2$', ''): ('cbs', 'chisq'),
+    ('roughness reduced-$\\chi^2$', ''): ('rough', 'chisq'),
+
     ('saph heat', 'W'): ('heaters', 'heat saph'),
     ('nozzle heat', 'W'): ('heaters', 'heat coll'),
     ('45K heat', 'W'): ('heaters', 'srb45k out'),
@@ -105,9 +111,9 @@ fields = {
     # Device read times
     ('loop total', 'ms'): ('debug', 'times', 'loop'),
     ('fringe camera', 'ms'): ('debug', 'times', 'camera'),
-    ('cbs camera', 'ms'): ('debug', 'times', 'CBS Camera'),
+#    ('cbs camera', 'ms'): ('debug', 'times', 'CBS Camera'),
 #    ('pressure gauge', 'ms'): ('debug', 'times', 'pressure'),
-#    ('turbo pump', 'ms'): ('debug', 'times', 'turbo'),
+    ('turbo pump', 'ms'): ('debug', 'times', 'turbo'),
 #    ('mfc', 'ms'): ('debug', 'times', 'MFC'),
 #    ('temp controller #1', 'ms'): ('debug', 'times', 'CTC31415'),
 #    ('temp controller #2', 'ms'): ('debug', 'times', 'CTC31416'),
@@ -124,19 +130,24 @@ axis_labels = [
 
     'V',
     '%',
+
     'nm',
     'micron nm$^3$',
     'micron',
+
     'fringes',
     '%  ',
 
     'V ',
     '% ',
+    'pixels',
+    'counts',
 
     'W',
     'K',
     'K ',
 
+    '',
     'μs',
     'ms',
     'hr',
@@ -168,7 +179,7 @@ print(f'Showing last {num_points * skip_points} points (skip every {skip_points}
 
 if not HEADLESS: plt.ion()
 
-figsize = (6, 32) if HEADLESS else (10, 8)
+figsize = (6, 40) if HEADLESS else (10, 8)
 fig = plt.figure(figsize=figsize)
 gs = fig.add_gridspec(
     len(axis_labels),
@@ -206,7 +217,7 @@ locator = mpdates.AutoDateLocator()
 formatter = mpdates.ConciseDateFormatter(locator)
 plt.gca().xaxis.set_major_formatter(formatter)
 
-for label in ['torr', 'μs']:
+for label in ['torr', 'μs', '']:
     axes[axis_labels.index(label)].set_yscale('log')
 
 ##### animated plot #####
