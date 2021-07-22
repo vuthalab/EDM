@@ -74,6 +74,7 @@ fields = {
     ('Ca Laser', 'GHz '): ('freq', 'calcium'),
 
     ('rms roughness (from spectrometer)', 'nm'): ('rough', 'surf'),
+    ('second-order roughness coefficient', 'micron$^2$'): ('rough', 'second-order'),
     ('fourth-order roughness coefficient (rayleigh $- K \sigma^4$)', 'micron nm$^3$'): ('rough', 'fourth-order'),
     ('crystal thickness (dead reckoning)', 'micron'): ('model', 'height'),
 
@@ -82,6 +83,7 @@ fields = {
 
     ('coherent backscatter reduced-$\\chi^2$', ''): ('cbs', 'chisq'),
     ('roughness reduced-$\\chi^2$', ''): ('rough', 'chisq'),
+    ('oceanfx hdr reduced-$\\chi^2$', ''): ('rough', 'hdr-chisq'),
 
     ('saph heat', 'W'): ('heaters', 'heat saph'),
     ('nozzle heat', 'W'): ('heaters', 'heat coll'),
@@ -132,6 +134,7 @@ axis_labels = [
     '%',
 
     'nm',
+    'micron$^2$',
     'micron nm$^3$',
     'micron',
 
@@ -311,4 +314,4 @@ for i, line in enumerate(tail('-n', num_points * skip_points, '-f', filepath, _i
 
         if HEADLESS:
             plt.savefig(f'/tmp/log-{round(duration)}.png', dpi=150)
-            subprocess.run(f'scp /tmp/log-{round(duration)}.png nserc@159.89.127.56:~/server/', shell=True)
+            subprocess.run(f'scp /tmp/log-{round(duration)}.png celine@143.110.210.120:~/server/', shell=True)

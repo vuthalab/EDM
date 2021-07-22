@@ -14,7 +14,10 @@ from scipy.optimize import curve_fit
 from colorama import Fore, Style
 
 from uncertainties import ufloat
+import uncertainties.unumpy as unp
 from uncertainties.unumpy import uarray, nominal_values, std_devs
+
+from headers.util import fit
 
 
 # Dumped from packet capture
@@ -62,14 +65,6 @@ def parse_packet(packet):
     }
 
 
-INTEGRATION_MESSAGE_TYPE = b'\x10\x00\x11\x00'
-RESET_PACKET = pad_packet(
-    b'\x00\x00\x00\x00',
-    b'\x00' # Length of immediate data
-    + b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' # Immediate data
-)
-
-
 
 
 SPECTRUM_LENGTH = 2136
@@ -78,58 +73,51 @@ HENE_MASK = (OCEANFX_WAVELENGTHS < 630) | (OCEANFX_WAVELENGTHS > 634)
 
 
 # Utilities for fitting surface roughness
-ior = 1.23
 def roughness_model(
         wavelength, # nm
-        I0,
-        roughness, # nm
-        fourth_order_coefficient, # nm^3 * micron
+        beta_0,
+        beta_2, # micron^2
+        beta_4, # nm^3 * micron
     ):
     wavenumber = 2*np.pi/wavelength
-    theta = np.arcsin(np.sin(45*np.pi/180) * ior)
-
-    delta_n = ior - 1
-    effective_roughness = roughness * np.cos(theta)
-
-    roughness_factor = np.exp(-0.5 * np.square(wavenumber * effective_roughness * delta_n))
-    fourth_order_factor = np.exp(-1e3 * fourth_order_coefficient * wavenumber**4)
-    return I0 * roughness_factor * fourth_order_factor
+    return beta_0 + 1e6 * beta_2 * wavenumber**2 + 1e3 * beta_4 * wavenumber**4
 
 
+ior = 1.23
 def fit_roughness(wavelengths, transmission):
-    y = nominal_values(transmission)
-    y_err = std_devs(transmission)
-    popt, pcov = curve_fit(
-        roughness_model,
-        wavelengths,
-        y, sigma=y_err,
-        p0=[100, 1e3, 0],
-        bounds=[
-            (0, 0, -1e6),
-            (200, 5e3, 1e6)
-        ]
-    )
-    perr = np.sqrt(np.diag(pcov))
+    p0 = {
+        'log_I0': (np.log(100), ''),
+        '\\beta_2': (1, 'micron$^2$'),
+        '\\beta_4': (0, 'micron nm$^3$'),
+    }
+    params, meta, residuals = fit(roughness_model, wavelengths, unp.log(transmission), p0)
 
-    y_pred = roughness_model(wavelengths, *popt)
-    chisq = np.square((y - y_pred) / y_err).sum()
-    dof = len(y) - len(popt)
+    # Compute roughness
+    beta_0, beta_2, beta_4 = params
 
+    if beta_2.n > 0:
+        theta = np.arcsin(np.sin(45*np.pi/180) * ior)
+        delta_n = ior - 1
+        roughness = unp.sqrt(2 * beta_2) / (delta_n * np.cos(theta))
+    else:
+        roughness = ufloat(0, 0)
+
+    I0 = np.e**beta_0
     return [
-        ufloat(popt[0], perr[0]),
-        ufloat(abs(popt[1]), perr[0]),
-        ufloat(popt[2], perr[2]),
-        chisq/dof,
+        I0, roughness,
+        *params,
+        meta[1]['chisq/dof'],
     ]
 
 
 class OceanFX:
     def __init__(self, ip_addr: str = '192.168.0.100', port: int = 57357):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.settimeout(1)
+        self.sock.settimeout(3)
 
         try:
             self.sock.connect((ip_addr, port))
+            self.ping()
         except:
             print(f'  [{Fore.YELLOW}WARN{Style.RESET_ALL}] OceanFX failed to connect!')
             self.sock = None
@@ -139,7 +127,7 @@ class OceanFX:
         self.load_calibration()
 
         # Disable buffering
-#        self.send(b'\x10\x08\x10\x00', 0, data_length=1)
+        self.send(b'\x10\x08\x10\x00', 0, data_length=1)
 
 
     def load_calibration(self):
@@ -151,9 +139,12 @@ class OceanFX:
         if self.sock is not None:
             self.sock.close()
 
-    def reset(self): self.sock.send(RESET_PACKET)
+    def reset(self):
+        """Reset the device if it stops responding."""
+        self.send(b'\x00\x00\x00\x00', 0, data_length=0)
 
     def ping(self):
+        """Try to ping the device."""
         self.send(b'\x01\xF1\x0F\x00', 31415)
         return parse_packet(self.sock.recv(8192))
 
@@ -170,8 +161,8 @@ class OceanFX:
 
 
     def _capture_sample(self):
-        # Get 5 spectra (up to 15)
-        self.send(b'\x80\x09\x10\x00', 5)
+        # Get 8 spectra (up to 15)
+        self.send(b'\x80\x09\x10\x00', 8)
 
         # Get the response. Read packets until the checksum.
         data = b''
@@ -222,7 +213,7 @@ class OceanFX:
             for sample_integration_time, spectrum in zip(*self._capture_sample()):
                 if integration_time != sample_integration_time: continue
                 samples.append(spectrum)
-            if time.monotonic() - start_time > time_limit: break
+            if samples and time.monotonic() - start_time > time_limit: break
 
         samples = np.array(samples)
 
@@ -243,10 +234,10 @@ class OceanFX:
 
 
         # Capture over a range of integration times.
-        log_integration_times = np.linspace(1.3, 5, 40)
-        log_integration_times += np.random.uniform(-0.02, 0.02, 40)
+        log_integration_times = np.linspace(1.1, 5.2, 50)
+        log_integration_times += np.random.uniform(-0.02, 0.02, 50)
         integration_times = np.array([
-            10, 11, 12, 13, # Make sure to get hene properly exposed
+#            10, 11, 12, 13, # Make sure to get hene properly exposed
             *np.power(10, log_integration_times)
         ], dtype=int)
 
@@ -266,25 +257,33 @@ class OceanFX:
         points = []
         intercepts = []
         slopes = []
-        curvature = []
+        chisqs = []
         for i in range(SPECTRUM_LENGTH):
             y = samples[i]
-            mask = (nominal_values(y) + 2 * std_devs(y)) < 64000
+            mask = (nominal_values(y) + 2 * std_devs(y)) < 40000
             y = y[mask]
             x = integration_times[mask]
 
-            if len(y) < 5:
+            if len(y) < 4:
                 print(f'Saturated at {OCEANFX_WAVELENGTHS[i]:.2f} nm! Only {len(y)} valid points')
 
-            degree = 2 if i in HENE_MASK else 1
+            degree = 2
             try:
+                std = np.maximum(std_devs(y), 20)
                 popt, pcov = np.polyfit(
                     x, nominal_values(y), degree,
-                    w=1/np.maximum(std_devs(y), 20),
+                    w=1/std,
                     cov=True
                 )
                 perr = np.sqrt(np.diag(pcov))
                 perr[np.isinf(perr)] = 10
+
+                y_pred = np.poly1d(popt)(x)
+                residuals = nominal_values(y) - y_pred
+
+                dof = len(y) - degree - 1
+                chisq = np.square(residuals/std).sum()
+                chisqs.append(chisq/dof)
             except:
                 popt = [0, 1000]
                 perr= [1000, 1000]
@@ -292,14 +291,13 @@ class OceanFX:
             points.append(len(y))
             intercepts.append(ufloat(popt[-1], perr[-1]))
             slopes.append(ufloat(popt[-2], perr[-2]))
-#            curvature.append(ufloat(popt[-3], perr[-3]))
 
 
         # Return mean + std slopes
         self._cache = np.array(slopes)
         self._intercepts = np.array(intercepts)
-#        self._curvature = np.array(curvature)
         self._points = np.array(points)
+        self._chisqs = np.array(chisqs)
 
 
     def _set_integration_time(self, val: int):
@@ -319,6 +317,11 @@ class OceanFX:
     def intensities(self):
         if self._cache is None: self.capture()
         return self._cache
+
+    @property
+    def chisq(self):
+        log_chisq = np.log(self._chisqs)
+        return np.e**ufloat(np.mean(log_chisq), np.std(log_chisq))
 
 
     @property
@@ -342,17 +345,21 @@ class OceanFX:
 
         wavelengths = self.wavelengths
         mask = (
-            (wavelengths > 440) & (wavelengths < 620)
-#            | (wavelengths > 640) & (wavelengths < 680)
-            | (wavelengths > 780) & (wavelengths < 870)
+            (wavelengths > 450) & (wavelengths < 610)
+            | (wavelengths > 645) & (wavelengths < 700)
+#            | (wavelengths > 780) & (wavelengths < 870)
+#            | (wavelengths > 645) & (wavelengths < 870)
         )
-#        mask = (wavelengths > 430) & (wavelengths < 600)
 
         try:
             return fit_roughness(self.wavelengths[mask], self.transmission[mask])
         except Exception as e:
             print(e)
-            return self.transmission_scalar, ufloat(0, 0), ufloat(0, 0), None
+            return (
+                self.transmission_scalar, ufloat(0, 0),
+                np.log(self.transmission_scalar), ufloat(0, 0), ufloat(0, 0),
+                None
+            )
 
 
     @property

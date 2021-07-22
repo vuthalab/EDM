@@ -7,19 +7,13 @@ import matplotlib.pyplot as plt
 from colorama import Style
 
 from headers.oceanfx import OceanFX
-from headers.zmq_client_socket import zmq_client_socket
+from headers.zmq_client_socket import connect_to
 
 from headers.util import nom, std, plot, uarray
 
 
 
 spec = OceanFX()
-
-connection_settings = {
-    'ip_addr': 'localhost', # ip address
-    'port': 5553, # our open port
-    'topic': 'spectrometer', # device
-}
 
 def calibrate(
     name,
@@ -29,8 +23,7 @@ def calibrate(
     print(f'Calibrating OceanFX {name} for {time_limit} seconds...')
 
     # connect to publisher
-    monitor_socket = zmq_client_socket(connection_settings)
-    monitor_socket.make_connection()
+    monitor_socket = connect_to('spectrometer')
 
     samples = []
     start_time = time.monotonic()
@@ -68,4 +61,4 @@ if __name__ == '__main__':
     calibrate('baseline', show_plot=True)
 
 #    input('Block OceanFX, then press Enter.')
-#    calibrate('background', show_plot=True)
+#    calibrate('background', time_limit=120, show_plot=True)

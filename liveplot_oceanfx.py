@@ -9,24 +9,18 @@ from colorama import Fore, Style
 from uncertainties import ufloat
 
 from headers.oceanfx import OceanFX, roughness_model
-from headers.zmq_client_socket import zmq_client_socket
+from headers.zmq_client_socket import connect_to
 
 from headers.util import plot, uarray, nom
 
 
 ## SETTINGS ##
-PLOT_TRANSMISSION = True
+PLOT_TRANSMISSION = False
 LOG_SCALE = True
 
 
 ## connect to publisher (spectrometer data)
-connection_settings = {
-    'ip_addr': 'localhost', # ip address
-    'port': 5553, # our open port
-    'topic': 'spectrometer', # device
-}
-monitor_socket = zmq_client_socket(connection_settings)
-monitor_socket.make_connection()
+monitor_socket = connect_to('spectrometer')
 
 spec = OceanFX()
 
@@ -46,19 +40,19 @@ while True:
         intensities = uarray(intensities['nom'], intensities['std'])
         intensities -= spec.background
 
-        I0 = data['trans']['unexpl'][0]
-        rough = data['rough']['surf'][0]
-        fourth_order_coefficient = data['rough']['fourth-order'][0]
+#        intensities = data['fit']['chisq-array'] # Plot chisq instead
+#        intensities = data['fit']['num-points'] # Plot number of fitted points instead
+#        intensities = uarray(data['intercepts']['nom'], data['intercepts']['std']) # Plot intercepts instead
+
+        beta_0 = data['rough']['zero-order'][0]
+        beta_2 = data['rough']['second-order'][0]
+        beta_4 = data['rough']['fourth-order'][0]
 
         if PLOT_TRANSMISSION:
             # Transmission
             plot(wavelengths, 100 * intensities/spec.baseline, continuous=True, color='C0')
 
-            model_pred = roughness_model(
-                wavelengths,
-                I0, rough,
-                fourth_order_coefficient,
-            )
+            model_pred = np.exp(roughness_model(wavelengths, beta_0, beta_2, beta_4))
             plt.plot(wavelengths, model_pred, alpha=0.5, color='C1', zorder=20)
             plt.ylabel('Transmission (%)')
 

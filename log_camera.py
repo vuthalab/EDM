@@ -61,7 +61,7 @@ for i in itertools.count():
             frame = from_png(data['image'], color=cv2.IMREAD_ANYDEPTH)
 
             # Amplify signal and convert
-            frame = np.minimum(2 * frame, 255).astype(np.uint8)
+            frame = np.maximum(np.minimum((frame-500)//3, 255), 0).astype(np.uint8)
             image = add_timestamp(frame)
             image.save(SAVE_DIRECTORY / 'cbs' / f'{timestamp}.png', optimize=True)
 
@@ -71,7 +71,7 @@ for i in itertools.count():
     if 'webcam' in LOG_CAMERAS:
         _, data = webcam_socket.blocking_read()
         if data is not None and data['index'] % 15 == 0:
-            image = Image.fromarray(from_png(data['annotated']))
+            image = Image.fromarray(from_png(data['annotated'], color=True))
             image.save(SAVE_DIRECTORY / 'webcam' / f'{timestamp}.png', optimize=True)
 
             print(timestamp, 'webcam')

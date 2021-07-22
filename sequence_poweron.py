@@ -6,7 +6,7 @@ from headers.turbo import TurboPump
 from headers.CTC100 import CTC100
 from headers.mfc import MFC
 
-from headers.zmq_client_socket import zmq_client_socket
+from headers.zmq_client_socket import connect_to
 
 
 MINUTE = 60
@@ -37,17 +37,11 @@ pt.on()
 
 
 # Wait for 45K sorb to drop below 70 K.
-connection_settings = {
-    'ip_addr': 'localhost', # ip address
-    'port': 5551, # our open port
-    'topic': 'edm-monitor', # device
-}
-monitor_socket = zmq_client_socket(connection_settings)
-monitor_socket.make_connection()
+monitor_socket = connect_to('edm-monitor')
 while True:
     _, data = monitor_socket.blocking_read()
-    temp = data['temperatures']['srb45k']
-    print('45K Sorb:', temp, 'K', end='\r')
+    temp = data['temperatures']['srb4k']
+    print('4K Sorb:', temp, 'K', end='\r')
     if temp < 70: break
 print()
 

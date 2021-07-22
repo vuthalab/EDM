@@ -1,14 +1,14 @@
 import time
 import os, shutil
 from pathlib import Path
-
 import numpy as np
 
 
 #Import class objects
 from headers.CTC100 import CTC100
 from headers.mfc import MFC
-
+from pulsetube_compressor import PulseTube
+from headers.turbo import TurboPump
 
 MINUTE = 60
 HOUR = 60 * MINUTE
@@ -19,26 +19,30 @@ HOUR = 60 * MINUTE
 T1 = CTC100(31415)
 T2 = CTC100(31416)
 mfc = MFC(31417)
+turbo = TurboPump()
+pt = PulseTube()
+
 
 ## Uncomment whatever commands you want and run the file ##
-#mfc.flow_rate_cell = 10
-#mfc.flow_rate_neon_line = 8
+#mfc.flow_rate_cell = 0
+#mfc.flow_rate_neon_line = 0
 #mfc.off()
 
-#T1.enable_output()
-#T2.enable_output()
-#T1.ramp_temperature('heat saph', 5.0, 0.016)
-#T1.ramp_temperature('heat coll', 30.0, 1.0)
+T1.enable_output()
+T2.enable_output()
+#T1.ramp_temperature('heat saph', 90.0, 1.0)
+#T1.ramp_temperature('heat coll', 90.0, 1.0)
 
-#T1.ramp_temperature('heat saph', 300, 1.0)
-#T1.ramp_temperature('heat coll', 300, 1.0)
-#T2.ramp_temperature('srb4k out', 320.0, 1.0)
-#T2.ramp_temperature('srb45k out', 320.0, 1.0)
+T1.ramp_temperature('heat saph', 300, 1.0)
+#T1.ramp_temperature('heat coll', 200, 1.0)
+T2.ramp_temperature('srb4k out', 300, 1.0)
+T2.ramp_temperature('srb45k out', 300, 1.0)
+#time.sleep(30 * MINUTE)
 
 #time.sleep(2 * HOUR)
-T1.disable_PID('heat saph')
-T1.disable_PID('heat coll')
-T2.disable_PID('srb4k out')
-T2.disable_PID('srb45k out')
-T1.disable_output()
-T2.disable_output()
+#T1.disable_PID('heat saph')
+#T1.disable_PID('heat coll')
+#T2.disable_PID('srb4k out')
+#T2.disable_PID('srb45k out')
+#T1.disable_output()
+#T2.disable_output()

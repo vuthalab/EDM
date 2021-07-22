@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from colorama import Fore, Style
 
 from headers.oceanfx import OCEANFX_WAVELENGTHS
-from headers.zmq_client_socket import zmq_client_socket
+from headers.zmq_client_socket import connect_to
 
 from headers.util import uarray, nom, std, plot
 
@@ -28,19 +28,13 @@ else:
 root_dir = Path('~/Desktop/edm_data/logs/oceanfx/').expanduser()
 log_file = root_dir / (time.strftime('%Y-%m-%d %H꞉%M꞉%S') + '.txt')
 
-N = 10 # number of samples to average. Each 'sample' is actually several captures, see publisher.
+N = 4 # number of samples to average. Each 'sample' is actually several captures, see publisher.
 
 
 
 
 ## connect to publisher
-connection_settings = {
-    'ip_addr': 'localhost', # ip address
-    'port': 5553, # our open port
-    'topic': 'spectrometer', # device
-}
-monitor_socket = zmq_client_socket(connection_settings)
-monitor_socket.make_connection()
+monitor_socket = connect_to('spectrometer')
 
 
 start_time = time.monotonic()

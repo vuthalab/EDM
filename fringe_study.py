@@ -23,7 +23,7 @@ import headers.usbtmc as usbtmc
 from headers.CTC100 import CTC100
 from headers.mfc import MFC
 
-from headers.util import display
+from headers.util import display, unweighted_mean
 from headers.zmq_client_socket import connect_to
 
 from calibrate_oceanfx import calibrate as calibrate_oceanfx
@@ -84,7 +84,9 @@ def melt_only(end_temp = 8):
     print('Cooling crystal.')
     end_time = time.monotonic() + 3.5 * MINUTE
     T1.ramp_temperature('heat saph', end_temp, 0.15)
-    calibrate_oceanfx('baseline', time_limit=3.3 * MINUTE)
+
+    time.sleep(1.8 * MINUTE)
+    calibrate_oceanfx('baseline', time_limit=1.5 * MINUTE)
     _sleep_until(end_time)
 
 
@@ -95,7 +97,9 @@ def melt_and_anneal(neon_flow = 4, end_temp = 8):
     end_time = time.monotonic() + 3 * MINUTE
     print('Cooling crystal.')
     T1.ramp_temperature('heat saph', 9.4, 0.15)
-    calibrate_oceanfx('baseline', time_limit=2.8 * MINUTE)
+
+    time.sleep(1.3 * MINUTE)
+    calibrate_oceanfx('baseline', time_limit=1.5 * MINUTE)
     _sleep_until(end_time)
 
     print('Annealing (starting neon line).')
@@ -112,7 +116,8 @@ def melt_and_anneal(neon_flow = 4, end_temp = 8):
 def grow_only(
     start_temp = 8, end_temp = None, # start, end temp (K)
     neon_flow = 4, buffer_flow = 0, # flow rates (sccm)
-    growth_time = 30 * MINUTE
+    growth_time = 30 * MINUTE,
+    target_roughness = None
 ):
     if end_temp is None: end_temp = start_temp
 
@@ -125,13 +130,20 @@ def grow_only(
         ramp_rate = abs(end_temp - start_temp) / growth_time
         T1.ramp_temperature('heat saph', end_temp, ramp_rate)
 
-    time.sleep(growth_time)
+    if target_roughness is None:
+        time.sleep(growth_time)
+    else:
+        wait_for_roughness(
+            target_roughness,
+            time_limit=growth_time,
+            lower_bound = True
+        )
 
     print('Done.')
     mfc.off()
 
 
-def wait_for_roughness(target_roughness, time_limit=None):
+def wait_for_roughness(target_roughness, time_limit=None, lower_bound=False):
     ## connect to publisher
     monitor_socket = connect_to('spectrometer')
 
@@ -146,14 +158,15 @@ def wait_for_roughness(target_roughness, time_limit=None):
             break
 
         roughness = ufloat(*roughness)
-        print(f'\rRoughness: {display(roughness)} nm', end='')
 
         # Keep rolling buffer
         if roughness.n > 0:
             buff.append(roughness.n)
             buff = buff[-32:]
+        average = unweighted_mean(buff)
 
-        if np.mean(buff) < target_roughness:
+        print(f'\rRoughness: {display(average)} nm', end='')
+        if (average.n < target_roughness) ^ lower_bound:
             print()
             break
 
@@ -208,25 +221,26 @@ mfc = MFC(31417)
 
 
 # Initial conditions
-mfc.off()
+#mfc.off()
 T1.ramp_temperature('heat coll', 60, 0.5) # Keep nozzle at consistent temperature
 T1.enable_output()
 
 try:
-#    deep_clean()
+    for temperature in [5, 8, 9, 6, 7]:
+        melt_and_grow(
+            neon_flow=8,
+            buffer_flow=0,
+            start_temp=temperature,
+            anneal=False,
 
-    T1.ramp_temperature('heat saph', 14, 0.5)
-    time.sleep(30 * MINUTE)
-    raise ValueError
-
-#    melt_and_grow(
-#        neon_flow=8,
-#        buffer_flow=10,
-#        growth_time=3*HOUR,
-#        start_temp=8,
-#        anneal=False,
-#    )
-    stationary_polish(flow_rate=8, target_roughness=0, time_limit=1*HOUR)
+            growth_time = 6 * HOUR, # time limit
+            target_roughness=2500,
+        )
+        stationary_polish(
+            flow_rate = 8,
+            target_roughness = 0,
+            time_limit = 1 * HOUR,
+        )
 
 
 finally:

@@ -20,13 +20,16 @@ turbo = TurboPump()
 pt = PulseTube()
 
 
-# Turn off everything.
-mfc.off()
-T1.disable_output()
+assert not pt.is_on()
+
+# Turn turbo off before bake.
+if turbo.operation_status == 'normal': turbo.off()
+
+# Bake sorbs.
+T2.ramp_temperature('srb45k out', 330, 0.5)
+T2.ramp_temperature('srb4k out', 330, 0.5)
+T2.enable_output()
+
+# Wait for a while, then end bake.
+time.sleep(30 * MINUTE)
 T2.disable_output()
-turbo.off()
-
-
-# Wait for turbo to spin down, then turn off pulsetube.
-time.sleep(10 * MINUTE)
-pt.off()

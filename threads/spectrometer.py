@@ -2,6 +2,7 @@ from headers.oceanfx import OceanFX
 from headers.zmq_server_socket import create_server
 
 from headers.edm_util import deconstruct
+from headers.util import nom, std
 
 
 def spectrometer_thread():
@@ -13,14 +14,14 @@ def spectrometer_thread():
 
             try:
                 spectrometer.capture()
-            except:
-                print('Spectrometer capture failed!')
+            except Exception as e:
+                print('Spectrometer capture failed!', e)
                 continue
 
             spectrum = spectrometer.intensities
             (
                 I0, roughness,
-                fourth_order,
+                beta_0, beta_2, beta_4,
                 chisq
             ) = spectrometer.roughness_full
 
@@ -28,10 +29,12 @@ def spectrometer_thread():
             trans['unexpl'] = deconstruct(I0)
 
             rough['surf'] = deconstruct(roughness)
-            rough['fourth-order'] = deconstruct(fourth_order)
+            rough['zero-order'] = deconstruct(beta_0)
+            rough['second-order'] = deconstruct(beta_2)
+            rough['fourth-order'] = deconstruct(beta_4)
             rough['chisq'] = chisq
 
-            publisher.send({
+            data = {
                 'wavelengths': list(spectrometer.wavelengths),
                 'intensities': {
                     'nom': list(nom(spectrum)),
@@ -41,7 +44,12 @@ def spectrometer_thread():
                     'nom': list(nom(spectrometer._intercepts)),
                     'std': list(std(spectrometer._intercepts)),
                 },
-                'num-points': list(nom(spectrometer._points)),
+                'fit': {
+                    'num-points': list(nom(spectrometer._points)),
+                    'chisq-array': list(spectrometer._chisqs),
+                    'chisq': deconstruct(spectrometer.chisq),
+                },
                 'rough': rough,
                 'trans': trans,
-            })
+            }
+            publisher.send(data)

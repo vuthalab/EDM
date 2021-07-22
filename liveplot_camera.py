@@ -71,8 +71,8 @@ while True:
     if 'cbs' in SHOW_CAMERAS:
         _, data = cbs_socket.grab_json_data()
         if data is not None:
-            image = from_png(data['raw'], color=cv2.IMREAD_ANYDEPTH).astype(int)
-            image = np.maximum(np.minimum(image - 500, 255), 0).astype(np.uint8)
+            image = from_png(data['image'], color=cv2.IMREAD_ANYDEPTH).astype(int)
+            image = np.maximum(np.minimum((image - 500)//3, 255), 0).astype(np.uint8)
 #            image = np.minimum(50 * np.log10(image+1) - 100, 255).astype(np.uint8)
             cv2.imshow('Coherent Backscatter', image)
 
@@ -86,16 +86,18 @@ while True:
                     raw_data['intensity']['nom'],
                     raw_data['intensity']['std'],
                 )
-
-                r0 = np.linspace(2, 85, 100)
-                model_pred = decay_model(
-                    r0,
-                    data['fit']['peak'][0],
-                    data['fit']['width'][0],
-                    data['fit']['background'][0],
-                )
                 plot(r, I)
-                plt.plot(r0, model_pred, zorder=-20)
+
+                if data['fit'] is not None:
+                    r0 = np.linspace(2, 85, 100)
+                    model_pred = decay_model(
+                        r0,
+                        data['fit']['peak'][0],
+                        data['fit']['width'][0],
+                        data['fit']['background'][0],
+                    )
+                    plt.plot(r0, model_pred, zorder=-20)
+
                 plt.xlim(2, 85)
                 plt.xlabel('Radius (pixels)')
                 plt.ylabel('Intensity (counts)')
@@ -107,7 +109,7 @@ while True:
     if 'webcam' in SHOW_CAMERAS:
         _, data = webcam_socket.grab_json_data()
         if data is not None:
-            frame = from_png(data['annotated'])
+            frame = from_png(data['annotated'], color=True)
             cv2.imshow('Webcam', frame)
 
             print(timestamp, 'webcam')

@@ -126,7 +126,7 @@ class TurboPump(USBTMCDevice):
 
     def __enter__(self): return self
     def __exit__(self):
-        self._conn.close()
+        self.close()
         return self
 
 

@@ -10,10 +10,10 @@ from headers.util import nom, std, plot
 
 
 # Name of file to save spectrum to
-SAVE_NAME = 'osa-baseline'
+SAVE_NAME = 'Baseline_Later'
 
 
-serial_port = '/dev/ttyUSB2' # TODO remap the serial port to something human-readable
+serial_port = '/dev/ttyUSB3' # TODO remap the serial port to something human-readable
 gpib_address = 1 # Configurable on the OSA
 
 
@@ -22,8 +22,8 @@ with AndoAQ6317(serial_port, gpib_address) as osa:
     ###### Configure capture settings #####
 #    osa.active_trace = 'c' # choose which trace to read
 
-    osa.resolution = 0.1 # set resolution (nm)
-    osa.range = (780, 880) # set range (nm)
+    osa.resolution = 2.0 # set resolution (nm) (*This is not correct*)
+    osa.range = (620,750) # set range (nm)
 
     #osa.center() # self-center
     #osa.scale = 'log'
@@ -36,7 +36,6 @@ with AndoAQ6317(serial_port, gpib_address) as osa:
 
     # Display configuration
     print('Getting configuration...')
-#    print(osa)
     print()
 
 
@@ -46,15 +45,16 @@ with AndoAQ6317(serial_port, gpib_address) as osa:
 
 
     # Get some averaged spectra
-    for i in itertools.count():
-        if True:
-            wavelengths, power = osa.average_spectra(n=16, delay=40)
+    if True:
+        for i in itertools.count():
+            if True:
+                wavelengths, power = osa.average_spectra(n=1, delay=10)
 
-            data = np.array([wavelengths, nom(power), std(power)])
-            np.savetxt(f'spectra/{SAVE_NAME}-{i:04d}.txt', data.T, header='wavelength (nm)\tpower (dB)\tpower uncertainty (dB)')
-            print(f'Saved as spectra/{SAVE_NAME}-{i:04d}.txt')
+                data = np.array([wavelengths, nom(power), std(power)])
+                np.savetxt(f'spectra/{SAVE_NAME}-{i:04d}.txt', data.T, header='wavelength (nm)\tpower (dB)\tpower uncertainty (dB)')
+                print(f'Saved as spectra/{SAVE_NAME}-{i:04d}.txt')
 
-            #plot(wavelengths, power, continuous=True)
-            #plt.xlabel('Wavelength (nm)')
-            #plt.ylabel('Power (dB)')
-            #plt.show()
+                plot(wavelengths, power, continuous=True)
+                plt.xlabel('Wavelength (nm)')
+                plt.ylabel('Power (dB)')
+                plt.show()

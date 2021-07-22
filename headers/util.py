@@ -153,7 +153,7 @@ def plot(
             for entry, value in zip(metadata.items(), params):
                 tag, unit = entry
                 unit = unit or ''
-                labels.append(f'${tag}$ = {display(value, table=True)} {unit}')
+                labels.append(f'{tag} = {display(value, table=True)} {unit}')
 
             labels.append(f"{stats['dof']} DOF")
             labels.append(f"$\\chi^2_{{red}}$ = {stats['chisq/dof']:.3f}")

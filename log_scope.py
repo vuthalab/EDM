@@ -7,7 +7,7 @@ from colorama import Fore, Style
 import numpy as np
 import matplotlib.pyplot as plt
 
-from headers.zmq_server_socket import zmq_server_socket
+from headers.zmq_server_socket import create_server
 
 from headers.rigol_ds1102e import RigolDS1102e
 
@@ -23,7 +23,7 @@ if not ENABLE_LOGGING:
     print(f'{Fore.RED}WARNING: LOGGING IS OFF!{Style.RESET_ALL}')
     time.sleep(5)
 
-publisher = zmq_server_socket(5556, 'scope')
+publisher = create_server('scope')
 
 ##### Main Program #####
 # Initialize connection

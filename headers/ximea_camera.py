@@ -40,17 +40,8 @@ class Ximea:
         return True
 
     @property
-    def background(self):
-        return cv2.imread('calibration/cbs-background.png', cv2.IMREAD_ANYDEPTH)
-
-    @property
-    def raw_image(self):
-        return np.minimum(sum(self._cache), 65535).astype(np.uint16)
-
-    @property
     def image(self):
-        output = sum(self._cache) - self.background
-        return np.minimum(np.maximum(output, 0), 65535).astype(np.uint16)
+        return np.minimum(sum(self._cache), 65535).astype(np.uint16)
 
     def close(self):
         self.cam.stop_acquisition()

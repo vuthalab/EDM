@@ -7,7 +7,7 @@ from telnetlib import Telnet
 
 import numpy as np 
 
-from headers.zmq_client_socket import zmq_client_socket
+from headers.zmq_client_socket import connect_to
 
 from models.mirror_mount import MirrorModel
 
@@ -23,12 +23,6 @@ DIP_CHANNEL = 'ch1'
 # but increase sensitivity to noise.
 TEMPERATURE = 100
 
-
-connection_settings = {
-    'ip_addr': 'localhost',
-    'port': 5556,
-    'topic': 'scope',
-}
 
 Velocity = int
 Position = int
@@ -752,7 +746,7 @@ class microcontroller:
 
 
     def music_scan(self, amplitude=1):
-        self.client_socket = zmq_client_socket(connection_settings)
+        self.client_socket = connect_to('scope')
         self.client_socket.make_connection()
         self.model = MirrorModel()
 

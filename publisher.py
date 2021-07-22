@@ -113,6 +113,7 @@ async def run_publisher():
     print('Starting publisher')
     publisher_start = time.monotonic()
     loop = asyncio.get_running_loop()
+    run_async = lambda f: loop.run_in_executor(None, f)
     try:
         with create_server('edm-monitor') as publisher:
             rough = {}
@@ -130,7 +131,7 @@ async def run_publisher():
                     nonlocal chamber_pressure, times
                     with Timer('pressure', times):
                         chamber_pressure = pressure_gauge.pressure
-                async_getters.append(loop.run_in_executor(None, pressure_getter))
+                async_getters.append(run_async(pressure_getter))
 
 
                 ##### Read CTC100 Temperatures + Heaters (Async) #####
@@ -224,7 +225,7 @@ async def run_publisher():
                     if saturation.n > 99: camera.ExposureTime = exposure // 2
                     if saturation.n < 30: camera.ExposureTime = exposure * 2
 
-                async_getters.append(loop.run_in_executor(None, camera_getter))
+                async_getters.append(run_async(camera_getter))
 
 
                 ##### Read turbo status (Async) #####
@@ -246,7 +247,8 @@ async def run_publisher():
                         intensities['broadband'] = deconstruct(labjack.read('AIN0'))
 #                        intensities['hene'] = deconstruct(labjack.read('AIN1'))
                         intensities['LED'] = deconstruct(labjack.read('AIN2'))
-                async_getters.append(loop.run_in_executor(None, labjack_getter))
+                async_getters.append(run_async(labjack_getter))
+
 
 
                 # Await all async data getters.
@@ -260,18 +262,14 @@ async def run_publisher():
 
                 ##### Read CBS camera (Sync) #####
                 cbs_png = None
-                cbs_raw_png = None
                 cbs_info = {'data': None, 'fit': None}
 
                 with Timer('CBS Camera', times):
                     if cbs_cam is not None and cbs_cam.capture():
                         cbs_png = cv2.imencode('.png', cbs_cam.image)[1].tobytes()
-                        cbs_raw_png = cv2.imencode('.png', cbs_cam.raw_image)[1].tobytes()
 
                     try:
-#                        r, I, (peak, width, background), chisq = fit_cbs(cbs_cam.image)
-                        r, I, (peak, width, background), chisq = fit_cbs(cbs_cam.raw_image)
-                        if width.s > 100: raise ValueError
+                        r, I, (peak, width, background), chisq = fit_cbs(cbs_cam.image)
 
                         cbs_info['data'] = {
                             'radius': list(r),
@@ -280,6 +278,10 @@ async def run_publisher():
                                 'std': list(std(I)),
                             }
                         }
+
+                        if max(width.s, peak.s) > 100 or min(width.n, peak.n) < 0:
+                            raise ValueError
+
                         cbs_info['fit'] = {
                             'peak': deconstruct(peak),
                             'width': deconstruct(width),
@@ -295,6 +297,7 @@ async def run_publisher():
                 if spec_data is not None:
                     rough = spec_data['rough']
                     trans = spec_data['trans']
+                    rough['hdr-chisq'] = spec_data['fit']['chisq']
 
 
 
@@ -313,6 +316,7 @@ async def run_publisher():
                 # Construct final data packet
                 times['loop'] = round(1e3 * (time.monotonic() - loop_start))
                 uptime = (time.monotonic() - publisher_start)/3600
+
                 data_dict = {
                     'pressure': deconstruct(chamber_pressure),
 
@@ -352,110 +356,46 @@ async def run_publisher():
 
 
 
-
-
-
-
-
-
-                ###### Software Interlocks #####
-                if data_dict['pressure'] is None:
-                    raise ValueError('Pressure gauge read failed, restarting.')
-
-                cold_temps = {
-                    name: temperatures[name] for name in ['srb4k', 'saph', '4k plate', 'coll']
-                    if temperatures[name] is not None
-                }
-                min_temp = min(cold_temps.values())
-
-                turbo_on = data_dict['running']['turbo']
-
-                # Determine whether pt has been running for 24 hrs
-                if not pt_on: pt_last_off = time.monotonic()
-                pt_running = (time.monotonic() - pt_last_off) > 24*60*60
-
-                # Determine whether heaters are safe and working (all <20W, or temps >10K).
-                # Will send a notification if unsafe for too long.
-                heaters_safe = (
-                    all(power is None or power < 20 for power in heaters.values())
-                    or all(temp > 10 for temp in cold_temps.values())
-                )
-                if heaters_safe: heaters_last_safe = time.monotonic()
-
-
-                print(f'{pt_on=} {pt_running=} {heaters_safe=} {min_temp=}')
-
-
-                if chamber_pressure is not None:
-                    # Chamber pressure high during main experiment
-                    if chamber_pressure.n > 0.2 and pt_running and turbo_on:
-                        for thermometer, _, _ in thermometers:
-                            thermometer.disable_output()
-                        mfc.off()
-
-                        send_email(
-                            'Pressure Interlock Activated',
-                            f'Vacuum chamber pressure reached {chamber_pressure:.3f} torr while pulsetube is running! MFC and heaters disabled.'
-                        )
-
-                    # Chamber pressurized while turbo on
-                    if chamber_pressure.n > 1 and turbo_on:
-                        send_email(
-                            'Pressure Warning',
-                            f'Vacuum chamber pressure is abnormally high ({chamber_pressure:.3f} torr) while turbo is on.'
-                        )
-                        if not pt_running:
-                            turbo.off()
-
-                # Pulsetube running for last 24 hours, yet temperatures abnormally high
-                if pt_running and any(temp > 30 for temp in cold_temps.values()):
-                    name, temp = max(cold_temps.items(), key=lambda _, temp: temp)
-                    send_email(
-                        'Temperature Warning',
-                        f'Pulsetube has been running for the past 24 hours, yet {name} temperature is abnormally high ({temp:.1f} K).'
-                    )
-
-
-                # Heaters running on full blast, yet surfaces are cold
-                if (time.monotonic() - heaters_last_safe) > 20 * 60:
-                    strongest_heater = max(heaters.keys(), key=lambda name: heaters[name] or 0)
-                    max_power = heaters[strongest_heater]
-
-                    send_email(
-                        'Heater Warning',
-                        f'{strongest_heater} has been outputting {max_power:.2f} W for 20 minutes, yet coldest temperature is {min_temp:.1f} K. Did the heater fall off?'
-                    )
-
-
-
                 ### Limit publishing speed ###
                 target_end = PUBLISH_INTERVAL * loop_iteration + publisher_start
                 time.sleep(max(target_end - time.monotonic(), 0))
 
                 publisher.send(data_dict)
                 camera_publisher.send(png)
-
                 if cbs_png is not None:
                     cbs_publisher.send({
-                        'raw': cbs_raw_png,
                         'image': cbs_png,
                         **cbs_info,
                     })
                 print()
                 print()
+
+
+                # Restart if pressure gauge cuts out
+                if data_dict['pressure'] is None:
+                    pressure_gauge.close()
+                    pressure_gauge = FRG730()
+
     finally:
         print(f'{Fore.RED}{Style.BRIGHT}Crashed, cleaning up...{Style.RESET_ALL}')
+        tb = traceback.format_exc()
+        print(tb)
+
+        print('Stopping fringe camera...')
         camera.stop()
         camera.close()
         camera_publisher.close()
 
+        print('Stopping CBS camera...')
+        cbs_cam.close()
+        cbs_publisher.close()
+
+        print('Stopping miscellaneous equipment...')
         pressure_gauge.close()
         mfc.close()
         turbo.close()
 
-        cbs_cam.close()
-        cbs_publisher.close()
-
+        print('Done.')
 
 
 
@@ -463,8 +403,13 @@ async def run_publisher():
 
 
 if __name__ == '__main__':
-#    threading.Thread(target=spectrometer_thread).start()
-    threading.Thread(target=webcam_thread).start()
+    thread_functions = [
+        spectrometer_thread,
+        webcam_thread
+    ]
+
+    threads = [threading.Thread(target=function) for function in thread_functions]
+    for thread in threads: thread.start()
 
     while True:
         try:
