@@ -104,6 +104,7 @@ def plot(
         continuous=False,
         ax = plt,
         color = None, # If true, plot data and model in same color, and omit statistics
+        alpha = 1,
     ):
     if clear: plt.cla()
 
@@ -113,12 +114,13 @@ def plot(
             zorder=10,
             color=color,
             label=label,
+            alpha=alpha,
         )
         ax.fill_between(
             nom(x),
             nom(y) - 2 * std(y),
             nom(y) + 2 * std(y),
-            alpha=0.3,
+            alpha=0.3*alpha,
             zorder=-10,
             color=color,
         )
@@ -175,12 +177,12 @@ def display(value: ufloat,
         table: bool = False) -> str:
     """Return formatted string for given value with uncertainty."""
 
-    if value.n != 0:
+    try:
         power = int(np.floor(np.log10(abs(value.n))))
         scientific = power > 3 or power < -2
         if scientific:
             value = value / pow(10, power)
-    else:
+    except:
         power = 3
         scientific = False
 

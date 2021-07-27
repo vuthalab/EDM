@@ -25,18 +25,18 @@ pt = PulseTube()
 
 ## Uncomment whatever commands you want and run the file ##
 #mfc.flow_rate_cell = 0
-#mfc.flow_rate_neon_line = 0
-#mfc.off()
+#mfc.flow_rate_neon_line = 10
+mfc.off()
 
-T1.enable_output()
-T2.enable_output()
+#T1.enable_output()
+#T2.enable_output()
 #T1.ramp_temperature('heat saph', 90.0, 1.0)
 #T1.ramp_temperature('heat coll', 90.0, 1.0)
 
-T1.ramp_temperature('heat saph', 300, 1.0)
-#T1.ramp_temperature('heat coll', 200, 1.0)
-T2.ramp_temperature('srb4k out', 300, 1.0)
-T2.ramp_temperature('srb45k out', 300, 1.0)
+T1.ramp_temperature('heat saph', 320, 1.0)
+#T1.ramp_temperature('heat coll', 320, 1.0)
+#T2.ramp_temperature('srb4k out', 320, 1.0)
+#T2.ramp_temperature('srb45k out', 320, 1.0)
 #time.sleep(30 * MINUTE)
 
 #time.sleep(2 * HOUR)

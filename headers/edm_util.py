@@ -8,6 +8,8 @@ from PIL import Image, ImageFont, ImageDraw
 from colorama import Fore, Style
 from uncertainties import ufloat
 
+from headers.zmq_client_socket import connect_to
+
 from headers.util import display
 
 font = ImageFont.truetype('headers/cmunrm.ttf', 24)
@@ -69,3 +71,59 @@ class Timer:
         if self._times is not None:
             self._times[self.name] = round(1e3 * dt)
 
+
+
+def countdown_until(t):
+    while True:
+        remaining = t - time.monotonic()
+        if remaining < 0: break
+
+        m, s = divmod(round(remaining), 60)
+        h, m = divmod(m, 60)
+        print(f'{Style.BRIGHT}{h:02d}:{m:02d}:{s:02d}{Style.RESET_ALL} {Style.DIM}remaining{Style.RESET_ALL}', end='\r')
+        time.sleep(0.5)
+#    print()
+
+def countdown_for(dt): countdown_until(time.monotonic() + dt)
+
+def wait_until_quantity(
+    qty, operator, target,
+    unit='',
+    buffer_size=8,
+    source='edm-monitor'
+):
+    label = f'{Style.DIM} > {Style.RESET_ALL}'.join(
+        f'{Fore.GREEN}{entry}{Style.RESET_ALL}' for entry in qty
+    )
+
+    buff = []
+
+    monitor_socket = connect_to(source)
+    while True:
+        _, data = monitor_socket.blocking_read()
+
+        for entry in qty:
+            data = data[entry]
+
+        if isinstance(data, float):
+            data = ufloat(data, 0)
+        else:
+            data = ufloat(*data)
+
+        print(
+            f'[{label}]',
+            f'{Fore.YELLOW}Current{Style.RESET_ALL}:', display(data), unit,
+            '|',
+            f'{Fore.YELLOW}Target{Style.RESET_ALL}:', operator, target, unit,
+            end='\r'
+        )
+
+        # Keep rolling buffer for stability
+        buff.append(data.n)
+        buff = buff[-buffer_size:]
+
+        curr = np.mean(buff)
+        if operator == '>' and curr > target: break
+        if operator == '<' and curr < target: break
+    monitor_socket.socket.close()
+    print()

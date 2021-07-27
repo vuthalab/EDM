@@ -1,12 +1,11 @@
 import time
 
-#Import class objects
 from pulsetube_compressor import PulseTube
 from headers.turbo import TurboPump
 from headers.CTC100 import CTC100
 from headers.mfc import MFC
 
-from headers.zmq_client_socket import connect_to
+from headers.edm_util import countdown_for, wait_until_quantity
 
 
 MINUTE = 60
@@ -21,29 +20,30 @@ mfc = MFC(31417)
 turbo = TurboPump()
 pt = PulseTube()
 
+# Optional pause
+#countdown_for(3*HOUR)
+
 
 # Ensure turbo is running.
 if turbo.operation_status != 'normal':
     # If not started, turn on and wait for spinup.
     turbo.on()
-    time.sleep(10 * MINUTE)
+    countdown_for(1*MINUTE)
 
 
 # Make sure MFC is on. Slowly ramp down the saph temperature to liquid nitrogen temp.
 mfc.off()
 T1.enable_output()
+T2.disable_output()
 T1.ramp_temperature('heat saph', 77, 1e-2)
 pt.on()
 
 
 # Wait for 45K sorb to drop below 70 K.
-monitor_socket = connect_to('edm-monitor')
-while True:
-    _, data = monitor_socket.blocking_read()
-    temp = data['temperatures']['srb4k']
-    print('4K Sorb:', temp, 'K', end='\r')
-    if temp < 70: break
-print()
+wait_until_quantity(
+    ('temperatures', 'srb4k'), '<', 70,
+    unit='K'
+)
 
 
 # Let system cool naturally.

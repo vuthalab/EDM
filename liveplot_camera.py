@@ -38,12 +38,13 @@ if 'cbs' in SHOW_CAMERAS:
     plt.ion()
     fig = plt.figure()
 
+    cbs_socket = connect_to('cbs-camera')
+
 
 ## connect
 print('Connecting to publisher...')
-fringe_socket = connect_to('camera')
-cbs_socket = connect_to('cbs-camera')
-webcam_socket = connect_to('webcam')
+if 'fringe' in SHOW_CAMERAS: fringe_socket = connect_to('camera')
+if 'webcam' in SHOW_CAMERAS: webcam_socket = connect_to('webcam')
 
 
 def from_png(buff, color=False):
@@ -135,7 +136,7 @@ while True:
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
-    time.sleep(1e-2)
+    time.sleep(5e-2)
 
 if 'plume' in SHOW_CAMERAS:
     plume_camera.stop()

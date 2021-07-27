@@ -37,6 +37,7 @@ def calibrate(
         if time.monotonic() - start_time > time_limit: break
     monitor_socket.socket.close()
 
+    samples = samples[1:] # Discard first sample (to avoid 'partial' spectrum).
     spectrum = sum(samples) / len(samples)
     print()
 
@@ -57,8 +58,8 @@ def calibrate(
 
 
 if __name__ == '__main__':
-    input('Unblock OceanFX, then press Enter.')
-    calibrate('baseline', show_plot=True)
+#    input('Unblock OceanFX, then press Enter.')
+#    calibrate('baseline', show_plot=True)
 
-#    input('Block OceanFX, then press Enter.')
-#    calibrate('background', time_limit=120, show_plot=True)
+    input('Block OceanFX, then press Enter.')
+    calibrate('background', time_limit=120, show_plot=True)

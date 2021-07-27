@@ -12,8 +12,8 @@ from colorama import Style, Fore
 # Date format must be YYYY-MM-DD
 # Time format must be HH:MM:SS (24-hour format)
 # End time can be in the future to get all data after a certain point
-START_TIME = ('2021-07-22', '02:00:00')
-END_TIME = ('2021-07-22', '06:00:00')
+START_TIME = ('2021-07-26', '20:40:00')
+END_TIME = ('2021-07-26', '23:59:00')
 
 # Map from plot labels (name, unit) to paths in data
 # Choose which fields you want to extract here

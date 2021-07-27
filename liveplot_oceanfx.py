@@ -15,7 +15,7 @@ from headers.util import plot, uarray, nom
 
 
 ## SETTINGS ##
-PLOT_TRANSMISSION = False
+PLOT_TRANSMISSION = True
 LOG_SCALE = True
 
 
@@ -29,9 +29,11 @@ plt.ion()
 fig = plt.figure()
 while True:
     # Get data
-    _, data = monitor_socket.grab_json_data()
+    ts, data = monitor_socket.grab_json_data()
 
     if data is not None:
+        print(ts)
+
         # Unpack + convert data
         wavelengths = np.array(data['wavelengths'])
         intensities = data['intensities']
@@ -57,7 +59,7 @@ while True:
             plt.ylabel('Transmission (%)')
 
             if LOG_SCALE:
-                plt.ylim(1e-3, 110)
+                plt.ylim(1e-2, 110)
                 plt.yscale('log')
             else:
                 plt.ylim(0, 110)
@@ -68,7 +70,7 @@ while True:
 
             if LOG_SCALE:
                 plt.yscale('log')
-                plt.ylim(1e-2, 1e3)
+                plt.ylim(1e-3, 1e2)
             else:
                 hene_mask = (wavelengths < 610) | (wavelengths > 650)
                 saturation = max(nom(intensities)[hene_mask])

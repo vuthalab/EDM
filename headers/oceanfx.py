@@ -80,7 +80,7 @@ def roughness_model(
         beta_4, # nm^3 * micron
     ):
     wavenumber = 2*np.pi/wavelength
-    return beta_0 + 1e6 * beta_2 * wavenumber**2 + 1e3 * beta_4 * wavenumber**4
+    return beta_0 - 1e6 * beta_2 * wavenumber**2 - 1e3 * beta_4 * wavenumber**4
 
 
 ior = 1.23
@@ -98,7 +98,7 @@ def fit_roughness(wavelengths, transmission):
     if beta_2.n > 0:
         theta = np.arcsin(np.sin(45*np.pi/180) * ior)
         delta_n = ior - 1
-        roughness = unp.sqrt(2 * beta_2) / (delta_n * np.cos(theta))
+        roughness = unp.sqrt(2e6 * beta_2) / (delta_n * np.cos(theta))
     else:
         roughness = ufloat(0, 0)
 
@@ -234,8 +234,10 @@ class OceanFX:
 
 
         # Capture over a range of integration times.
-        log_integration_times = np.linspace(1.1, 5.2, 50)
-        log_integration_times += np.random.uniform(-0.02, 0.02, 50)
+        log_integration_times = np.linspace(1.3, 5.2, 50)
+        log_integration_times += np.random.uniform(
+            -0.02, 0.02, len(log_integration_times)
+        )
         integration_times = np.array([
 #            10, 11, 12, 13, # Make sure to get hene properly exposed
             *np.power(10, log_integration_times)
@@ -260,14 +262,14 @@ class OceanFX:
         chisqs = []
         for i in range(SPECTRUM_LENGTH):
             y = samples[i]
-            mask = (nominal_values(y) + 2 * std_devs(y)) < 40000
+            mask = (nominal_values(y) + 2 * std_devs(y)) < 20000
             y = y[mask]
             x = integration_times[mask]
 
             if len(y) < 4:
                 print(f'Saturated at {OCEANFX_WAVELENGTHS[i]:.2f} nm! Only {len(y)} valid points')
 
-            degree = 2
+            degree = 1
             try:
                 std = np.maximum(std_devs(y), 20)
                 popt, pcov = np.polyfit(
@@ -346,7 +348,7 @@ class OceanFX:
         wavelengths = self.wavelengths
         mask = (
             (wavelengths > 450) & (wavelengths < 610)
-            | (wavelengths > 645) & (wavelengths < 700)
+            | (wavelengths > 645) & (wavelengths < 750)
 #            | (wavelengths > 780) & (wavelengths < 870)
 #            | (wavelengths > 645) & (wavelengths < 870)
         )
@@ -354,10 +356,10 @@ class OceanFX:
         try:
             return fit_roughness(self.wavelengths[mask], self.transmission[mask])
         except Exception as e:
-            print(e)
+            print('Roughness fit failed:', e)
             return (
                 self.transmission_scalar, ufloat(0, 0),
-                np.log(self.transmission_scalar), ufloat(0, 0), ufloat(0, 0),
+                ufloat(np.log(100), 0), ufloat(0, 0), ufloat(0, 0),
                 None
             )
 

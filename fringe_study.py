@@ -24,7 +24,7 @@ from headers.CTC100 import CTC100
 from headers.mfc import MFC
 
 from headers.util import display, unweighted_mean
-from headers.zmq_client_socket import connect_to
+from headers.edm_util import countdown_for, countdown_until, wait_until_quantity
 
 from calibrate_oceanfx import calibrate as calibrate_oceanfx
 
@@ -50,20 +50,19 @@ shutil.copy(__file__, filename)
 MINUTE = 60
 HOUR = 60 * MINUTE
 
-def _sleep_until(end_time):
-    time.sleep(max(end_time - time.monotonic(), 0))
-
 def deep_clean():
+    start = time.monotonic()
+
     print('Starting deep clean. Melting crystal.')
     T1.ramp_temperature('heat saph', 40, 0.5)
-    time.sleep(2 * MINUTE)
+    countdown_until(start + 2 * MINUTE)
 
     print('Holding for 5 minutes.')
-    time.sleep(5 * MINUTE)
+    countdown_until(start + 7 * MINUTE)
 
     print('Cooling crystal.')
     T1.ramp_temperature('heat saph', 4, 0.15)
-    time.sleep(4 * MINUTE)
+    countdown_until(start + 11 * MINUTE)
 
     print('Done.')
 
@@ -74,7 +73,7 @@ def _melt_internal():
     end_time = time.monotonic() + 1.5 * MINUTE
     print('Melting crystal + holding for 30 seconds.')
     T1.ramp_temperature('heat saph', 35, 0.4)
-    _sleep_until(end_time)
+    countdown_until(end_time)
 
 
 # Total time: 5 minutes
@@ -85,9 +84,12 @@ def melt_only(end_temp = 8):
     end_time = time.monotonic() + 3.5 * MINUTE
     T1.ramp_temperature('heat saph', end_temp, 0.15)
 
-    time.sleep(1.8 * MINUTE)
+    # Delay a bit, then calibrate OceanFX.
+    countdown_for(1.8 * MINUTE)
     calibrate_oceanfx('baseline', time_limit=1.5 * MINUTE)
-    _sleep_until(end_time)
+
+    # Wait for target temperature.
+    wait_until_quantity(('temperatures', 'saph'), '<', end_temp + 0.1, unit='K')
 
 
 # total time: 6 minutes
@@ -98,17 +100,22 @@ def melt_and_anneal(neon_flow = 4, end_temp = 8):
     print('Cooling crystal.')
     T1.ramp_temperature('heat saph', 9.4, 0.15)
 
-    time.sleep(1.3 * MINUTE)
+    # Wait a bit, then calibrate OceanFX.
+    countdown_for(1.3 * MINUTE)
     calibrate_oceanfx('baseline', time_limit=1.5 * MINUTE)
-    _sleep_until(end_time)
 
+    # Wait until annealing temp is reached.
+    wait_until_quantity(('temperatures', 'saph'), '<', 9.5, unit='K')
+
+    # Anneal for 1 minute.
     print('Annealing (starting neon line).')
     mfc.flow_rate_neon_line = neon_flow
-    time.sleep(1 * MINUTE)
+    countdown_for(1 * MINUTE)
 
+    # Cool down to temp slowly.
     print('Cooling to temperature.')
     T1.ramp_temperature('heat saph', end_temp, 0.1)
-    time.sleep(30)
+    wait_until_quantity(('temperatures', 'saph'), '<', end_temp + 0.1, unit='K')
 #    mfc.off() # commented out to avoid pause between anneal + growth
 
 
@@ -131,11 +138,10 @@ def grow_only(
         T1.ramp_temperature('heat saph', end_temp, ramp_rate)
 
     if target_roughness is None:
-        time.sleep(growth_time)
+        countdown_for(growth_time)
     else:
         wait_for_roughness(
             target_roughness,
-            time_limit=growth_time,
             lower_bound = True
         )
 
@@ -143,38 +149,13 @@ def grow_only(
     mfc.off()
 
 
-def wait_for_roughness(target_roughness, time_limit=None, lower_bound=False):
-    ## connect to publisher
-    monitor_socket = connect_to('spectrometer')
-
-    # Stay at temperature until roughness drops
-    buff = []
-    start = time.monotonic()
-    while True:
-        _, data = monitor_socket.blocking_read()
-        roughness = data['rough']['surf']
-        if roughness is None:
-            print('OceanFX is down!')
-            break
-
-        roughness = ufloat(*roughness)
-
-        # Keep rolling buffer
-        if roughness.n > 0:
-            buff.append(roughness.n)
-            buff = buff[-32:]
-        average = unweighted_mean(buff)
-
-        print(f'\rRoughness: {display(average)} nm', end='')
-        if (average.n < target_roughness) ^ lower_bound:
-            print()
-            break
-
-        if time_limit is not None and time.monotonic() - start > time_limit:
-            print()
-            print('Time limit exceeded.')
-            break
-    monitor_socket.socket.close()
+def wait_for_roughness(target_roughness, lower_bound=False):
+    wait_until_quantity(
+        ('rough', 'surf'),
+        '>' if lower_bound else '<',
+        target_roughness,
+        source='spectrometer'
+    )
 
 
 E_a = 19.94e-3 # eV
@@ -184,7 +165,6 @@ growth_factor = 0.488 # micron/min/sccm neon line
 def stationary_polish(
     flow_rate = 4, # sccm
     target_roughness = 300, # nm
-    time_limit = None,
 ):
     # Compute required temperature from Arrhenius equation
     baseline_growth_rate = flow_rate * growth_factor
@@ -193,12 +173,12 @@ def stationary_polish(
     T1.ramp_temperature('heat saph', temperature, 0.5)
     mfc.flow_rate_neon_line = flow_rate
 
-    wait_for_roughness(target_roughness, time_limit=time_limit)
+    wait_for_roughness(target_roughness)
 
     print('Cooling...')
-    T1.ramp_temperature('heat saph', 4, 0.5)
+    T1.ramp_temperature('heat saph', 5, 0.5)
     mfc.flow_rate_neon_line = 0
-    time.sleep(10)
+    wait_until_quantity(('temperatures', 'saph'), '<', 5.2, unit='K')
     print('Done.')
 
 
@@ -226,21 +206,27 @@ T1.ramp_temperature('heat coll', 60, 0.5) # Keep nozzle at consistent temperatur
 T1.enable_output()
 
 try:
-    for temperature in [5, 8, 9, 6, 7]:
+    deep_clean()
+
+    for temperature in [7]:
         melt_and_grow(
             neon_flow=8,
             buffer_flow=0,
             start_temp=temperature,
             anneal=False,
 
-            growth_time = 6 * HOUR, # time limit
-            target_roughness=2500,
+            target_roughness=3500,
         )
-        stationary_polish(
-            flow_rate = 8,
-            target_roughness = 0,
-            time_limit = 1 * HOUR,
-        )
+
+        # Cool down slowly to avoid cracking
+        T1.ramp_temperature('heat saph', 5, 0.05)
+        wait_until_quantity(('temperatures', 'saph'), '<', 5.2, unit='K')
+
+#        stationary_polish(
+#            flow_rate = 8,
+#            target_roughness = 0,
+#            time_limit = 1 * HOUR,
+#        )
 
 
 finally:
