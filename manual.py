@@ -33,7 +33,7 @@ mfc.off()
 #T1.ramp_temperature('heat saph', 90.0, 1.0)
 #T1.ramp_temperature('heat coll', 90.0, 1.0)
 
-T1.ramp_temperature('heat saph', 320, 1.0)
+T1.ramp_temperature('heat saph', 30, 1.0)
 #T1.ramp_temperature('heat coll', 320, 1.0)
 #T2.ramp_temperature('srb4k out', 320, 1.0)
 #T2.ramp_temperature('srb45k out', 320, 1.0)

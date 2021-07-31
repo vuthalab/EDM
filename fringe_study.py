@@ -22,6 +22,7 @@ from uncertainties import ufloat
 import headers.usbtmc as usbtmc
 from headers.CTC100 import CTC100
 from headers.mfc import MFC
+from headers.turbo import TurboPump
 
 from headers.util import display, unweighted_mean
 from headers.edm_util import countdown_for, countdown_until, wait_until_quantity
@@ -45,6 +46,12 @@ print('Cloning sequence file to', filename)
 shutil.copy(__file__, filename)
 
 
+def log_entry(line):
+    with open('fringe-log.txt', 'a') as f:
+        print(line)
+        print(time.time(), line, file=f)
+
+
 
 ##### Main Sequencer #####
 MINUTE = 60
@@ -53,69 +60,64 @@ HOUR = 60 * MINUTE
 def deep_clean():
     start = time.monotonic()
 
-    print('Starting deep clean. Melting crystal.')
+    log_entry('Starting deep clean. Melting crystal.')
     T1.ramp_temperature('heat saph', 40, 0.5)
     countdown_until(start + 2 * MINUTE)
 
-    print('Holding for 5 minutes.')
+    log_entry('Holding for 5 minutes.')
     countdown_until(start + 7 * MINUTE)
 
-    print('Cooling crystal.')
+    log_entry('Cooling crystal.')
     T1.ramp_temperature('heat saph', 4, 0.15)
     countdown_until(start + 11 * MINUTE)
 
-    print('Done.')
+    log_entry('Done deep clean.')
 
 
-# total time: 1.5 minutes.
-# for internal use only
-def _melt_internal():
-    end_time = time.monotonic() + 1.5 * MINUTE
-    print('Melting crystal + holding for 30 seconds.')
-    T1.ramp_temperature('heat saph', 35, 0.4)
-    countdown_until(end_time)
+def melt_crystal(speed = 0.1, end_temp = 8):
+    log_entry('Melting crystal.')
+    turbo.off() # To avoid damage
 
+    # Raise saph temperature
+    T1.ramp_temperature('heat saph', 35, speed)
+    wait_until_quantity(('temperatures', 'saph'), '>', 32, unit='K')
 
-# Total time: 5 minutes
-def melt_only(end_temp = 8):
-    _melt_internal()
+    # Ensure crystal is melted
+    wait_until_quantity(('trans', 'spec'), '>', 95, unit='%')
+    countdown_for(2 * MINUTE)
 
-    print('Cooling crystal.')
-    end_time = time.monotonic() + 3.5 * MINUTE
-    T1.ramp_temperature('heat saph', end_temp, 0.15)
+    # Lower temperature slowly
+    log_entry('Cooling crystal.')
+    T1.ramp_temperature('heat saph', 20, speed)
 
-    # Delay a bit, then calibrate OceanFX.
-    countdown_for(1.8 * MINUTE)
+    # Wait for pressure to drop before enabling turbo
+    wait_until_quantity(('pressure',), '<', 1, unit='torr')
+    turbo.on()
+
+    # Cool down a bit, then calibrate OceanFX.
+    T1.ramp_temperature('heat saph', end_temp, speed)
+    wait_until_quantity(('temperatures', 'saph'), '<', 20, unit='K')
     calibrate_oceanfx('baseline', time_limit=1.5 * MINUTE)
-
-    # Wait for target temperature.
-    wait_until_quantity(('temperatures', 'saph'), '<', end_temp + 0.1, unit='K')
+    wait_until_quantity(('temperatures', 'saph'), '<', end_temp + 0.01, unit='K')
 
 
 # total time: 6 minutes
 def melt_and_anneal(neon_flow = 4, end_temp = 8):
-    _melt_internal()
+    melt_crystal(end_temp = 10)
 
-    end_time = time.monotonic() + 3 * MINUTE
-    print('Cooling crystal.')
-    T1.ramp_temperature('heat saph', 9.4, 0.15)
+    # Anneal.
+    log_entry('Annealing (starting neon line).')
+    mfc.flow_rate_neon_line = 4
+    T1.ramp_temperature('heat saph', 9.5, 0.005)
+    wait_until_quantity(('temperatures', 'saph'), '<', 9.6, unit='K')
 
-    # Wait a bit, then calibrate OceanFX.
-    countdown_for(1.3 * MINUTE)
-    calibrate_oceanfx('baseline', time_limit=1.5 * MINUTE)
-
-    # Wait until annealing temp is reached.
-    wait_until_quantity(('temperatures', 'saph'), '<', 9.5, unit='K')
-
-    # Anneal for 1 minute.
-    print('Annealing (starting neon line).')
-    mfc.flow_rate_neon_line = neon_flow
-    countdown_for(1 * MINUTE)
+    # Grow a few layers.
+    countdown_for(2 * MINUTE)
 
     # Cool down to temp slowly.
-    print('Cooling to temperature.')
     T1.ramp_temperature('heat saph', end_temp, 0.1)
-    wait_until_quantity(('temperatures', 'saph'), '<', end_temp + 0.1, unit='K')
+    wait_until_quantity(('temperatures', 'saph'), '<', end_temp + 0.01, unit='K')
+
 #    mfc.off() # commented out to avoid pause between anneal + growth
 
 
@@ -123,12 +125,14 @@ def melt_and_anneal(neon_flow = 4, end_temp = 8):
 def grow_only(
     start_temp = 8, end_temp = None, # start, end temp (K)
     neon_flow = 4, buffer_flow = 0, # flow rates (sccm)
+
     growth_time = 30 * MINUTE,
-    target_roughness = None
+    target_roughness = None,
+    target_height = None,
 ):
     if end_temp is None: end_temp = start_temp
 
-    print(f'Growing crystal at with {neon_flow:.1f} sccm neon line, {buffer_flow:.1f} sccm buffer flow. Will ramp temperature from {start_temp:.1f} K to {end_temp:.1f} K during growth.')
+    log_entry(f'Growing crystal at with {neon_flow:.1f} sccm neon line, {buffer_flow:.1f} sccm buffer flow. Will ramp temperature from {start_temp:.1f} K to {end_temp:.1f} K during growth.')
     T1.ramp_temperature('heat saph', start_temp, 0.5)
     mfc.flow_rate_neon_line = neon_flow
     mfc.flow_rate_cell = buffer_flow
@@ -137,15 +141,14 @@ def grow_only(
         ramp_rate = abs(end_temp - start_temp) / growth_time
         T1.ramp_temperature('heat saph', end_temp, ramp_rate)
 
-    if target_roughness is None:
-        countdown_for(growth_time)
+    if target_roughness is not None:
+        wait_for_roughness(target_roughness, lower_bound = True)
+    elif target_height is not None:
+        wait_for_quantity(('model', 'height'), '>', target_height)
     else:
-        wait_for_roughness(
-            target_roughness,
-            lower_bound = True
-        )
+        countdown_for(growth_time)
 
-    print('Done.')
+    log_entry('Done growth.')
     mfc.off()
 
 
@@ -154,7 +157,8 @@ def wait_for_roughness(target_roughness, lower_bound=False):
         ('rough', 'surf'),
         '>' if lower_bound else '<',
         target_roughness,
-        source='spectrometer'
+        source='spectrometer',
+        buffer_size=16
     )
 
 
@@ -163,33 +167,38 @@ k_B = 1.381e-23/1.61e-19 # eV/K
 T_0 = 9.6 # K
 growth_factor = 0.488 # micron/min/sccm neon line
 def stationary_polish(
-    flow_rate = 4, # sccm
-    target_roughness = 300, # nm
+    flow_rate = 8, # sccm
+    target_consistency = 25, # nm
 ):
     # Compute required temperature from Arrhenius equation
     baseline_growth_rate = flow_rate * growth_factor
     temperature = 1/(1/T_0 - (np.log(baseline_growth_rate) * k_B/E_a))
-    print(f'Beginning stationary polish at {flow_rate:.1f} sccm, {temperature:.2f} K.')
+    log_entry(f'Beginning stationary polish at {flow_rate:.1f} sccm, {temperature:.2f} K.')
     T1.ramp_temperature('heat saph', temperature, 0.5)
     mfc.flow_rate_neon_line = flow_rate
 
-    wait_for_roughness(target_roughness)
+    wait_until_quantity(
+        ('rough', 'surf'), 'stable to within', target_consistency,
+        unit='nm',
+        source='spectrometer',
+        buffer_size=30,
+    )
 
-    print('Cooling...')
+    log_entry('Cooling...')
     T1.ramp_temperature('heat saph', 5, 0.5)
     mfc.flow_rate_neon_line = 0
-    wait_until_quantity(('temperatures', 'saph'), '<', 5.2, unit='K')
-    print('Done.')
+    wait_until_quantity(('temperatures', 'saph'), '<', 8, unit='K')
+    log_entry('Done polish.')
 
 
 
 
 
-def melt_and_grow(anneal=True, start_temp = 8, **args):
+def melt_and_grow(anneal=True, start_temp = 9, **args):
     if anneal:
         melt_and_anneal(end_temp=start_temp)
     else:
-        melt_only(end_temp=start_temp)
+        melt_crystal(end_temp=start_temp)
     grow_only(start_temp=start_temp, **args)
 
 
@@ -198,6 +207,7 @@ def melt_and_grow(anneal=True, start_temp = 8, **args):
 T1 = CTC100(31415)
 T2 = CTC100(31416)
 mfc = MFC(31417)
+turbo = TurboPump()
 
 
 # Initial conditions
@@ -206,27 +216,15 @@ T1.ramp_temperature('heat coll', 60, 0.5) # Keep nozzle at consistent temperatur
 T1.enable_output()
 
 try:
-    deep_clean()
+#    deep_clean()
 
-    for temperature in [7]:
+    for thickness in [100, 50, 200, 150, 300, 250]:
         melt_and_grow(
             neon_flow=8,
-            buffer_flow=0,
-            start_temp=temperature,
-            anneal=False,
-
-            target_roughness=3500,
+            start_temp=9,
+            target_height=thickness,
         )
-
-        # Cool down slowly to avoid cracking
-        T1.ramp_temperature('heat saph', 5, 0.05)
-        wait_until_quantity(('temperatures', 'saph'), '<', 5.2, unit='K')
-
-#        stationary_polish(
-#            flow_rate = 8,
-#            target_roughness = 0,
-#            time_limit = 1 * HOUR,
-#        )
+        stationary_polish()
 
 
 finally:

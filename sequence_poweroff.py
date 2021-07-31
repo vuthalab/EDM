@@ -31,7 +31,7 @@ turbo.off()
 
 
 # Wait for turbo to spin down, then turn off pulsetube.
-countdown_for(2 * MINUTE)
+countdown_for(3 * MINUTE)
 pt.off()
 
 

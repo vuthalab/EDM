@@ -24,7 +24,7 @@ def deconstruct(val):
     return (val.n, val.s)
 
 
-def add_timestamp(image):
+def add_timestamp(image, label=''):
     short_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     pad_size = [(32, 0), (0, 0)]
@@ -37,7 +37,7 @@ def add_timestamp(image):
     image = np.pad(image, pad_size)
     image = Image.fromarray(image)
     draw = ImageDraw.Draw(image)
-    draw.text((8, 4), short_timestamp, fill=fill, font=font)
+    draw.text((8, 4), f'{short_timestamp} {label}', fill=fill, font=font)
     return image
 
 
@@ -73,57 +73,75 @@ class Timer:
 
 
 
-def countdown_until(t):
-    while True:
-        remaining = t - time.monotonic()
-        if remaining < 0: break
 
-        m, s = divmod(round(remaining), 60)
-        h, m = divmod(m, 60)
-        print(f'{Style.BRIGHT}{h:02d}:{m:02d}:{s:02d}{Style.RESET_ALL} {Style.DIM}remaining{Style.RESET_ALL}', end='\r')
-        time.sleep(0.5)
-#    print()
+# Countdown utils
+def show_interrupt_menu(): input(f'Press {Style.BRIGHT}enter{Style.RESET_ALL} to skip countdown, or press {Style.BRIGHT}Ctrl + C{Style.RESET_ALL} again to exit.')
+
+def countdown_until(t):
+    try:
+        while True:
+            remaining = t - time.monotonic()
+            if remaining < 0: break
+
+            m, s = divmod(round(remaining), 60)
+            h, m = divmod(m, 60)
+            print(f'{Style.BRIGHT}{h:02d}:{m:02d}:{s:02d}{Style.RESET_ALL} {Style.DIM}remaining{Style.RESET_ALL}', end='\r')
+            time.sleep(0.5)
+    except KeyboardInterrupt:
+        show_interrupt_menu()
 
 def countdown_for(dt): countdown_until(time.monotonic() + dt)
 
 def wait_until_quantity(
     qty, operator, target,
     unit='',
-    buffer_size=8,
+    buffer_size=4,
     source='edm-monitor'
 ):
-    label = f'{Style.DIM} > {Style.RESET_ALL}'.join(
+    label = f'{Style.DIM}.{Style.RESET_ALL}'.join(
         f'{Fore.GREEN}{entry}{Style.RESET_ALL}' for entry in qty
     )
 
     buff = []
 
     monitor_socket = connect_to(source)
-    while True:
-        _, data = monitor_socket.blocking_read()
+    try:
+        while True:
+            _, data = monitor_socket.blocking_read()
 
-        for entry in qty:
-            data = data[entry]
+            for entry in qty:
+                data = data[entry]
 
-        if isinstance(data, float):
-            data = ufloat(data, 0)
-        else:
-            data = ufloat(*data)
+            if isinstance(data, float):
+                data = ufloat(data, 0)
+            else:
+                data = ufloat(*data)
 
-        print(
-            f'[{label}]',
-            f'{Fore.YELLOW}Current{Style.RESET_ALL}:', display(data), unit,
-            '|',
-            f'{Fore.YELLOW}Target{Style.RESET_ALL}:', operator, target, unit,
-            end='\r'
-        )
 
-        # Keep rolling buffer for stability
-        buff.append(data.n)
-        buff = buff[-buffer_size:]
+            # Keep rolling buffer for stability
+            buff.append(data.n)
+            buff = buff[-buffer_size:]
 
-        curr = np.mean(buff)
-        if operator == '>' and curr > target: break
-        if operator == '<' and curr < target: break
+            curr = np.mean(buff)
+            curr_s = np.std(buff)
+
+            unit_str = f'{Style.DIM}{unit}{Style.RESET_ALL}'
+            disp_curr = f'{display(data)} {unit_str}'
+            if operator == 'stable to within':
+                disp_curr = f'{curr_s} {unit_str}' if len(buff) == buffer_size else f'{Style.DIM}collected {len(buff)}/{buffer_size} samples{Style.RESET_ALL}'
+            print(
+                f'[{label}]',
+                f'{Fore.YELLOW}Target{Style.RESET_ALL}:', operator, target, unit_str,
+                '|',
+                f'{Fore.YELLOW}Current{Style.RESET_ALL}:', disp_curr,
+                end='\r'
+            )
+
+            if operator == '>' and curr > target: break
+            if operator == '<' and curr < target: break
+            if operator == 'stable to within' and curr_s < target and len(buff) == buffer_size: break
+    except KeyboardInterrupt:
+        show_interrupt_menu()
+
     monitor_socket.socket.close()
     print()

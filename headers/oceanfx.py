@@ -348,7 +348,7 @@ class OceanFX:
         wavelengths = self.wavelengths
         mask = (
             (wavelengths > 450) & (wavelengths < 610)
-            | (wavelengths > 645) & (wavelengths < 750)
+            | (wavelengths > 645) & (wavelengths < 730)
 #            | (wavelengths > 780) & (wavelengths < 870)
 #            | (wavelengths > 645) & (wavelengths < 870)
         )

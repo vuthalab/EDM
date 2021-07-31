@@ -7,9 +7,9 @@ import uncertainties.unumpy as unp
 neon_coeff = ufloat(0.359, 0.010)  # microns/min/sccm
 buffer_coeff = ufloat(0.060, 0.005) # microns/min/sccm
 
-E_a = ufloat(19.94, 0.09) * 1e-3 # Neon binding energy, from literature (eV)
+E_a = ufloat(15.94, 0.09) * 1e-3 # Neon binding energy, from fit
 k_B = 1.381e-23 / 1.61e-19 # Boltzmann constant, eV/K
-T_0 = ufloat(9.60, 0.03) # Temperature at which evaporation = 1 micron/min
+T_0 = ufloat(9.72, 0.03) # Temperature at which evaporation = 1 micron/min
 
 
 class GrowthModel:

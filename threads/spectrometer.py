@@ -2,11 +2,12 @@ from headers.oceanfx import OceanFX
 from headers.zmq_server_socket import create_server
 
 from headers.edm_util import deconstruct
-from headers.util import nom, std
+from headers.util import nom, std, unweighted_mean
 
 
 def spectrometer_thread():
     spectrometer = OceanFX()
+
     with create_server('spectrometer') as publisher:
         while True:
             trans = {}
