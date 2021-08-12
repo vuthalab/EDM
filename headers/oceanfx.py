@@ -96,7 +96,8 @@ def fit_roughness(wavelengths, transmission):
     beta_0, beta_2, beta_4 = params
 
     if beta_2.n > 0:
-        theta = np.arcsin(np.sin(45*np.pi/180) * ior)
+#        theta = np.arcsin(np.sin(45*np.pi/180) / ior)
+        theta = np.arcsin(np.sin(45*np.pi/180) * ior) # TODO WRONG but kept for consistency
         delta_n = ior - 1
         roughness = unp.sqrt(2e6 * beta_2) / (delta_n * np.cos(theta))
     else:

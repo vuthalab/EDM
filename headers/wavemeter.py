@@ -42,26 +42,19 @@ from headers.zmq_publisher import zmqPublisher
 ##
 
 class WM:
-    def __init__(self,mode='client',port=9000,publish=False,stream_port=5563,):
-        
-        self.port = port
+    def __init__(self, mode='client', port=9000):
         self.mode = mode
-        self.publish = publish
         
-        if mode=='server':
-            
+        if mode == 'server':
             self.dll = LoadDLL()
+        elif mode == 'client':
+            address = f'192.168.0.103:{port}'
 
-
-        elif mode=='client':
             zmq_context = zmq.Context()
             self.socket = zmq_context.socket(zmq.REQ)
-            self.socket.connect("tcp://192.168.0.103:%s"%self.port) #wavemeter comp
-            #self.socket.connect("tcp://192.168.0.102:%s"%self.port) # fancy windows comp
-            print("Connected to handler at 192.168.0.103:%s"%self.port)
-        
-            if publish:
-                self.publisher = zmqPublisher(port=stream_port,topic='wavemeter')
+
+            self.socket.connect(f'tcp://{address}')
+            print(f'Connected to handler at {address}')
                 
                 
     def _mode_check(func):
@@ -344,10 +337,7 @@ class WM:
             for i in channels:
                 try:
                     new_data = self.read_frequency(i)
-                    if self.publish:
-                        self.publisher.publish_data((i,round(new_data,6)),prnt=True)
-                    else:
-                        print(new_data)
+                    print(new_data)
                     if(sleep_time==None):
                         sleep_time = 1.0/len(channels)
                     time.sleep(sleep_time)
@@ -359,8 +349,15 @@ class WM:
                 except Exception as e:
                     print(e)
 
+    @_mode_check
+    def _fetch_interferogram(self, channel: int): pass
+
+    def fetch_interferogram(self, channel: int):
+        res = self._fetch_interferogram(channel)
+        return [int(x) for x in res[1:-1].split(',')[:1024]]
+
 if __name__=='__main__':
-    wm = WM(publish=False)
+    wm = WM()
     
 
 

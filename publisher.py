@@ -20,9 +20,10 @@ from headers.FRG730 import FRG730
 from headers.CTC100 import CTC100
 from headers.labjack_device import Labjack
 from headers.mfc import MFC
-from headers.wavemeter import WM
 from headers.turbo import TurboPump
 from headers.ximea_camera import Ximea
+from headers.verdi import Verdi
+from headers.rigol_dp832 import LaserSign
 from pulsetube_compressor import PulseTube
 
 from headers.util import display, unweighted_mean, nom, std
@@ -37,6 +38,7 @@ from models.cbs import fit_cbs
 
 from threads.spectrometer import spectrometer_thread
 from threads.webcam import webcam_thread
+from threads.wavemeter import wavemeter_thread
 
 
 
@@ -45,19 +47,6 @@ PUBLISH_INTERVAL = 2/1.4 # publish every x seconds.
 
 
 ##### UTILITY FUNCTIONS #####
-async def with_uncertainty(getter, N=32, delay=5e-3):
-    """Call the given getter function N times and return the mean and standard deviation."""
-    values = []
-    for i in range(N):
-        value = getter()
-        if not isinstance(value, float): return None
-
-        values.append(value)
-        await asyncio.sleep(delay)
-
-    return (np.mean(values), np.std(values))
-
-
 fringe_model = FringeModel()
 fringe_counter = FringeCounter()
 growth_model = GrowthModel()
@@ -78,21 +67,25 @@ async def run_publisher():
     ]
     labjack = Labjack('470022275')
     mfc = MFC(31417)
-    wm = WM(publish=False) #wavemeter class used for reading frequencies from high finesse wavemeter
     pt = PulseTube()
 
-    camera = Camera(1)
-    camera.init()
-    try:
-        camera.start()
-    except:
-        pass
-    camera.GainAuto = 'Off'
-    camera.Gain = 10
-    camera.ExposureAuto = 'Off'
-    camera_publisher = create_server('camera')
+#    camera = Camera(1)
+    camera = None
+    if camera is not None:
+        camera.init()
+        try:
+            camera.start()
+        except:
+            pass
+        camera.GainAuto = 'Off'
+        camera.Gain = 10
+        camera.ExposureAuto = 'Off'
+        camera_publisher = create_server('camera')
 
     turbo = TurboPump()
+
+    verdi = Verdi()
+    laser_sign = LaserSign()
 
 
     pt_last_off = time.monotonic()
@@ -108,6 +101,7 @@ async def run_publisher():
     cbs_publisher = create_server('cbs-camera')
 
     spectrometer_monitor = connect_to('spectrometer')
+    wavemeter_monitor = connect_to('wavemeter')
 
 
     print('Starting publisher')
@@ -165,17 +159,6 @@ async def run_publisher():
 
 
 
-                ##### Read wavemeter frequencies (Async) #####
-                frequencies = {}
-                async def frequency_getter():
-                    """Record the frequencies from the wavemeter."""
-                    with Timer('wavemeter', times):
-                        frequencies['baf'] = await with_uncertainty(lambda: wm.read_frequency(8))
-                        frequencies['calcium'] = await with_uncertainty(lambda: wm.read_frequency(6))
-                async_getters.append(frequency_getter())
-
-
-
                 ##### Read Camera (Async) #####
                 center =  {}
                 refl = {}
@@ -224,8 +207,8 @@ async def run_publisher():
 
                     if saturation.n > 99: camera.ExposureTime = exposure // 2
                     if saturation.n < 30: camera.ExposureTime = exposure * 2
-
-                async_getters.append(run_async(camera_getter))
+                if camera is not None:
+                    async_getters.append(run_async(camera_getter))
 
 
                 ##### Read turbo status (Async) #####
@@ -248,6 +231,26 @@ async def run_publisher():
 #                        intensities['hene'] = deconstruct(labjack.read('AIN1'))
                         intensities['LED'] = deconstruct(labjack.read('AIN2'))
                 async_getters.append(run_async(labjack_getter))
+
+
+                ##### Read Verdi status (Async) #####
+                verdi_status = {}
+                def verdi_getter():
+                    with Timer('verdi', times):
+                        running['verdi'] = verdi.is_on
+                        verdi_status['current'] = verdi.current
+                        verdi_status['power'] = verdi.power
+                        verdi_status['temp'] = {
+                            'baseplate': verdi.baseplate_temp,
+                            'vanadate': verdi.vanadate_temp,
+                        }
+                async_getters.append(run_async(verdi_getter))
+
+                ##### Read laser sign (Async) #####
+                def laser_sign_getter():
+                    with Timer('verdi', times):
+                        running['sign'] = laser_sign.enabled
+                async_getters.append(run_async(laser_sign_getter))
 
 
 
@@ -299,16 +302,25 @@ async def run_publisher():
                     trans = spec_data['trans']
                     rough['hdr-chisq'] = spec_data['fit']['chisq']
 
+                # Read wavemeter thread.
+                frequencies = {}
+                while True:
+                    _, new_data = wavemeter_monitor.grab_json_data()
+                    if new_data is None: break
+                    frequencies = new_data['freq']
+                    intensities = {**intensities, **new_data['power']}
+                    temperatures['wavemeter'] = new_data['temp']
 
 
                 ### Update models ###
                 saph_temp = temperatures['saph']
 
                 growth_model.update(ufloat(*flows['neon']), ufloat(*flows['cell']), saph_temp)
-                fringe_counter.update(
-                    refl['ai'][0],
-                    grow=(growth_model._growth_rate.n > 0)
-                )
+                if camera is not None:
+                    fringe_counter.update(
+                        refl['ai'][0],
+                        grow=(growth_model._growth_rate.n > 0)
+                    )
 
                 if saph_temp > 13: fringe_counter.reset()
 
@@ -350,6 +362,7 @@ async def run_publisher():
                         'memory': memory_usage(),
                         'system-memory': round(psutil.virtual_memory().used / 1024),
                         'cpu': psutil.cpu_percent(),
+                        'verdi': verdi_status,
                     }
                 }
                 print_tree(data_dict)
@@ -361,7 +374,10 @@ async def run_publisher():
                 time.sleep(max(target_end - time.monotonic(), 0))
 
                 publisher.send(data_dict)
-                camera_publisher.send(png)
+
+                if camera is not None:
+                    camera_publisher.send(png)
+
                 if cbs_png is not None:
                     cbs_publisher.send({
                         'image': cbs_png,
@@ -376,15 +392,27 @@ async def run_publisher():
                     pressure_gauge.close()
                     pressure_gauge = FRG730()
 
+
+                # Laser sign interlocks
+                verdi_on = running['verdi'] or verdi_status['power'] > 0
+                yag_on = False
+                proper_sign_status = verdi_on or yag_on
+                if proper_sign_status != running['sign']:
+                    if proper_sign_status:
+                        laser_sign.on()
+                    else:
+                        laser_sign.off()
+
     finally:
         print(f'{Fore.RED}{Style.BRIGHT}Crashed, cleaning up...{Style.RESET_ALL}')
         tb = traceback.format_exc()
         print(tb)
 
-        print('Stopping fringe camera...')
-        camera.stop()
-        camera.close()
-        camera_publisher.close()
+        if camera is not None:
+            print('Stopping fringe camera...')
+            camera.stop()
+            camera.close()
+            camera_publisher.close()
 
         print('Stopping CBS camera...')
         cbs_cam.close()
@@ -405,7 +433,8 @@ async def run_publisher():
 if __name__ == '__main__':
     thread_functions = [
         spectrometer_thread,
-        webcam_thread
+        webcam_thread,
+        wavemeter_thread,
     ]
 
     threads = [threading.Thread(target=function) for function in thread_functions]

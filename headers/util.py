@@ -48,14 +48,14 @@ def display_statistics(dof, reduced_chisq):
     }
 
 
-def fit(model, x, y, p0):
+def fit(model, x, y, p0, absolute_sigma=False):
     p0_arr = np.array([entry[0] for entry in p0.values()])
     meta = {tag: entry[1] for tag, entry in p0.items()}
 
     popt, pcov = curve_fit(
         model, nom(x), nom(y),
         p0=p0_arr,
-        sigma=std(y), absolute_sigma=True
+        sigma=std(y), absolute_sigma=absolute_sigma
     )
     fit_params = correlated_values(popt, pcov, tags=p0.keys())
 

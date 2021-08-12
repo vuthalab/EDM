@@ -12,8 +12,8 @@ from colorama import Style, Fore
 # Date format must be YYYY-MM-DD
 # Time format must be HH:MM:SS (24-hour format)
 # End time can be in the future to get all data after a certain point
-START_TIME = ('2021-07-30', '17:15:00')
-END_TIME = ('2021-07-30', '23:00:00')
+START_TIME = ('2021-07-25', '21:40:00')
+END_TIME = ('2021-07-26', '22:00:00')
 
 # Map from plot labels (name, unit) to paths in data
 # Choose which fields you want to extract here
@@ -34,12 +34,13 @@ fields = {
 
 #    ('transmission (photodiode)', '%'): ('trans', 'pd'),
 #    ('transmission (spectrometer)', '%'): ('trans', 'spec'),
-#    ('transmission (non-roughness sources)', '%'): ('trans', 'unexpl'),
+    ('transmission (non-roughness sources)', '%'): ('trans', 'unexpl'),
 
 #    ('BaF Laser', 'GHz'): ('freq', 'baf'),
 #    ('Ca Laser', 'GHz'): ('freq', 'calcium'),
 
     ('rms roughness (spectrometer)', 'nm'): ('rough', 'surf'),
+    ('second-order roughness coefficient', 'micron$^2$'): ('rough', 'second-order'),
     ('fourth-order roughness coefficient (rayleigh $- K \sigma^4$)', 'micron nm$^3$'): ('rough', 'fourth-order'),
     ('crystal thickness (dead reckoning)', 'micron'): ('model', 'height'),
 

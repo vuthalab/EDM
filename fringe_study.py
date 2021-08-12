@@ -74,7 +74,7 @@ def deep_clean():
     log_entry('Done deep clean.')
 
 
-def melt_crystal(speed = 0.1, end_temp = 8):
+def melt_crystal(speed = 0.1, end_temp = 9):
     log_entry('Melting crystal.')
     turbo.off() # To avoid damage
 
@@ -102,7 +102,7 @@ def melt_crystal(speed = 0.1, end_temp = 8):
 
 
 # total time: 6 minutes
-def melt_and_anneal(neon_flow = 4, end_temp = 8):
+def melt_and_anneal(neon_flow = 4, end_temp = 9):
     melt_crystal(end_temp = 10)
 
     # Anneal.
@@ -123,12 +123,12 @@ def melt_and_anneal(neon_flow = 4, end_temp = 8):
 
 
 def grow_only(
-    start_temp = 8, end_temp = None, # start, end temp (K)
+    start_temp = 9, end_temp = None, # start, end temp (K)
     neon_flow = 4, buffer_flow = 0, # flow rates (sccm)
 
     growth_time = 30 * MINUTE,
     target_roughness = None,
-    target_height = None,
+    target_thickness = None,
 ):
     if end_temp is None: end_temp = start_temp
 
@@ -143,8 +143,8 @@ def grow_only(
 
     if target_roughness is not None:
         wait_for_roughness(target_roughness, lower_bound = True)
-    elif target_height is not None:
-        wait_for_quantity(('model', 'height'), '>', target_height)
+    elif target_thickness is not None:
+        wait_until_quantity(('model', 'height'), '>', target_thickness)
     else:
         countdown_for(growth_time)
 
@@ -181,7 +181,7 @@ def stationary_polish(
         ('rough', 'surf'), 'stable to within', target_consistency,
         unit='nm',
         source='spectrometer',
-        buffer_size=30,
+        buffer_size=60,
     )
 
     log_entry('Cooling...')
@@ -218,13 +218,8 @@ T1.enable_output()
 try:
 #    deep_clean()
 
-    for thickness in [100, 50, 200, 150, 300, 250]:
-        melt_and_grow(
-            neon_flow=8,
-            start_temp=9,
-            target_height=thickness,
-        )
-        stationary_polish()
+    melt_and_grow(neon_flow=8, target_thickness=thickness)
+    stationary_polish()
 
 
 finally:

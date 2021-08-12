@@ -70,7 +70,8 @@ fields = {
     ('transmission (overall, from spectrometer)', '%'): ('trans', 'spec'),
     ('transmission (non-roughness sources only)', '%'): ('trans', 'unexpl'),
 
-#    ('BaF Laser', 'GHz'): ('freq', 'baf'),
+    ('BaF Laser', 'GHz'): ('freq', 'baf'),
+    ('Ti:sapphire Laser', 'GHz'): ('freq', 'ti-saph'),
     ('Ca Laser', 'GHz '): ('freq', 'calcium'),
 
     ('rms roughness (from spectrometer)', 'nm'): ('rough', 'surf'),
@@ -100,6 +101,11 @@ fields = {
     ('4K sorb', 'K '): ('temperatures', 'srb4k'),
     ('4K plate', 'K '): ('temperatures', '4k plate'),
 
+    ('verdi baseplate', '°C'): ('debug', 'verdi', 'temp', 'baseplate'),
+    ('verdi vanadate', '°C'): ('debug', 'verdi', 'temp', 'vanadate'),
+    ('highfinesse wavemeter', '°C'): ('temperatures', 'wavemeter'),
+
+    ('verdi power', 'W'): ('debug', 'verdi', 'power'),
 
     ('beam center x (from camera)', '% '): ('center', 'x'),
     ('beam center y (from camera)', '% '): ('center', 'y'),
@@ -115,20 +121,27 @@ fields = {
     ('fringe camera', 'ms'): ('debug', 'times', 'camera'),
 #    ('cbs camera', 'ms'): ('debug', 'times', 'CBS Camera'),
 #    ('pressure gauge', 'ms'): ('debug', 'times', 'pressure'),
-    ('turbo pump', 'ms'): ('debug', 'times', 'turbo'),
+#    ('turbo pump', 'ms'): ('debug', 'times', 'turbo'),
 #    ('mfc', 'ms'): ('debug', 'times', 'MFC'),
 #    ('temp controller #1', 'ms'): ('debug', 'times', 'CTC31415'),
 #    ('temp controller #2', 'ms'): ('debug', 'times', 'CTC31416'),
 #    ('led monitor labjack', 'ms'): ('debug', 'times', 'labjack'),
     ('wavemeter', 'ms'): ('debug', 'times', 'wavemeter'),
+    ('verdi', 'ms'): ('debug', 'times', 'verdi'),
 }
 
 axis_labels = [
-#    'GHz',
-    'GHz ',
+    '°C',
+
+    'W',
+    'K',
+    'K ',
 
     'torr',
     'sccm',
+
+    'GHz',
+    'GHz ',
 
     'V',
     '%',
@@ -145,10 +158,6 @@ axis_labels = [
     '% ',
     'pixels',
     'counts',
-
-    'W',
-    'K',
-    'K ',
 
     '',
     'μs',
@@ -296,9 +305,13 @@ for i, line in enumerate(tail('-n', num_points * skip_points, '-f', filepath, _i
 
         if 'running' in raw_data:
             running = raw_data['running']
-            pt_status = 'Running' if running['pt'] else 'Off'
-            turbo_status = 'Running' if running['turbo'] else 'Off'
-            title = f'Pulse Tube {pt_status} · Turbo {turbo_status} · {time.asctime(time.localtime())}'
+            def get_status(name):
+                return 'Running' if running.get(name, False) else 'Off'
+
+            pt_status = get_status('pt')
+            turbo_status = get_status('turbo')
+            verdi_status = get_status('verdi')
+            title = f'Pulse Tube {pt_status} · Turbo {turbo_status} · Verdi {verdi_status} · {time.asctime(time.localtime())}'
 
             if HEADLESS:
                 axes[0].set_title(title, pad=20)

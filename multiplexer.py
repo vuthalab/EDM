@@ -136,14 +136,14 @@ def telnet_handler(client_thread, msg):
         # Just pass on the packet.
         conn.write(msg + b'\n')
 
-def serial_handler(client_thread, msg):
+def serial_handler(client_thread, msg, empty_ok = False):
     conn = client_thread.multiplexer.conn
     client_socket = client_thread.client_socket
 
     if msg == b'read':
         # Query the response and return.
         response = conn.read(1024)
-        if response in [b'', b'\r\n']:
+        if response in [b'', b'\r\n'] and not empty_ok:
             response = b'read failed'
 
         print(f'[{Fore.RED}SEND{Style.RESET_ALL}] {Style.DIM}{client_thread.name:15s} > {client_thread.client_name:15s}{Style.RESET_ALL} | {Fore.RED}{response}{Style.RESET_ALL}')
@@ -188,9 +188,13 @@ if __name__ == '__main__':
     TC1 = telnetlib.Telnet('192.168.0.104', port=23, timeout=2)
     TC2 = telnetlib.Telnet('192.168.0.107', port=23, timeout=2)
     mfc = Labjack('470017292')
-    turbo = serial.Serial('/dev/ttyUSB1', 9600, timeout=0.5)
+    turbo = serial.Serial('/dev/turbo', 9600, timeout=0.2)
+    verdi = serial.Serial('/dev/verdi', 19200, timeout=0.2)
+
+    verdi_handler = lambda c, m: serial_handler(c, m, empty_ok=True)
 
     Multiplexer(31415, TC1, telnet_handler).start()
     Multiplexer(31416, TC2, telnet_handler).start()
     Multiplexer(31417, mfc, labjack_handler).start()
     Multiplexer(31418, turbo, serial_handler).start()
+    Multiplexer(31420, verdi, verdi_handler).start()

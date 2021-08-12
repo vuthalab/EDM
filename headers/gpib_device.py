@@ -1,4 +1,7 @@
-from headers.usbtmc import USBTMCDevice
+try:
+    from headers.usbtmc import USBTMCDevice
+except:
+    from usbtmc import USBTMCDevice
 
 
 class GPIBDevice(USBTMCDevice):
@@ -8,6 +11,8 @@ class GPIBDevice(USBTMCDevice):
     def __init__(self,
             serial_port: str,
             gpib_addr: int,
+
+            name: str = None,
         ):
         """
         Initialize a serial connection to the GPIB device.
@@ -19,7 +24,7 @@ class GPIBDevice(USBTMCDevice):
         gpib_addr:
             GPIB address of device. Usually configurable on the device.
         """
-        super().__init__(serial_port)
+        super().__init__(serial_port, name=name)
 
         # Set address and timeout
         print('Bridge Version:', self.query('++ver'))
