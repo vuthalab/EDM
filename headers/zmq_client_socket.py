@@ -45,7 +45,7 @@ class zmq_client_socket:
         self.make_connection()
         self.current_data = self.grab_data()
 
-        print('Connecting to', connection_settings['topic'], 'on port', connection_settings['port'])
+        print('Connected to', connection_settings['topic'], 'on port', connection_settings['port'])
 
 
     def grab_json_data(self):
@@ -72,6 +72,7 @@ class zmq_client_socket:
             self.received_first_data = True
             return received_data
         except zmq.ZMQError:
+            print('Error grabbing data.')
             return
 
     def _decode(self, packet):

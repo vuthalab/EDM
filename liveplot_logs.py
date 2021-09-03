@@ -79,10 +79,10 @@ fields = {
     ('fourth-order roughness coefficient (rayleigh $- K \sigma^4$)', 'micron nm$^3$'): ('rough', 'fourth-order'),
     ('crystal thickness (dead reckoning)', 'micron'): ('model', 'height'),
 
-    ('coherent backscatter peak intensity', 'counts'): ('cbs', 'peak'),
-    ('coherent backscatter width', 'pixels'): ('cbs', 'width'),
+#    ('coherent backscatter peak intensity', 'counts'): ('cbs', 'peak'),
+#    ('coherent backscatter width', 'pixels'): ('cbs', 'width'),
 
-    ('coherent backscatter reduced-$\\chi^2$', ''): ('cbs', 'chisq'),
+#    ('coherent backscatter reduced-$\\chi^2$', ''): ('cbs', 'chisq'),
     ('roughness reduced-$\\chi^2$', ''): ('rough', 'chisq'),
     ('oceanfx hdr reduced-$\\chi^2$', ''): ('rough', 'hdr-chisq'),
 
@@ -156,8 +156,8 @@ axis_labels = [
 
     'V ',
     '% ',
-    'pixels',
-    'counts',
+#    'pixels',
+#    'counts',
 
     '',
     'μs',

@@ -189,7 +189,7 @@ if __name__ == '__main__':
     TC2 = telnetlib.Telnet('192.168.0.107', port=23, timeout=2)
     mfc = Labjack('470017292')
     turbo = serial.Serial('/dev/turbo', 9600, timeout=0.2)
-    verdi = serial.Serial('/dev/verdi', 19200, timeout=0.2)
+    verdi = serial.Serial('/dev/verdi', 19200, timeout=0.15)
 
     verdi_handler = lambda c, m: serial_handler(c, m, empty_ok=True)
 

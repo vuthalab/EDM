@@ -112,7 +112,7 @@ def fit_roughness(wavelengths, transmission):
 
 
 class OceanFX:
-    def __init__(self, ip_addr: str = '192.168.0.100', port: int = 57357):
+    def __init__(self, ip_addr: str = '192.168.0.119', port: int = 57357):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.settimeout(3)
 
@@ -349,7 +349,7 @@ class OceanFX:
         wavelengths = self.wavelengths
         mask = (
             (wavelengths > 450) & (wavelengths < 610)
-            | (wavelengths > 645) & (wavelengths < 730)
+            | (wavelengths > 645) & (wavelengths < 900)
 #            | (wavelengths > 780) & (wavelengths < 870)
 #            | (wavelengths > 645) & (wavelengths < 870)
         )

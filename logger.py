@@ -78,7 +78,7 @@ def update_neon_remaining(data):
 
 
 ## set up log file
-print('Staring logging...')
+print('Starting logging...')
 while True:
     _, data = monitor_socket.blocking_read()
     timestamp = datetime.now().strftime('[%Y-%m-%d %H:%M:%S.%f]')

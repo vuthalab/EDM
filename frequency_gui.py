@@ -18,7 +18,7 @@ monitor_socket.make_connection()
 
 def get_freq():
     time, data = monitor_socket.blocking_read()
-    return data['freq'][LASER]
+    return data['freq']['baf']
 
 
 root = tk.Tk()

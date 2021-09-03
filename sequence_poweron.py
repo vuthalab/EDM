@@ -21,7 +21,7 @@ turbo = TurboPump()
 pt = PulseTube()
 
 # Optional pause
-countdown_for(3*HOUR)
+countdown_for(0*HOUR)
 
 
 # Ensure turbo is running.

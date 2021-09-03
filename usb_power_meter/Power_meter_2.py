@@ -36,7 +36,7 @@ from tkinter import font
 import numpy as np
 
 #os.chdir('/home/vuthalab/Downloads')
-from zmqPublisher import zmqPublisher
+from usb_power_meter.zmqPublisher import zmqPublisher
 #os.chdir('/home/labuser/Insync/electric.atoms@gmail.com/GoogleDrive/calcium/code/calcium_control/thorlabs_power_meter')
 #os.chdir('/home/vuthalab/gdrive/code/edm_control/usb_power_meter/')
 
@@ -385,7 +385,7 @@ class PowerMeterGUI():
 
 if __name__=='__main__':
 #    pm = PM16('/dev/usbtmc2')
-    pm = PM16('/dev/usbtmc1')
+    pm = PM16('/dev/usbtmc4')
     pm.launch_gui()
 """
 Other commands: SENS:CORR:POW:PDI:RESP? returns a number

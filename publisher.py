@@ -25,6 +25,7 @@ from headers.ximea_camera import Ximea
 from headers.verdi import Verdi
 from headers.rigol_dp832 import LaserSign
 from pulsetube_compressor import PulseTube
+from headers.rigol_ds1102e import RigolDS1102e
 
 from headers.util import display, unweighted_mean, nom, std
 from headers.edm_util import deconstruct, Timer, print_tree
@@ -43,7 +44,7 @@ from threads.wavemeter import wavemeter_thread
 
 
 PUBLISH_INTERVAL = 2/1.4 # publish every x seconds.
-
+LABJACK_SCOPE = '/dev/fluorescence_scope'
 
 
 ##### UTILITY FUNCTIONS #####
@@ -65,12 +66,12 @@ async def run_publisher():
         (CTC100(31415), ['saph', 'coll', 'bott hs', 'cell'], ['heat saph', 'heat coll']),
         (CTC100(31416), ['srb4k', 'srb45k', '45k plate', '4k plate'], ['srb45k out', 'srb4k out'])
     ]
-    labjack = Labjack('470022275')
+#    labjack = Labjack('470022275')
     mfc = MFC(31417)
     pt = PulseTube()
 
-#    camera = Camera(1)
-    camera = None
+    camera = Camera(1)
+#    camera = None
     if camera is not None:
         camera.init()
         try:
@@ -85,7 +86,7 @@ async def run_publisher():
     turbo = TurboPump()
 
     verdi = Verdi()
-    laser_sign = LaserSign()
+#    laser_sign = LaserSign()
 
 
     pt_last_off = time.monotonic()
@@ -225,11 +226,15 @@ async def run_publisher():
 
                 ##### Read labjack (Async) #####
                 intensities = {}
+                scope = RigolDS1102e(LABJACK_SCOPE)
                 def labjack_getter():
                     with Timer('labjack', times):
-                        intensities['broadband'] = deconstruct(labjack.read('AIN0'))
-#                        intensities['hene'] = deconstruct(labjack.read('AIN1'))
-                        intensities['LED'] = deconstruct(labjack.read('AIN2'))
+                        scope.active_channel = 1
+                        intensities['broadband'] = deconstruct(unweighted_mean(scope.trace))
+                        
+                        scope.active_channel = 2
+#               #         intensities['hene'] = deconstruct(labjack.read('AIN1'))
+                        intensities['LED'] = deconstruct(unweighted_mean(scope.trace))
                 async_getters.append(run_async(labjack_getter))
 
 
@@ -250,7 +255,7 @@ async def run_publisher():
                 def laser_sign_getter():
                     with Timer('verdi', times):
                         running['sign'] = laser_sign.enabled
-                async_getters.append(run_async(laser_sign_getter))
+#                async_getters.append(run_async(laser_sign_getter))
 
 
 
@@ -397,7 +402,7 @@ async def run_publisher():
                 verdi_on = running['verdi'] or verdi_status['power'] > 0
                 yag_on = False
                 proper_sign_status = verdi_on or yag_on
-                if proper_sign_status != running['sign']:
+                if False: #proper_sign_status != running['sign']:
                     if proper_sign_status:
                         laser_sign.on()
                     else:

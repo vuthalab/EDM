@@ -16,9 +16,9 @@ from models.cbs import decay_model
 
 # Select which cameras to show here.
 SHOW_CAMERAS = [
-    'webcam',
+#    'webcam',
 #    'plume',
-#    'fringe',
+    'fringe',
 #    'cbs',
 ]
 

@@ -10,6 +10,7 @@ class RigolDP832(USBTMCDevice):
 
         # Cache to avoid unnecessary commands
         self._voltage = None
+        self._enabled = None
 
     @property
     def voltage(self):
@@ -36,13 +37,16 @@ class RigolDP832(USBTMCDevice):
     @property
     def enabled(self):
         """Queries the status of the currently selected source."""
-        return self.query(f':OUTPUT? CH{self.source}') == 'ON'
+        if self._enabled is None:
+            self._enabled = (self.query(f':OUTPUT? CH{self.source}') == 'ON')
+        return self._enabled
 
     @enabled.setter
     def enabled(self, enable: bool):
         """Enables or disables the currently selected source."""
         status = 'ON' if enable else 'OFF'
         self.send_command(f':OUTPUT CH{self.source},{status}')
+        self._enabled = enable
 
     def enable(self):
         if not self.enabled: self.enabled = True
@@ -68,8 +72,11 @@ class LaserSign(RigolDP832):
 
 class TiSaphMicrometer:
     def __init__(self):
-        self._magnitude = RigolDP832('/dev/usbtmc2', 3)
-        self._direction = RigolDP832('/dev/usbtmc3', 3)
+        self._magnitude = RigolDP832('/dev/upper_power_supply', 3)
+        self._direction = RigolDP832('/dev/lower_power_supply', 3)
+
+        assert 'DP832' in self._magnitude.name
+        assert 'DP831' in self._direction.name
 
         self._magnitude.voltage = 0
         self._direction.voltage = 0

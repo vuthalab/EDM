@@ -28,9 +28,10 @@ class RigolDS1102e(USBTMCDevice):
     _cache = {channel: defaultdict(lambda: None) for channel in [1, 2]}
 
 
-    def __init__(self):
+    def __init__(self, address = '/dev/usbtmc2'):
         """Initialize a connection to the scope and start acquisition."""
-        super().__init__('/dev/usbtmc1', mode='direct')
+        super().__init__(address , mode='direct')
+      #  super().__init__(USBTMCDevice, mode ='direct' )
         self.send_command(':RUN')
         self.send_command(':KEY:LOCK DISABLE')
 

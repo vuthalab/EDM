@@ -13,7 +13,7 @@ from headers.util import nom, std, plot
 SAVE_NAME = 'Baseline_Later'
 
 
-serial_port = '/dev/ttyUSB3' # TODO remap the serial port to something human-readable
+serial_port = '/dev/ttyUSB5' # TODO remap the serial port to something human-readable
 gpib_address = 1 # Configurable on the OSA
 
 
@@ -23,7 +23,7 @@ with AndoAQ6317(serial_port, gpib_address) as osa:
 #    osa.active_trace = 'c' # choose which trace to read
 
     osa.resolution = 2.0 # set resolution (nm) (*This is not correct*)
-    osa.range = (620,750) # set range (nm)
+    osa.range = (780,920) # set range (nm)
 
     #osa.center() # self-center
     #osa.scale = 'log'
@@ -41,11 +41,11 @@ with AndoAQ6317(serial_port, gpib_address) as osa:
 
     # Wait for trigger, then plot trace
     #osa.quick_plot()
-    #osa.live_plot()
+    osa.live_plot()
 
 
     # Get some averaged spectra
-    if True:
+    if False:
         for i in itertools.count():
             if True:
                 wavelengths, power = osa.average_spectra(n=1, delay=10)

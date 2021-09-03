@@ -6,7 +6,7 @@ import matplotlib.animation as animation
 from matplotlib.ticker import ScalarFormatter
 from matplotlib import rcParams
 rcParams.update({'figure.autolayout':True})
-from wavemeter import WM
+from headers.wavemeter import WM
 
 class LivePlotter:
     def __init__(self):
@@ -110,4 +110,4 @@ class LivePlotter:
 
 if __name__=='__main__':
    pltr = LivePlotter()
-   pltr.create_animation(channels=[4],t_refresh=30)
+   pltr.create_animation(channels=[8],t_refresh=30)

@@ -9,7 +9,7 @@ from headers.CTC100 import CTC100
 from headers.mfc import MFC
 from pulsetube_compressor import PulseTube
 from headers.turbo import TurboPump
-#from headers.ti_saph import TiSapphire
+from headers.ti_saph import TiSapphire
 
 MINUTE = 60
 HOUR = 60 * MINUTE
@@ -26,12 +26,15 @@ pt = PulseTube()
 
 
 ## Uncomment whatever commands you want and run the file ##
-#mfc.flow_rate_cell = 0
-#mfc.flow_rate_neon_line = 10
-#mfc.off()
-
+#mfc.flow_rate_cell = 10
+#mfc.flow_rate_neon_line = 0
+mfc.off()
+#time.sleep(1*HOUR)
 #turbo.on()
 
+#ti_saph.wavelength = 888
+
+#print(ti_saph.wavelength)
 
 #T1.enable_output()
 #T2.enable_output()
