@@ -43,7 +43,7 @@ if 'cbs' in SHOW_CAMERAS:
 
 ## connect
 print('Connecting to publisher...')
-if 'fringe' in SHOW_CAMERAS: fringe_socket = connect_to('camera')
+if 'fringe' in SHOW_CAMERAS: fringe_socket = connect_to('fringe-cam')
 if 'webcam' in SHOW_CAMERAS: webcam_socket = connect_to('webcam')
 
 
@@ -60,8 +60,8 @@ while True:
     if 'fringe' in SHOW_CAMERAS:
         _, data = fringe_socket.grab_json_data()
         if data is not None:
-            frame = from_png(data['raw'])
-            pattern = from_png(data['fringe-annotated'], color=True)
+            frame = from_png(data['png']['raw'])
+            pattern = from_png(data['png']['fringe-annotated'], color=True)
             frame = cv2.resize(frame, (720, 540))
 
             cv2.imshow('Fringe Camera', frame)

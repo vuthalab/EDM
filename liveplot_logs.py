@@ -101,11 +101,11 @@ fields = {
     ('4K sorb', 'K '): ('temperatures', 'srb4k'),
     ('4K plate', 'K '): ('temperatures', '4k plate'),
 
-    ('verdi baseplate', '°C'): ('debug', 'verdi', 'temp', 'baseplate'),
-    ('verdi vanadate', '°C'): ('debug', 'verdi', 'temp', 'vanadate'),
+    ('verdi baseplate', '°C'): ('temperatures', 'verdi', 'baseplate'),
+    ('verdi vanadate', '°C'): ('temperatures', 'verdi', 'vanadate'),
     ('highfinesse wavemeter', '°C'): ('temperatures', 'wavemeter'),
 
-    ('verdi power', 'W'): ('debug', 'verdi', 'power'),
+    ('verdi power', 'W'): ('verdi', 'power'),
 
     ('beam center x (from camera)', '% '): ('center', 'x'),
     ('beam center y (from camera)', '% '): ('center', 'y'),
@@ -114,20 +114,6 @@ fields = {
     ('uptime', 'hr'): ('debug', 'uptime'),
     ('publisher memory usage', 'KB'): ('debug', 'memory'),
     ('system memory usage', 'KB'): ('debug', 'system-memory'),
-
-
-    # Device read times
-    ('loop total', 'ms'): ('debug', 'times', 'loop'),
-    ('fringe camera', 'ms'): ('debug', 'times', 'camera'),
-#    ('cbs camera', 'ms'): ('debug', 'times', 'CBS Camera'),
-#    ('pressure gauge', 'ms'): ('debug', 'times', 'pressure'),
-#    ('turbo pump', 'ms'): ('debug', 'times', 'turbo'),
-#    ('mfc', 'ms'): ('debug', 'times', 'MFC'),
-#    ('temp controller #1', 'ms'): ('debug', 'times', 'CTC31415'),
-#    ('temp controller #2', 'ms'): ('debug', 'times', 'CTC31416'),
-#    ('led monitor labjack', 'ms'): ('debug', 'times', 'labjack'),
-    ('wavemeter', 'ms'): ('debug', 'times', 'wavemeter'),
-    ('verdi', 'ms'): ('debug', 'times', 'verdi'),
 }
 
 axis_labels = [
@@ -161,7 +147,6 @@ axis_labels = [
 
     '',
     'μs',
-    'ms',
     'hr',
     'KB',
 ]
@@ -169,19 +154,6 @@ axis_labels = [
 
 
 ##### BEGIN CODE #####
-# pick the directory containing the log file
-
-#print('Opening file dialog...')
-#root_window = tk.Tk()
-#filepath = filedialog.askopenfilename(
-#    title="Pick file to log",
-#    initialdir="/home/vuthalab/Desktop/edm_data/logs/system_logs/",
-#    filetypes=[('Text Files', '*.txt')],
-#    parent=root_window
-#)
-#root_window.destroy()
-#print('Logging', filepath)
-
 filepath = '/home/vuthalab/Desktop/edm_data/logs/system_logs/continuous.txt'
 
 

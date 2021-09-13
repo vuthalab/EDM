@@ -7,7 +7,7 @@ from colorama import Fore, Style
 
 ModeString = Union[Literal['serial'], Literal['ethernet'], Literal['direct'], Literal['multiplexed']]
 
-DEBUG = True # Whether to print commands as they are sent
+DEBUG = False # Whether to print commands as they are sent
 DRY_RUN = False # If true, nothing actually happens (useful for debug)
 
 
@@ -156,7 +156,7 @@ class USBTMCDevice:
         command: str,
         raw: bool = False,
         raw_command: bool = False,
-        delay: float = 2e-2
+        delay: float = 2e-2,
     ) -> Union[str, bytes]:
         """
         Send a command to the device, and return its response.
@@ -213,7 +213,8 @@ class USBTMCDevice:
                 response = self._conn.recv(1024)
                 if response != b'read failed': break
                 time.sleep(5e-2)
-                print(f'  [{Fore.BLUE}INFO{Style.RESET_ALL}] {Style.DIM}{self.short_name:20s} :{Style.RESET_ALL} {Fore.BLUE}Read failed, trying again.{Style.RESET_ALL}')
+                if DEBUG:
+                    print(f'  [{Fore.BLUE}INFO{Style.RESET_ALL}] {Style.DIM}{self.short_name:20s} :{Style.RESET_ALL} {Fore.BLUE}Read failed, trying again.{Style.RESET_ALL}')
             else:
                 raise ValueError('Read failed too many times.')
 

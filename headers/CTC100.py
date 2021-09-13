@@ -48,11 +48,6 @@ class CTC100(USBTMCDevice):
         return self.query(f'{var}?')
 
         
-    async def _async_get_variable(self, var):
-        var = var.replace(' ', '')
-        return await self.async_query(f'{var}?')
-
-        
     def _set_variable(self, var, val):
         """
         Set a parameter of the CTC100. This function is mostly for
@@ -118,18 +113,6 @@ class CTC100(USBTMCDevice):
         match = re.search(r"[-+]?\d*\.\d+", response)
         return float(match.group()) if match is not None else None
 
-
-    async def async_read(self, channel):
-        if not isinstance(channel, str): #Sets string for channel
-            channel = f"In{channel}"
-            
-        response = await self._async_get_variable(f"{channel}.value")
-        if response is None: return None
-   
-        # Extract the response using a regex in case verbose mode is on
-        match = re.search(r"[-+]?\d*\.\d+", response)
-        return float(match.group()) if match is not None else None
-        
 
     def ramp_temperature(self, channel, temp=0.0, rate=0.1):
         self._set_variable(f"{channel}.PID.mode", "off") #This should reset the ramp temperature to the current temperature.

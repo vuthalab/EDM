@@ -72,7 +72,6 @@ class zmq_client_socket:
             self.received_first_data = True
             return received_data
         except zmq.ZMQError:
-            print('Error grabbing data.')
             return
 
     def _decode(self, packet):

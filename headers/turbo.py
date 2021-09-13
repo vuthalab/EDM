@@ -51,10 +51,6 @@ class TurboPump(USBTMCDevice):
         response = self.query(self._pad_packet(packet), raw=True, raw_command=True)
         return self._decode_packet(response)
 
-    async def _async_query(self, packet):
-        response = await self.async_query(self._pad_packet(packet), raw=True, raw_command=True)
-        return self._decode_packet(response)
-
     def _read_int(self, window):
         window = str(window).encode('utf-8')
         response = self._query(window + b'0')
@@ -89,10 +85,6 @@ class TurboPump(USBTMCDevice):
     @property
     def operation_status(self):
         response = self._query(b'2050')
-        return self._decode_operation_status(response)
-
-    async def async_operation_status(self):
-        response = await self._async_query(b'2050')
         return self._decode_operation_status(response)
 
     @property

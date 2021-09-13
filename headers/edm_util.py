@@ -1,5 +1,6 @@
 import time
 from datetime import datetime
+import resource
 
 import numpy as np
 
@@ -43,16 +44,19 @@ def add_timestamp(image, label=''):
 
 ## nice print function
 def print_tree(obj, indent=0):
+    lines = 0
     for key, value in sorted(obj.items()):
         print('   ' * indent + f'{Fore.YELLOW}{key}{Style.RESET_ALL}', end='')
+        lines += 1
 
         if isinstance(value, dict):
             print()
-            print_tree(value, indent=indent+1)
+            lines += 1 + print_tree(value, indent=indent+1)
         else:
             if isinstance(value, tuple):
                 value = display(ufloat(*value))
             print(':', value)
+    return lines
 
 
 class Timer:
@@ -145,3 +149,8 @@ def wait_until_quantity(
 
     monitor_socket.socket.close()
     print()
+
+
+def memory_usage():
+    """Get the current memory usage, in KB."""
+    return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss

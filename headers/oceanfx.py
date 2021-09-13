@@ -116,12 +116,8 @@ class OceanFX:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.settimeout(3)
 
-        try:
-            self.sock.connect((ip_addr, port))
-            self.ping()
-        except:
-            print(f'  [{Fore.YELLOW}WARN{Style.RESET_ALL}] OceanFX failed to connect!')
-            self.sock = None
+        self.sock.connect((ip_addr, port))
+        self.ping()
 
         self._cache = None
         self._integration_time = None
@@ -137,8 +133,7 @@ class OceanFX:
         self.baseline -= self.background
     
     def close(self):
-        if self.sock is not None:
-            self.sock.close()
+        self.sock.close()
 
     def reset(self):
         """Reset the device if it stops responding."""

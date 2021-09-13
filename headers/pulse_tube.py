@@ -4,7 +4,6 @@ import time
 import os
 
 os.chdir('/home/vuthalab/gdrive/code/edm_control/')
-#zmq = 'zmq_server_socket'
 from headers.zmq_server_socket import zmq_server_socket
 
 from pymodbus.client.sync import ModbusTcpClient
@@ -62,10 +61,10 @@ class PulseTube:
         return power_state == 3
 
 
-    def status(self):
+    def status(self, silent=False):
         status = self.device.read_input_registers(0x01,count=40)
         regs = status.registers
-        self._parse_status(regs)
+        self._parse_status(regs, silent)
 
     def off(self):
         self.device.write_register(0x01,0x00FF)
@@ -76,10 +75,11 @@ class PulseTube:
     def close(self):
         self.device.close()
 
-    def _parse_status(self, regs):
+    def _parse_status(self, regs, silent=False):
         # qualitative diagnostics
-        for i in range(2):
-            print(self.status_dict[(i,regs[i])])
+        if not silent:
+            for i in range(2):
+                print(self.status_dict[(i,regs[i])])
 
         # quantitative diagnostics
         for k in self.variables.keys():
@@ -91,8 +91,8 @@ class PulseTube:
             # update value in variables dictionary
             self.variables[k] = (regnum,value)
 
-            print(f"{k} = {self.variables[k][1]:.3f}")
-        print()
+            if not silent:
+                print(f"{k} = {self.variables[k][1]:.3f}")
 
     def keep_logging(self,logging_interval=2000,sleep_time=100):
         print("[ Logging mode entered. Use Ctrl + I to interrupt. ]")

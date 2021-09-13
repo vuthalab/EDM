@@ -17,8 +17,8 @@ HOUR = 60 * MINUTE
 
 # Initialize devices.
 # Port numbers are defined in multiplexer.py.
-T1 = CTC100(31415)
-T2 = CTC100(31416)
+#T1 = CTC100(31415)
+#T2 = CTC100(31416)
 mfc = MFC(31417)
 turbo = TurboPump()
 pt = PulseTube()
@@ -30,7 +30,7 @@ pt = PulseTube()
 #mfc.flow_rate_neon_line = 0
 mfc.off()
 #time.sleep(1*HOUR)
-#turbo.on()
+turbo.on()
 
 #ti_saph.wavelength = 888
 
