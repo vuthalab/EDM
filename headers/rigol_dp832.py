@@ -1,3 +1,5 @@
+import time
+
 try:
     from headers.usbtmc import USBTMCDevice
 except:
@@ -99,6 +101,7 @@ class TiSaphMicrometer:
 
         if volt != 0:
             self._direction.voltage = 0 if volt > 0 else -12
+            time.sleep(0.1)
         self._magnitude.voltage = abs(volt)
 
     @property
@@ -112,6 +115,8 @@ class TiSaphMicrometer:
 
     def off(self):
         self.voltage = 0
+
+    def stop(self): self.off()
 
 if __name__ == '__main__':
     laser_sign = LaserSign()

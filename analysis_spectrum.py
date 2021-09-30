@@ -1,4 +1,3 @@
-#script to aggreagte different spectroscopy datasets into one
 import os
 os.chdir('/home/vuthalab/gdrive/code/edm_control/')
 #print(os.getcwd())
@@ -9,16 +8,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 import re
 
-CALIBRATION = 'pd_calibration2021-09-02-12-45-36'
+CALIBRATION = 'pd_calibration2021-09-28-17-50-09'
 CALIBRATION_FILE = CALIBRATION+'.txt'
-CALIBRATION_PATH = '/home/vuthalab/gdrive/code/edm_control/fluorescence2021-09-02/'
-pathname = '/home/vuthalab/gdrive/code/edm_control/fluorescence/2021-09-03' #folder for which to import data files
+CALIBRATION_PATH = '/home/vuthalab/gdrive/code/edm_control/fluorescence2021-09-28/'
+pathname = '/home/vuthalab/gdrive/code/edm_control/fluorescence/2021-09-29' #folder for which to import data files
 
 #=====import datafiles===#\
-start_wavelength = 750
-end_wavelength = 830
+start_wavelength = 800
+end_wavelength = 845
 filter_angle = 0
-SELECT_FILES = f'/*{filter_angle}deg_{start_wavelength}nm_{end_wavelength}nm*.txt'
+SELECT_FILES = f'/*.txt'
 print(pathname+SELECT_FILES)
 datafiles = glob.glob(pathname+SELECT_FILES, recursive = True) #import all files with .txt from folder into iterable list
 
@@ -47,7 +46,10 @@ def import_Spectra(path): #Function for parsing data files
 
 for files in datafiles:
     print(files)
-    wavelength1 , pd1, pwr1 = import_Spectra(files)
+    try:
+        wavelength1 , pd1, pwr1 = import_Spectra(files)
+    except StopIteration:
+        break
     Wavelength =  np.concatenate((Wavelength,wavelength1), axis = None) 
     PD =  np.concatenate((PD, pd1), axis = None)
     PWR =  np.concatenate((PWR, pwr1), axis = None)
@@ -62,10 +64,10 @@ PWR = PWR[sorting]
 #==== Calibrate Ti_saph_power_pd (W/V)
 cali_wavelengths, cali_PD, cali_pwr = import_calibration(CALIBRATION_FILE, CALIBRATION_PATH)
 
-#Throw out data below 750nm
-PWR = PWR[Wavelength>750]
-PD = PD[Wavelength>750]
-Wavelength = Wavelength[Wavelength>750]
+#Throw out data below 750nm and above 840nm
+PWR = PWR[(Wavelength>750) & (Wavelength<845)]
+PD = PD[(Wavelength>750) & (Wavelength < 845)]
+Wavelength = Wavelength[(Wavelength>750) & (Wavelength <845)]
 cali_pwr = cali_pwr[cali_wavelengths>750]
 cali_PD = cali_PD[cali_wavelengths>750]
 cali_wavelengths = cali_wavelengths[cali_wavelengths>750]
@@ -82,7 +84,8 @@ pd_calibration_smoothed = np.dot(weights, pd_calibration)
 pd_calibration_interp = np.interp(Wavelength, smoothing_wavelengths, pd_calibration_smoothed)
 
 #Smooth actual data
-sigma = 2.0
+#sigma = 2.0
+sigma = 1.0
 #print(np.max(Wavelength))
 data_smoothing_wavelengths = np.linspace(np.min(Wavelength),np.max(Wavelength),num=1001)
 delta = data_smoothing_wavelengths[:,None] - Wavelength
@@ -106,3 +109,15 @@ figure = plt.gcf()
 plt.savefig(f'{pathname}/{start_wavelength}nm_{end_wavelength}nm_{CALIBRATION}')
 plt.show()
 
+plt.subplot(2,1,1)
+plt.gca().set_title(f'Fluorescence Versus Wavelength')
+plt.xlabel('wavelength (nm)')
+plt.ylabel('PMT signal (V)')
+plt.plot(Wavelength,PD,'o',data_smoothing_wavelengths,PD_smoothed,'-')
+plt.subplot(2,1,2)
+plt.xlabel('wavelength (nm)')
+plt.ylabel('power in (arb)')
+plt.plot(Wavelength,1000*PWR*pd_calibration_interp,'o',data_smoothing_wavelengths,1000*PWR_smoothed*pd_calibration_interp_smoothed,'-')
+figure=plt.gcf()
+plt.savefig(f'{pathname}/PMT_850_LP')
+plt.show()

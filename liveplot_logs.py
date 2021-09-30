@@ -77,12 +77,8 @@ fields = {
     ('rms roughness (from spectrometer)', 'nm'): ('rough', 'surf'),
     ('second-order roughness coefficient', 'micron$^2$'): ('rough', 'second-order'),
     ('fourth-order roughness coefficient (rayleigh $- K \sigma^4$)', 'micron nm$^3$'): ('rough', 'fourth-order'),
-    ('crystal thickness (dead reckoning)', 'micron'): ('model', 'height'),
+    ('crystal thickness (dead reckoning)', 'micron'): ('height',),
 
-#    ('coherent backscatter peak intensity', 'counts'): ('cbs', 'peak'),
-#    ('coherent backscatter width', 'pixels'): ('cbs', 'width'),
-
-#    ('coherent backscatter reduced-$\\chi^2$', ''): ('cbs', 'chisq'),
     ('roughness reduced-$\\chi^2$', ''): ('rough', 'chisq'),
     ('oceanfx hdr reduced-$\\chi^2$', ''): ('rough', 'hdr-chisq'),
 
@@ -114,6 +110,14 @@ fields = {
     ('uptime', 'hr'): ('debug', 'uptime'),
     ('publisher memory usage', 'KB'): ('debug', 'memory'),
     ('system memory usage', 'KB'): ('debug', 'system-memory'),
+
+    ('pulsetube coolant in', '°C '): ('pt', 'coolant in temp [C]'),
+    ('pulsetube coolant out', '°C '): ('pt', 'coolant out temp [C]'),
+    ('pulsetube helium', '°C '): ('pt', 'helium temp [C]'),
+    ('pulsetube oil', '°C '): ('pt', 'oil temp [C]'),
+
+    ('pulsetube high pressure', 'psi'): ('pt', 'high pressure [psi]'),
+    ('pulsetube low pressure', 'psi'): ('pt', 'low pressure [psi]'),
 }
 
 axis_labels = [
@@ -149,6 +153,9 @@ axis_labels = [
     'μs',
     'hr',
     'KB',
+
+    '°C ',
+    'psi',
 ]
 
 
@@ -211,11 +218,14 @@ data = np.zeros((num_points, len(fields), 2))
 last = 0
 for i, line in enumerate(tail('-n', num_points * skip_points, '-f', filepath, _iter=True)):
     if i % skip_points == 0:
-        timestamp, raw_data = line.split(']', 1)
-        timestamp = datetime.datetime.strptime(timestamp[1:], '%Y-%m-%d %H:%M:%S.%f')
-        timestamp += datetime.timedelta(hours=4) # fix timezone (correct in logs, wrong on plot?)
+        try:
+            timestamp, raw_data = line.split(']', 1)
+            timestamp = datetime.datetime.strptime(timestamp[1:], '%Y-%m-%d %H:%M:%S.%f')
+            timestamp += datetime.timedelta(hours=4) # fix timezone (correct in logs, wrong on plot?)
 
-        raw_data = json.loads(raw_data)
+            raw_data = json.loads(raw_data)
+        except:
+            continue
 
         # Filter out relevant fields
         processed_data = []
@@ -275,6 +285,12 @@ for i, line in enumerate(tail('-n', num_points * skip_points, '-f', filepath, _i
             axis.relim()
             axis.autoscale_view()
 
+        thread_status = ''
+        if 'thread-up' in raw_data:
+            threads_down = [name for name, up in raw_data['thread-up'].items() if not up]
+            if threads_down:
+                thread_status = '\n\n' + ', '.join(threads_down) + ' thread down!'
+
         if 'running' in raw_data:
             running = raw_data['running']
             def get_status(name):
@@ -283,7 +299,9 @@ for i, line in enumerate(tail('-n', num_points * skip_points, '-f', filepath, _i
             pt_status = get_status('pt')
             turbo_status = get_status('turbo')
             verdi_status = get_status('verdi')
-            title = f'Pulse Tube {pt_status} · Turbo {turbo_status} · Verdi {verdi_status} · {time.asctime(time.localtime())}'
+
+
+            title = f'Pulse Tube {pt_status} · Turbo {turbo_status} · Verdi {verdi_status} · {time.asctime(time.localtime())}{thread_status}'
 
             if HEADLESS:
                 axes[0].set_title(title, pad=20)

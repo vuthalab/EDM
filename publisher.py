@@ -29,16 +29,9 @@ from threads.mfc import mfc_thread
 from threads.verdi import verdi_thread 
 
 
-
 PUBLISH_INTERVAL = 2/1.4 # publish every x seconds.
-LABJACK_SCOPE = '/dev/fluorescence_scope'
 
-
-##### UTILITY FUNCTIONS #####
-fringe_counter = FringeCounter()
-growth_model = GrowthModel()
-
-
+##### Dictionary of threads. Key must be the name of the publisher each thread creates. #####
 THREADS = {
     'spectrometer': spectrometer_thread,
     'wavemeter': wavemeter_thread,
@@ -52,7 +45,11 @@ THREADS = {
 }
 
 
+
 ##### MAIN PUBLISHER #####
+fringe_counter = FringeCounter()
+growth_model = GrowthModel()
+
 def run_publisher():
     print('Initializing devices...')
 
@@ -62,10 +59,15 @@ def run_publisher():
     }
 
 
+    # Special case for spectrometer: keep cache of last datapoint
+    spec_cache = None
+
+
     print('Starting publisher')
     publisher_start = time.monotonic()
     with create_server('edm-monitor') as publisher:
         for loop_iteration in itertools.count(1):
+            ##### Get data from all the threads. No need to change this part. #####
             raw_data = {}
             for key, monitor in monitors.items():
                 while True:
@@ -78,7 +80,14 @@ def run_publisher():
                 for key in THREADS.keys()
             }
 
-            # Extract all relevant data
+            # Artificially fill in values if spectrometer doesn't return anything
+            if 'spectrometer' in raw_data:
+                spec_cache = raw_data['spectrometer']
+            else:
+                raw_data['spectrometer'] = spec_cache
+
+
+            ##### Extract/rearrange all relevant data. Change this when adding new threads. #####
             data = {}
             data['thread-up'] = thread_up
             data['running'] = {}
@@ -89,7 +98,7 @@ def run_publisher():
             else:
                 data['temperatures'] = {}
 
-            if thread_up['spectrometer']:
+            if thread_up['spectrometer'] or spec_cache is not None:
                 data['rough'] = raw_data['spectrometer']['rough']
                 data['trans'] = raw_data['spectrometer']['trans']
                 data['rough']['hdr-chisq'] = raw_data['spectrometer']['fit']['chisq']
@@ -126,22 +135,24 @@ def run_publisher():
             # Update models
             if thread_up['ctc'] and thread_up['mfc'] and thread_up['fringe-cam']:
                 saph_temp = data['temperatures']['saph']
-                growth_model.update(
-                    ufloat(*data['flows']['neon']),
-                    ufloat(*data['flows']['cell']),
-                    saph_temp
-                )
-                fringe_counter.update(
-                    data['refl']['ai'][0],
-                    grow=(growth_model._growth_rate.n > 0)
-                )
-                if saph_temp > 13: fringe_counter.reset()
 
-                data['height'] = deconstruct(growth_model.height),
-                data['fringe'] = {
-                    'count': fringe_counter.fringe_count,
-                    'ampl': fringe_counter.amplitude,
-                }
+                if saph_temp is not None:
+                    growth_model.update(
+                        ufloat(*data['flows']['neon']),
+                        ufloat(*data['flows']['cell']),
+                        saph_temp
+                    )
+                    fringe_counter.update(
+                        data['refl']['ai'][0],
+                        grow=(growth_model._growth_rate.n > 0)
+                    )
+                    if saph_temp > 13: fringe_counter.reset()
+
+                    data['height'] = deconstruct(growth_model.height)
+                    data['fringe'] = {
+                        'count': fringe_counter.fringe_count,
+                        'ampl': fringe_counter.amplitude,
+                    }
 
 
             # Add debug info
@@ -164,13 +175,14 @@ def run_publisher():
             publisher.send(data)
 
 
+##### No need to touch the below code #####
 
 def wrap_thread(name, thread_func):
     delay = 5
 
     # Exponential backoff retry
     while True:
-        print(f'Starting {Style.BRIGHT}{key}{Style.RESET_ALL} thread')
+        print(f'Starting {Style.BRIGHT}{name}{Style.RESET_ALL} thread')
         try:
             thread_func()
         except:

@@ -80,7 +80,7 @@ def melt_crystal(speed = 0.1, end_temp = 9):
 
     # Raise saph temperature
     T1.ramp_temperature('heat saph', 35, speed)
-    wait_until_quantity(('temperatures', 'saph'), '>', 25, unit='K') #WAS 32, ONE HEATER CURRENTLY DOWN - AUG 20, 2021.
+    wait_until_quantity(('temperatures', 'saph'), '>', 16, unit='K') #WAS 32, ONE HEATER CURRENTLY DOWN - AUG 20, 2021.
 
     # Ensure crystal is melted
     #wait_until_quantity(('trans', 'spec'), '>', 95, unit='%')
@@ -176,13 +176,14 @@ def stationary_polish(
     log_entry(f'Beginning stationary polish at {flow_rate:.1f} sccm, {temperature:.2f} K.')
     T1.ramp_temperature('heat saph', temperature, 0.5)
     mfc.flow_rate_neon_line = flow_rate
-
-    wait_until_quantity(
-        ('rough', 'surf'), 'stable to within', target_consistency,
-        unit='nm',
-        source='spectrometer',
-        buffer_size=60,
-    )
+    
+    wait_for_roughness(target_roughness=-5)
+    #wait_until_quantity(
+    #    ('rough', 'surf'), 'stable to within', target_consistency,
+    #    unit='nm',
+    #    source='spectrometer',
+    #    buffer_size=60,
+    #)
 
     log_entry('Cooling...')
     T1.ramp_temperature('heat saph', 5, 0.5)
@@ -212,15 +213,15 @@ turbo = TurboPump()
 
 # Initial conditions
 #mfc.off()
-T1.ramp_temperature('heat coll', 60, 0.5) # Keep nozzle at consistent temperature
+T1.ramp_temperature('heat coll', 12, 0.5) # Keep nozzle at consistent temperature
 T1.enable_output()
 
 try:
 #    deep_clean()
 
 #    NORMAL PROCEDURE FOR GOOD CRYSTALS
-    melt_and_grow(neon_flow=0, buffer_flow =10, target_thickness=30)
-    #stationary_polish()
+    melt_and_grow(start_temp = 6.5, neon_flow = 0, buffer_flow = 10, growth_time = 3 * HOUR)
+    stationary_polish()
 
 #    grow_only(start_temp=4.5,neon_flow=10,buffer_flow=10,target_thickness=150)
 

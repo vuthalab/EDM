@@ -13,11 +13,7 @@ def spectrometer_thread():
             trans = {}
             rough = {}
 
-            try:
-                spectrometer.capture()
-            except Exception as e:
-                print('Spectrometer capture failed!', e)
-                continue
+            spectrometer.capture()
 
             spectrum = spectrometer.intensities
             (

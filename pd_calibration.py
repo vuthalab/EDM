@@ -19,25 +19,17 @@ pm = PM16('/dev/power_meter')
 #=====Define Operating parameters===#
 
 
-VERDI_POWER = 5 #watts
+VERDI_POWER = 8 # watts
 
 #Ti_Saph wavelengths to scan
-START_WAVELENGTH = 750 #nm
-END_WAVELENGTH = 925 #nm
-WAVELENGTH_STEP = 1 #nm
-NUM_WAVE_STEPS = int((END_WAVELENGTH - START_WAVELENGTH)/WAVELENGTH_STEP)
-
-#containers for Outputs
-target_wavelengths = np.linspace(START_WAVELENGTH, END_WAVELENGTH, NUM_WAVE_STEPS)
-actual_wavelengths = np.zeros(NUM_WAVE_STEPS)
-ti_saph_power_pd = np.zeros(NUM_WAVE_STEPS)
-power_meter = np.zeros(NUM_WAVE_STEPS)
+START_WAVELENGTH = 750 # nm
+END_WAVELENGTH = 800 # nm
+WAVELENGTH_SCAN_SPEED = 15 # percentage of maximum
 
 
 #=======Communicate with Devices===#
 
 ti_saph = TiSapphire()
-#labjack = Labjack('470022275') 
 scope = RigolDS1102e(LABJACK_SCOPE)
 
 #===Set up Calibration Save file ===#
@@ -54,20 +46,55 @@ if True:
     #open text file and write header
     fil = open(complete_path, 'w')
     fil.write('wavelength(nm)'+'\t'+'photodiode(V)'+'\t'+'power(W)'+'\n')
+
+    ti_saph.verdi.power = VERDI_POWER
+    ti_saph.wavelength = START_WAVELENGTH
+
     while True:
+        # Eat up backlash
+        ti_saph.micrometer.speed = 50
+        time.sleep(0.5)
+
+        # Set Ti:Saph scanning speed
+        ti_saph.micrometer.speed = WAVELENGTH_SCAN_SPEED
+        increasing_scan = True
+
+        scope.active_channel = 1
+            
         try:
-            for i in range(NUM_WAVE_STEPS):
-                ti_saph.wavelength = round(target_wavelengths[i],4)
-                actual_wavelengths[i] = ti_saph.wavelength
-            
-                scope.active_channel = 1
-                ti_saph_power_pd[i] = np.average(scope.trace)
-            
-                pm.set_wavelength(target_wavelengths[i])
-                power_meter[i] = pm.power()
-                print('Voltage is ', ti_saph_power_pd[i], 'V.')
-                print('Power is ', power_meter[i] * 1000.0, 'mW.\n')
-                fil.write(f'{actual_wavelengths[i]}'+'\t'+f'{ti_saph_power_pd[i]}'+'\t'+f'{power_meter[i]}'+'\n')
+            while True:
+                # read the voltage on the ti_saph monitoring photodiode
+                power_pd_sample = np.average(scope.trace)
+
+                # Get wavelength
+                wavelength = ti_saph.wavelength
+
+                pm.set_wavelength(wavelength)
+                power = pm.power()
+
+                print(f'Wavelength: {wavelength:.4f} nm')
+                print(f'Ti sapph photodiode reads {power_pd_sample:.4f} V.')
+                print(f'Power is {power*1000:.3f} mW.')
+                print()
+
+                if wavelength > START_WAVELENGTH and wavelength < END_WAVELENGTH:
+                    #save values to data file
+                    fil.write(f'{wavelength}\t{power_pd_sample}\t{power}\n')
+
+                if wavelength > END_WAVELENGTH:
+                    # Eat up backlash
+                    ti_saph.micrometer.speed = -50
+                    time.sleep(0.5)
+
+                    # Flip direction at end of travel
+                    ti_saph.micrometer.speed = -WAVELENGTH_SCAN_SPEED
+                    increasing_scan = False
+
+                # Stop, record data once we go back to start
+                if wavelength < START_WAVELENGTH and not increasing_scan:
+                    break
+
+                time.sleep(0.2) 
         except:
             ti_saph.micrometer.off()
             break

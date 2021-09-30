@@ -1,6 +1,6 @@
 import time
 
-from pulsetube_compressor import PulseTube
+from headers.pulse_tube import PulseTube
 from headers.turbo import TurboPump
 from headers.CTC100 import CTC100
 from headers.mfc import MFC
@@ -41,7 +41,7 @@ pt.on()
 
 # Wait for 45K sorb to drop below 70 K.
 wait_until_quantity(
-    ('temperatures', 'srb4k'), '<', 70,
+    ('temperatures', 'srb45k'), '<', 70,
     unit='K'
 )
 

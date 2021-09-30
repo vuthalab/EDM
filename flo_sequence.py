@@ -13,6 +13,7 @@ from headers.util import plot
 from headers.import_calibration import import_calibration
 from datetime import datetime
 from headers.rigol_dp832 import RigolDP832
+from headers.elliptec_rotation_stage  import ElliptecRotationStage
 import numpy as np 
 import time 
 import os, shutil
@@ -25,14 +26,16 @@ LABJACK_SCOPE = '/dev/fluorescence_scope' # ADDRESS OF THE OSCILOSCOPE
 RIGOL_PS = '/dev/upper_power_supply'
 SAVE_SEQUENCE = False
 FLOR_SPECTROSCOPY = True
+#PMT_GAIN = Labjack(470022275) #LABJACk that sets PMT GAIN
+#ONLY PASS 0.5 to 1.1 V. PMT is on DAC0 
+
 
 #Ti_Saph wavelengths to scan
-START_WAVELENGTH = 750 #nm 
-END_WAVELENGTH = 895 #nm
-WAVELENGTH_STEP = 1 #nmi
-DESCRIPTION = 'Two_Filters_Long_Just_Ne_40micron'
-ANGLE = 0 #Deg
-NUM_WAVE_STEPS = int((END_WAVELENGTH - START_WAVELENGTH)/WAVELENGTH_STEP)
+START_WAVELENGTH = 750 # nm 
+END_WAVELENGTH = 795 # nm
+WAVELENGTH_SCAN_SPEED = 15 # percentage of maximum
+ANGLE = 35 # degrees
+DESCRIPTION = f'50hz_BaF_3hours_bg10sccm_2XFELH0850_{ANGLE}Deg_1XFELH0800_2XFEL0800_1XSEMROCK842_Front_26Deg'
 
 #Verdi Power range
 POWER_MIN = 5 #watts
@@ -43,10 +46,6 @@ NUM_STEPS = int((POWER_MAX - POWER_MIN)/POWER_STEP_SIZE)
 #containers for outputs
 verdi_power = np.linspace(POWER_MIN, POWER_MAX, num = NUM_STEPS)
 LED_voltage = np.zeros(NUM_STEPS)
-target_wavelengths = np.linspace(START_WAVELENGTH, END_WAVELENGTH, NUM_WAVE_STEPS)
-actual_wavelengths = np.zeros(NUM_WAVE_STEPS)
-ti_saph_power_pd = np.zeros(NUM_WAVE_STEPS)
-FLO_PD = np.zeros(NUM_WAVE_STEPS)
 
 if SAVE_SEQUENCE is True:
     # Log a copy of this sequence file
@@ -61,11 +60,15 @@ if SAVE_SEQUENCE is True:
 
 
 #====== Start Communication with Devices=====#
-#labjack = Labjack('470022275') # Flourescene LED is AIN2, ti_saph power pd is AIN0
 scope = RigolDS1102e(LABJACK_SCOPE)
 verdi = Verdi() # connects to verdi
 ti_saph = TiSapphire()
 pmt = RigolDP832(RIGOL_PS, 2)
+filter_stage = ElliptecRotationStage(offset=-8170)
+PMT_GAIN = Labjack(470022275) #LABJACk that sets PMT GAIN ONLY PASS 0.5 to 1.1 V. on DAC0
+PMT_GAIN.write('DAC0', 0.4) # SETS THE GAIN TO 10e6 ISH
+#PMT_GAIN.write('DAC0',0.5) #SETS THE GAIN TO 10e4 ISH
+#PMT_GAIN IS LOGRITHMIC SEE https://www.hamamatsu.com/resources/pdf/etd/H10720_H10721_TPMO1062E.pdf
 
 if False: #code for ramping over Verdi Power 
     Wavelength = round(ti_saph.wavelength, 2) #save current wavelength
@@ -95,42 +98,90 @@ if False: #code for ramping over Verdi Power
 
 
 if FLOR_SPECTROSCOPY: # code for scaning over different wavelength 
+
+    filter_stage.angle = ANGLE
+    ti_saph.wavelength = START_WAVELENGTH
+
+    pmt.enable()
+
     while True:       # continuously collect data until manually stoped and/or computer crashes
         try:
             #====Set Up Files ====#
             data_filepath1 ='/home/vuthalab/gdrive/code/edm_control/fluorescence/'+time.strftime('%Y-%m-%d') #make folder for todays runs
             Path(data_filepath1).mkdir(parents = True, exist_ok = True) # if folder doesnt exist, create it
-            data_filename1 = DESCRIPTION +'_'+f'{ANGLE}'+'deg_'+f'{START_WAVELENGTH}'+'nm'+'_'+f'{END_WAVELENGTH}'+'nm '+time.strftime('%Y-%m-%d-%H-%M-%S')+'.txt' #filename for data as txt
-            plot_filename = DESCRIPTION +'_'+f'{ANGLE}'+'deg_'+f'{START_WAVELENGTH}'+'nm'+'_'+f'{END_WAVELENGTH}'+'nm '+time.strftime('%Y-%m-%d-%H-%M-%S')+'.png'  #filename for plot of data
+            data_filename1 = DESCRIPTION +'_'+'deg_'+f'{START_WAVELENGTH}'+'nm'+'_'+f'{END_WAVELENGTH}'+'nm '+time.strftime('%Y-%m-%d-%H-%M-%S')+'.txt' #filename for data as txt
+            plot_filename = DESCRIPTION +'_'+'deg_'+f'{START_WAVELENGTH}'+'nm'+'_'+f'{END_WAVELENGTH}'+'nm '+time.strftime('%Y-%m-%d-%H-%M-%S')+'.png'  #filename for plot of data
             plot_complete_path = os.path.join(data_filepath1, plot_filename)
             data_complete_path = os.path.join(data_filepath1, data_filename1)
             fi1 = open(data_complete_path,"w")          #create/open data file. if it already exists. it will overwrite
-            fi1.write('wavelength(nm)'+'\t'+'flourescence PD(V)'+'\t'+'ti_saph Power (V)'+'\n')  #add header to data file
+            fi1.write('wavelength(nm)'+'\t'+'flourescence PMT(V)'+'\t'+'ti_saph Power (V)'+'\t'+'Gain (V)'+'\n')  #add header to data file
             #===Take spectroscopy data ===#
+
+            # Initialize containers
+            actual_wavelengths = []
+            ti_saph_power_pd = []
+            FLO_PD = []
+            #verdi.power = POWER_MAX # set power for tisaph to max
+            # Eat up backlash
+            ti_saph.micrometer.speed = 50
+            time.sleep(0.5)
+
+            # Set Ti:Saph scanning speed
+            ti_saph.micrometer.speed = WAVELENGTH_SCAN_SPEED
+            increasing_scan = True
             
-            for i in range(NUM_WAVE_STEPS):     #scan over wavelengths
+            while True:
+                GAIN = 1.0
+                PMT_GAIN.write('DAC0', GAIN)
 
-                print(round(target_wavelengths[i], 3))
-                ti_saph.wavelength = round(target_wavelengths[i], 3)     #change ti_saph wavelength
-                
-                if i == 0: pmt.enable(); time.sleep(0.5) 
-                
-                actual_wavelengths[i] = ti_saph.wavelength              # record actual wavelength ti_saph is at
-                
-                #if i >= 4 and np.abs(actual_wavelengths[i] - actual_wavelengths[i - 4]) < WAVELENGTH_STEP: pmt.disable()
-                #if actual_wavelengths[i] > END_WAVELENGTH: pmt.disable()
-                scope.active_channel = 1
-                ti_saph_power_pd[i] = np.average(scope.trace)  #read the voltage on the ti_saph monitoring photodiode
-                
                 scope.active_channel = 2
-                FLO_PD[i] = np.average(scope.trace)            #read voltage on fluorescences detecting photodiode
-                print('Ti sapph photodiode reads ', ti_saph_power_pd[i], 'V.')
-                print('Fluorescence photodiode reads ', FLO_PD[i], 'V.\n')
+                while True:
+                    # read voltage on fluorescences detecting photodiode
+                    flo_pd_sample = abs(np.average(scope.trace))
+                    if abs(flo_pd_sample) < 2.0: break
 
-                if np.abs(FLO_PD[i]) > 2.0: 
-                    pmt.disable()
-                
-                fi1.write(f'{actual_wavelengths[i]}'+'\t'+f'{FLO_PD[i]}'+'\t'+f'{ti_saph_power_pd[i]}'+'\n')    #save values to data file
+                    # Decrease gain if saturated
+                    GAIN -= 0.1
+                    if GAIN < 0.2: break
+                    PMT_GAIN.write('DAC0', GAIN)
+
+                # read the voltage on the ti_saph monitoring photodiode
+                scope.active_channel = 1
+                power_pd_sample = np.average(scope.trace)
+
+                # Get wavelength
+                wavelength = ti_saph.wavelength
+
+                print(f'Wavelength: {wavelength:.4f} nm')
+                print(f'Ti sapph photodiode reads {power_pd_sample:.4f} V.')
+                print(f'Fluorescence photodiode reads {flo_pd_sample:.4f} V.')
+                print(f'PMT gain is {GAIN:.3f} V.')
+                print()
+
+                if wavelength > START_WAVELENGTH and wavelength < END_WAVELENGTH:
+                    # Record values
+                    actual_wavelengths.append(wavelength)
+                    ti_saph_power_pd.append(power_pd_sample)
+                    FLO_PD.append(flo_pd_sample)
+
+                    #save values to data file
+                    fi1.write(f'{wavelength}\t{flo_pd_sample}\t{power_pd_sample}\t{GAIN}\n')
+
+
+                if wavelength > END_WAVELENGTH:
+                    # Eat up backlash
+                    ti_saph.micrometer.speed = -50
+                    time.sleep(0.5)
+
+                    # Flip direction at end of travel
+                    ti_saph.micrometer.speed = -WAVELENGTH_SCAN_SPEED
+                    increasing_scan = False
+
+                # Stop, record data once we go back to start
+                if wavelength < START_WAVELENGTH and not increasing_scan:
+                    break
+
+                time.sleep(0.2) 
             
             fi1.close() # close data file
             #====== Calibrate Photodiode ====#
@@ -140,23 +191,32 @@ if FLOR_SPECTROSCOPY: # code for scaning over different wavelength
             pd_calibration_interpolated = np.interp(actual_wavelengths,wavelengths,pd_calibration)  #interpolate calibration data
 
             #====Plot calibrated data and save plot ===#
-            plt.subplot(2,1,1)
-            plt.gca().set_title(f'{START_WAVELENGTH}'+'nm '+'to '+f'{END_WAVELENGTH}'+'nm '+'spectrum'+time.strftime('%Y-%m-%d-%h-%M'))
-            plt.xlabel('wavelength (nm)')
-            plt.ylabel('Intensity normalized')
-            plt.scatter(actual_wavelengths, FLO_PD/(ti_saph_power_pd*pd_calibration_interpolated))
-            plt.subplot(2,1,2)
+            plt.figure(figsize=(14, 14))
+            plt.subplot(3,1,1)
+            plt.gca().set_title(f'{START_WAVELENGTH} nm to {END_WAVELENGTH} nm spectrum '+time.strftime('%Y-%m-%d-%h-%M'))
+            plt.xlabel('Wavelength (nm)')
+            plt.ylabel('Intensity, Normalized')
+            plt.yscale('log')
+            plt.scatter(actual_wavelengths, FLO_PD/(ti_saph_power_pd*pd_calibration_interpolated), s=2)
+
+            background = 0.95 * np.median(FLO_PD)
+            plt.subplot(3,1,2)
+            plt.gca().set_title(f'{START_WAVELENGTH} nm to {END_WAVELENGTH} nm spectrum '+time.strftime('%Y-%m-%d-%h-%M'))
+            plt.xlabel('Wavelength (nm)')
+            plt.ylabel('Background-Subtracted Intensity, Normalized')
+            plt.yscale('log')
+            plt.scatter(actual_wavelengths, (FLO_PD - background)/(ti_saph_power_pd*pd_calibration_interpolated), s=2)
+
+            plt.subplot(3,1,3)
             plt.gca().set_title('TiSaph Power PD Calibration from'+time.strftime('%Y-%m-%d'))
             plt.xlabel('Wavelength')
             plt.ylabel('Calibration (V/W)')
-            plt.scatter(actual_wavelengths, pd_calibration_interpolated)
-          #  plt.show()
-            plt.savefig(plot_complete_path)
+            plt.scatter(actual_wavelengths, pd_calibration_interpolated, s=2)
+            plt.tight_layout()
+            plt.savefig(plot_complete_path, dpi=300)
             plt.close()
-    #       plt.show()
         except:
             pmt.disable()
             ti_saph.micrometer.off()
             break
-
 

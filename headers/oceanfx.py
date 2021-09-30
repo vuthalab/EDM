@@ -112,7 +112,7 @@ def fit_roughness(wavelengths, transmission):
 
 
 class OceanFX:
-    def __init__(self, ip_addr: str = '192.168.0.119', port: int = 57357):
+    def __init__(self, ip_addr: str = '192.168.0.108', port: int = 57357):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.settimeout(3)
 
@@ -214,7 +214,7 @@ class OceanFX:
         samples = np.array(samples)
 
         # Return mean + std
-        print(f'  [{Fore.BLUE}INFO{Style.RESET_ALL}] {Style.DIM}Captured{Style.RESET_ALL} {Style.BRIGHT}{len(samples)}{Style.RESET_ALL} {Style.DIM}spectra at{Style.RESET_ALL} {Style.BRIGHT}{integration_time}{Style.RESET_ALL} {Style.DIM}μs exposure.{Style.RESET_ALL}')
+#        print(f'  [{Fore.BLUE}INFO{Style.RESET_ALL}] {Style.DIM}Captured{Style.RESET_ALL} {Style.BRIGHT}{len(samples)}{Style.RESET_ALL} {Style.DIM}spectra at{Style.RESET_ALL} {Style.BRIGHT}{integration_time}{Style.RESET_ALL} {Style.DIM}μs exposure.{Style.RESET_ALL}')
         return uarray(samples.mean(axis=0), samples.std(axis=0, ddof=1))
 
 
@@ -231,6 +231,7 @@ class OceanFX:
 
         # Capture over a range of integration times.
         log_integration_times = np.linspace(1.3, 5.2, 50)
+#        log_integration_times = np.linspace(1.3, 3, 25) # For faster captures (tweaking)
         log_integration_times += np.random.uniform(
             -0.02, 0.02, len(log_integration_times)
         )

@@ -1,6 +1,6 @@
 import time
 
-from pulsetube_compressor import PulseTube
+from headers.pulse_tube import PulseTube
 from headers.turbo import TurboPump
 from headers.CTC100 import CTC100
 from headers.mfc import MFC

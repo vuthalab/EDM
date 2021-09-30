@@ -50,7 +50,7 @@ def calibrate(
             plot(wavelengths, spectrum, continuous=True)
             plt.xlim(300, 900)
             plt.xlabel('Wavelength (nm)')
-            plt.ylabel('Intensity (%)')
+            plt.ylabel('Intensity (counts/us)')
             plt.title(name)
             plt.show()
 
@@ -65,8 +65,10 @@ def calibrate(
 
 
 if __name__ == '__main__':
-#    input('Unblock OceanFX, then press Enter.')
-#    calibrate('baseline', show_plot=True)
-
-    input('Block OceanFX, then press Enter.')
-    calibrate('background', time_limit=120, show_plot=True)
+    choice = input('1 for baseline, 2 for background. ')
+    if choice == '1':
+        input('Unblock OceanFX, then press Enter.')
+        calibrate('baseline', show_plot=True)
+    elif choice == '2':
+        input('Block OceanFX, then press Enter.')
+        calibrate('background', time_limit=120, show_plot=True)
