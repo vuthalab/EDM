@@ -2,7 +2,7 @@
 sequence.py
 temp.py
 **/*.swp
-*.txt
 .mailgun.key
 *.insyncdl
 models/model.h5
+*.png

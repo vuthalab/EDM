@@ -1,0 +1,2 @@
+wavelength(nm)	flourescene PD(V)	ti_saph Power (V)
+120.42	1.912117313593626	2.4252281449735165
