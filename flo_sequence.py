@@ -32,10 +32,10 @@ FLOR_SPECTROSCOPY = True
 
 #Ti_Saph wavelengths to scan
 START_WAVELENGTH = 780 # nm 
-END_WAVELENGTH = 820 # nm
+END_WAVELENGTH = 830 # nm
 WAVELENGTH_SCAN_SPEED = 15 # percentage of maximum
-ANGLE = 20 # degrees
-DESCRIPTION = f'50hz_BaF_3hours_bg10sccm_2XFELH0850_{ANGLE}Deg_1XFBH0850-40_2XSEMROCK842_Front_21Deg'
+ANGLE = 10 # degrees
+DESCRIPTION = f'50hz_BaF_3hours_bg10sccm_2XFELH0850_{ANGLE}Deg_1XFBH0850-40_2XSEMROCK842_Front_15Deg'
 INITIAL_GAIN = 1.0
 
 #Verdi Power range

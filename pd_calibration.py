@@ -23,7 +23,7 @@ VERDI_POWER = 8 # watts
 
 #Ti_Saph wavelengths to scan
 START_WAVELENGTH = 750 # nm
-END_WAVELENGTH = 800 # nm
+END_WAVELENGTH = 920 # nm
 WAVELENGTH_SCAN_SPEED = 15 # percentage of maximum
 
 
