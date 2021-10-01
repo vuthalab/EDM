@@ -31,11 +31,12 @@ FLOR_SPECTROSCOPY = True
 
 
 #Ti_Saph wavelengths to scan
-START_WAVELENGTH = 750 # nm 
-END_WAVELENGTH = 795 # nm
+START_WAVELENGTH = 780 # nm 
+END_WAVELENGTH = 820 # nm
 WAVELENGTH_SCAN_SPEED = 15 # percentage of maximum
-ANGLE = 35 # degrees
-DESCRIPTION = f'50hz_BaF_3hours_bg10sccm_2XFELH0850_{ANGLE}Deg_1XFELH0800_2XFEL0800_1XSEMROCK842_Front_26Deg'
+ANGLE = 20 # degrees
+DESCRIPTION = f'50hz_BaF_3hours_bg10sccm_2XFELH0850_{ANGLE}Deg_1XFBH0850-40_2XSEMROCK842_Front_21Deg'
+INITIAL_GAIN = 1.0
 
 #Verdi Power range
 POWER_MIN = 5 #watts
@@ -65,9 +66,9 @@ verdi = Verdi() # connects to verdi
 ti_saph = TiSapphire()
 pmt = RigolDP832(RIGOL_PS, 2)
 filter_stage = ElliptecRotationStage(offset=-8170)
-PMT_GAIN = Labjack(470022275) #LABJACk that sets PMT GAIN ONLY PASS 0.5 to 1.1 V. on DAC0
-PMT_GAIN.write('DAC0', 0.4) # SETS THE GAIN TO 10e6 ISH
-#PMT_GAIN.write('DAC0',0.5) #SETS THE GAIN TO 10e4 ISH
+PMT_GAIN = Labjack(470022275) #LABJACk that sets PMT GAIN ONLY PASS 0.5 to 1.1 V. on DAC
+PMT_GAIN.write('DAC0', INITIAL_GAIN) # SETS THE GAIN
+
 #PMT_GAIN IS LOGRITHMIC SEE https://www.hamamatsu.com/resources/pdf/etd/H10720_H10721_TPMO1062E.pdf
 
 if False: #code for ramping over Verdi Power 
@@ -131,7 +132,7 @@ if FLOR_SPECTROSCOPY: # code for scaning over different wavelength
             increasing_scan = True
             
             while True:
-                GAIN = 1.0
+                GAIN = INITIAL_GAIN
                 PMT_GAIN.write('DAC0', GAIN)
 
                 scope.active_channel = 2
@@ -142,7 +143,7 @@ if FLOR_SPECTROSCOPY: # code for scaning over different wavelength
 
                     # Decrease gain if saturated
                     GAIN -= 0.1
-                    if GAIN < 0.2: break
+                    if GAIN < 0.3: break
                     PMT_GAIN.write('DAC0', GAIN)
 
                 # read the voltage on the ti_saph monitoring photodiode
