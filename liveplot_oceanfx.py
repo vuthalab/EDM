@@ -16,7 +16,7 @@ from headers.util import plot, uarray, nom
 
 ## SETTINGS ##
 PLOT_TRANSMISSION = False
-LOG_SCALE = False
+LOG_SCALE = True
 
 
 ## connect to publisher (spectrometer data)

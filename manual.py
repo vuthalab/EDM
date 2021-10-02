@@ -19,12 +19,12 @@ HOUR = 60 * MINUTE
 
 # Initialize devices.
 # Port numbers are defined in multiplexer.py.
-#T1 = CTC100(31415)
-#T2 = CTC100(31416)
+T1 = CTC100(31415)
+T2 = CTC100(31416)
 #mfc = MFC(31417)
 #turbo = TurboPump()
 #pt = PulseTube()
-#ti_saph = TiSapphire()
+ti_saph = TiSapphire()
 mount = ElliptecRotationStage(offset=-8170)
 pmt_gain = Labjack(470022275)
 

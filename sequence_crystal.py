@@ -177,13 +177,13 @@ def stationary_polish(
     T1.ramp_temperature('heat saph', temperature, 0.5)
     mfc.flow_rate_neon_line = flow_rate
     
-    wait_for_roughness(target_roughness=-5)
-    #wait_until_quantity(
-    #    ('rough', 'surf'), 'stable to within', target_consistency,
-    #    unit='nm',
-    #    source='spectrometer',
-    #    buffer_size=60,
-    #)
+#    wait_for_roughness(target_roughness=-5)
+    wait_until_quantity(
+        ('rough', 'surf'), 'stable to within', target_consistency,
+        unit='nm',
+        source='spectrometer',
+        buffer_size=60,
+    )
 
     log_entry('Cooling...')
     T1.ramp_temperature('heat saph', 5, 0.5)
@@ -221,7 +221,7 @@ try:
 
 #    NORMAL PROCEDURE FOR GOOD CRYSTALS
     melt_and_grow(start_temp = 6.5, neon_flow = 0, buffer_flow = 10, growth_time = 3 * HOUR)
-    stationary_polish()
+#    stationary_polish()
 
 #    grow_only(start_temp=4.5,neon_flow=10,buffer_flow=10,target_thickness=150)
 

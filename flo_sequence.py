@@ -35,7 +35,7 @@ START_WAVELENGTH = 800 # nm
 END_WAVELENGTH = 845 # nm
 WAVELENGTH_SCAN_SPEED = 15 # percentage of maximum
 ANGLE = 35 # degrees
-DESCRIPTION = f'50hz_BaF_3hours_bg10sccm_2XFELH0850_2XFELH0900_{ANGLE}Deg_2XFEL0850_1XFBH0850-40_2XSEMROCK842_Front_ODeg'
+DESCRIPTION = f'3hours_bg10sccm_2XFELH0850_2XFELH0900_{ANGLE}Deg_2XFEL0850_1XFBH0850-40_2XSEMROCK842_Front_ODeg_NEON_BACKGROUND'
 INITIAL_GAIN = 1.0
 
 #Verdi Power range
@@ -96,6 +96,10 @@ if False: #code for ramping over Verdi Power
     plt.plot(verdi_power,LED_voltage)
     plt.savefig(plot_file_complete)
     plt.show()
+
+
+
+start_time = time.monotonic()
 
 
 if FLOR_SPECTROSCOPY: # code for scaning over different wavelength 
@@ -216,6 +220,10 @@ if FLOR_SPECTROSCOPY: # code for scaning over different wavelength
             plt.tight_layout()
             plt.savefig(plot_complete_path, dpi=300)
             plt.close()
+
+            if time.monotonic() - start_time > 7*3600:
+                raise ValueError('welp guess ill just die')
+
         except:
             pmt.disable()
             ti_saph.micrometer.off()
