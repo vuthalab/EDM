@@ -55,11 +55,13 @@ PLOT_INTERVAL = 30 if HEADLESS else 2
 fields = {
     ('pressure', 'torr'): ('pressure',),
 
-    ('buffer flow', 'sccm'): ('flows', 'cell'),
     ('neon flow', 'sccm'): ('flows', 'neon'),
+    ('buffer flow (total)', 'sccm'): ('flows', 'cell'),
+    ('buffer flow (mfc 1)', 'sccm'): ('flows', 'cell1'),
+    ('buffer flow (mfc 2)', 'sccm'): ('flows', 'cell2'),
 
-    ('intensity (broadband)', 'V '): ('intensities', 'broadband'),
-    ('intensity (LED)', 'V '): ('intensities', 'LED'),
+#    ('intensity (broadband)', 'V '): ('intensities', 'broadband'),
+#    ('intensity (LED)', 'V '): ('intensities', 'LED'),
 
     ('reflection (from camera, centroid)', 'V'): ('refl', 'cam'),
     ('reflection (from camera, neural network)', 'V'): ('refl', 'ai'),
@@ -72,7 +74,11 @@ fields = {
 
     ('BaF Laser', 'GHz'): ('freq', 'baf'),
     ('Ti:sapphire Laser', 'GHz'): ('freq', 'ti-saph'),
-    ('Ca Laser', 'GHz '): ('freq', 'calcium'),
+#    ('Ca Laser', 'GHz '): ('freq', 'calcium'),
+
+    ('BaF Laser', 'uW into wavemeter'): ('intensities', 'baf'),
+    ('Ti:sapphire Laser', 'uW into wavemeter'): ('intensities', 'ti-saph'),
+#    ('Ca Laser', 'uW into wavemeter'): ('intensities', 'calcium'),
 
     ('rms roughness (from spectrometer)', 'nm'): ('rough', 'surf'),
     ('second-order roughness coefficient', 'micron$^2$'): ('rough', 'second-order'),
@@ -131,7 +137,8 @@ axis_labels = [
     'sccm',
 
     'GHz',
-    'GHz ',
+#    'GHz ',
+    'uW into wavemeter',
 
     'V',
     '%',
@@ -208,7 +215,7 @@ locator = mpdates.AutoDateLocator()
 formatter = mpdates.ConciseDateFormatter(locator)
 plt.gca().xaxis.set_major_formatter(formatter)
 
-for label in ['torr', 'μs', '']:
+for label in ['torr', 'μs', '', 'uW into wavemeter']:
     axes[axis_labels.index(label)].set_yscale('log')
 
 ##### animated plot #####

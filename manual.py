@@ -21,24 +21,25 @@ HOUR = 60 * MINUTE
 # Port numbers are defined in multiplexer.py.
 T1 = CTC100(31415)
 T2 = CTC100(31416)
-#mfc = MFC(31417)
+mfc = MFC(31417)
 #turbo = TurboPump()
 #pt = PulseTube()
 ti_saph = TiSapphire()
 mount = ElliptecRotationStage(offset=-8170)
-pmt_gain = Labjack(470022275)
-
-#pmt_gain.write('DAC0', 1.0)
+#pmt_gain = Labjack(470022275)
 
 
 ## Uncomment whatever commands you want and run the file ##
-#mfc.flow_rate_cell = 10
-#mfc.flow_rate_neon_line = 10
+#pmt_gain.write('DAC0', 1.0)
+#mount.angle = 35
+
+#mfc.flow_rate_cell = 0
+#mfc.flow_rate_neon_line = 0
 #mfc.off()
 #time.sleep(1*HOUR)
 #turbo.on()
 #turbo.off()
-#ti_saph.wavelength = 888
+ti_saph.wavelength = 760
 
 #pt.on()
 #pt.off()
@@ -62,5 +63,3 @@ pmt_gain = Labjack(470022275)
 #T2.disable_PID('srb45k out')
 #T1.disable_output()
 #T2.disable_output()
-
-#mount.angle = 0

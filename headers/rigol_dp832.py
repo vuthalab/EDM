@@ -119,5 +119,6 @@ class TiSaphMicrometer:
     def stop(self): self.off()
 
 if __name__ == '__main__':
-    laser_sign = LaserSign()
-    micrometer = TiSaphMicrometer()
+#    laser_sign = LaserSign()
+#    micrometer = TiSaphMicrometer()
+    upper = RigolDP832('/dev/upper_power_supply', 2)

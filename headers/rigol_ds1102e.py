@@ -6,7 +6,10 @@ from collections import defaultdict
 import numpy as np
 import matplotlib.pyplot as plt
 
-from headers.usbtmc import USBTMCDevice
+try:
+    from headers.usbtmc import USBTMCDevice
+except:
+    from usbtmc import USBTMCDevice
 
 Channel = Union[Literal[1], Literal[2]]
 Array = List[float]

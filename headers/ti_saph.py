@@ -54,7 +54,10 @@ class TiSapphire:
     def frequency(self) -> float:
         """Returns the frequency of the laser [GHz]."""
         try:
-            current_frequency = float(self.wm.read_frequency(self.channel))
+            # Read until we get a reasonable sample (i.e. not a second harmonic).
+            while True:
+                current_frequency = float(self.wm.read_frequency(self.channel))
+                if current_frequency < 430e3: break
         except:
             current_frequency = self.last_frequency
         self.last_frequency = current_frequency
@@ -83,10 +86,7 @@ class TiSapphire:
                 speed = min(max(speed, 13), 100)
                 self.micrometer.speed = direction * speed
                 
-                try:
-                    current = self.wavelength
-                except:
-                    continue
+                current = self.wavelength
 
                 # Stop when target reached
                 delta = direction * (target - current)

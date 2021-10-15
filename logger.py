@@ -39,9 +39,9 @@ def update_neon_remaining(data):
 
     if 'flows' not in data: return
 
-    # Subtract offset and scale by calibration factors
-    buffer_flow = (data['flows']['cell'][0] - 0.02) * 1.46/1.39
-    neon_flow = (data['flows']['neon'][0] - 0.005) * 1.46
+    # Subtract offsets
+    buffer_flow = data['flows']['cell'][0]
+    neon_flow = data['flows']['neon'][0]
 
     # Prevent drift
     if buffer_flow < 0.2: buffer_flow = 0

@@ -124,3 +124,6 @@ class ElliptecRotationStage:
 
     def close(self):
         self._conn.close()
+
+if __name__ == '__main__':
+    mount = ElliptecRotationStage()

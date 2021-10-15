@@ -11,6 +11,8 @@ def mfc_thread():
         while True:
             publisher.send({
                 'cell': deconstruct(mfc.flow_rate_cell),
+                'cell1': deconstruct(mfc.flow_rate_cell_1),
+                'cell2': deconstruct(mfc.flow_rate_cell_2),
                 'neon': deconstruct(mfc.flow_rate_neon_line),
             })
             time.sleep(0.5)

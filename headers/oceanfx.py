@@ -44,10 +44,11 @@ FLAGS = [
     'NACK',
     'Exception',
     'Deprecated Protocol',
-    'Deprecated Message'
+    'Deprecated Message',
 ]
 def parse_packet(packet):
-    flag = FLAGS[int(packet[4])]
+    flag = int(packet[4])
+    flag = FLAGS[flag] if flag < 7 else f'Unknown Flag {flag}'
     error = int.from_bytes(packet[6:8], byteorder='little')
     msg_type = packet[8:12]
 
@@ -112,7 +113,7 @@ def fit_roughness(wavelengths, transmission):
 
 
 class OceanFX:
-    def __init__(self, ip_addr: str = '192.168.0.108', port: int = 57357):
+    def __init__(self, ip_addr: str = '192.168.0.121', port: int = 57357):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.settimeout(3)
 
@@ -232,9 +233,8 @@ class OceanFX:
         # Capture over a range of integration times.
         log_integration_times = np.linspace(1.3, 5.2, 50)
 #        log_integration_times = np.linspace(1.3, 3, 25) # For faster captures (tweaking)
-        log_integration_times += np.random.uniform(
-            -0.02, 0.02, len(log_integration_times)
-        )
+
+        log_integration_times += np.random.uniform(-0.02, 0.02, len(log_integration_times))
         integration_times = np.array([
 #            10, 11, 12, 13, # Make sure to get hene properly exposed
             *np.power(10, log_integration_times)
@@ -344,8 +344,8 @@ class OceanFX:
 
         wavelengths = self.wavelengths
         mask = (
-            (wavelengths > 500) & (wavelengths < 610)
-            | (wavelengths > 645) & (wavelengths < 690)
+            (wavelengths > 450) & (wavelengths < 610)
+            | (wavelengths > 645) & (wavelengths < 800)
 #            | (wavelengths > 645) & (wavelengths < 900)
 #            | (wavelengths > 780) & (wavelengths < 870)
 #            | (wavelengths > 645) & (wavelengths < 870)

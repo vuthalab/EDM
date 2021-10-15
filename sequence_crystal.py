@@ -80,7 +80,7 @@ def melt_crystal(speed = 0.1, end_temp = 9):
 
     # Raise saph temperature
     T1.ramp_temperature('heat saph', 35, speed)
-    wait_until_quantity(('temperatures', 'saph'), '>', 16, unit='K') #WAS 32, ONE HEATER CURRENTLY DOWN - AUG 20, 2021.
+    wait_until_quantity(('temperatures', 'saph'), '>', 20, unit='K') #WAS 32, ONE HEATER CURRENTLY DOWN - AUG 20, 2021.
 
     # Ensure crystal is melted
     #wait_until_quantity(('trans', 'spec'), '>', 95, unit='%')
@@ -220,7 +220,7 @@ try:
 #    deep_clean()
 
 #    NORMAL PROCEDURE FOR GOOD CRYSTALS
-    melt_and_grow(start_temp = 6.5, neon_flow = 0, buffer_flow = 10, growth_time = 3 * HOUR)
+    melt_and_grow(start_temp = 6.5, neon_flow = 0, buffer_flow = 30, growth_time = 3 * HOUR)
 #    stationary_polish()
 
 #    grow_only(start_temp=4.5,neon_flow=10,buffer_flow=10,target_thickness=150)
