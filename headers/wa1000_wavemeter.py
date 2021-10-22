@@ -25,9 +25,16 @@ class WA1000Wavemeter:
         if wavelengths:
             self.wavelength = ufloat(np.mean(wavelengths), np.std(wavelengths))
         else:
+            print('Error:', lines[-1])
             self.wavelength = None
 
 
 
 if __name__ == '__main__':
+    import time
+
     wavemeter = WA1000Wavemeter()
+    while True:
+        wavemeter.poll()
+        print(wavemeter.wavelength)
+        time.sleep(3)

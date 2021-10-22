@@ -6,7 +6,7 @@ from models.mirror_mount import MirrorModel
 from headers.mirror_mount import microcontroller
 
 mc = microcontroller()
-mc.music_scan(amplitude=1)
+#mc.music_scan(amplitude=1)
 
 
 # Annoy camilo

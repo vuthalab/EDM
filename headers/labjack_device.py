@@ -9,11 +9,10 @@ class Labjack:
         self.handle = ljm.openS("T7", "Ethernet", serial_number)
         # For test: string "-2" opens fake device. "ANY" opens any T7.
 
-    def read(self, channel):
+    def read(self, channel, n_samples=8):
         # Average out some noise automatically
-        N_AVERAGE = 64
         samples = []
-        for i in range(N_AVERAGE):
+        for i in range(n_samples):
             samples.append(ljm.eReadName(self.handle, channel))
         return ufloat(np.mean(samples), np.std(samples))
 
@@ -23,3 +22,6 @@ class Labjack:
 
     def close(self):
         ljm.close(self.handle)
+
+if __name__ == '__main__':
+    lj = Labjack(470022275)

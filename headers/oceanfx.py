@@ -1,9 +1,5 @@
 """
 Header file for the Ocean Optics OceanFX spectrometer.
-
-At the moment, only reads spectra.
-Integration time must be set to 200 us manually
-using the OceanView software.
 """
 
 import socket, time

@@ -80,7 +80,7 @@ class USBTMCDevice:
                 print(f'  [{Fore.BLUE}INFO{Style.RESET_ALL}] {Style.DIM}Connecting to multiplexer server on port {Style.RESET_ALL}{Style.BRIGHT}{resource_path}{Style.RESET_ALL}')
                 self._conn = socket.socket()
                 self._conn.connect(self._address)
-                self._conn.settimeout(2)
+                self._conn.settimeout(5)
             except:
                 print(f'{Fore.RED}Please start the multiplexer server!{Style.RESET_ALL}')
                 self._conn = None
@@ -210,7 +210,7 @@ class USBTMCDevice:
             # Read response
             for i in range(20):
                 self._conn.send(b'read\n')
-                response = self._conn.recv(1024)
+                response = self._conn.recv(65536)
                 if response != b'read failed': break
                 time.sleep(5e-2)
                 if DEBUG:
@@ -221,9 +221,7 @@ class USBTMCDevice:
             # Release lock
             time.sleep(1e-3)
             self._conn.send(b'unlock\n')
-            time.sleep(2e-3)
             assert self._conn.recv(32) == b'unlocked'
-
 
         if DEBUG: print(f'  [{Fore.GREEN}RECV{Style.RESET_ALL}] {Style.DIM}{self.short_name:20s} >{Style.RESET_ALL} {Fore.GREEN}{response[:50]}{Style.RESET_ALL}')
 
@@ -267,7 +265,6 @@ class USBTMCDevice:
         for i in range(20):
             writer.write(b'read\n')
             await writer.drain()
-
 
             response = await reader.read(1024)
             if response != b'read failed': break

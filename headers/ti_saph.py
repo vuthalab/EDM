@@ -34,6 +34,8 @@ class TiSapphire:
         self.last_direction = None
         self.last_frequency = None
 
+        self._spec_conn = connect_to('usb4000')
+
 
     def reset_backlash(self, direction):
         """Eats up the backlash in the system."""
@@ -53,13 +55,28 @@ class TiSapphire:
     @property
     def frequency(self) -> float:
         """Returns the frequency of the laser [GHz]."""
-        try:
-            # Read until we get a reasonable sample (i.e. not a second harmonic).
-            while True:
-                current_frequency = float(self.wm.read_frequency(self.channel))
-                if current_frequency < 430e3: break
-        except:
-            current_frequency = self.last_frequency
+        # Failsafe
+        current_frequency = self.last_frequency
+
+#        try:
+#            # Read until we get a reasonable sample (i.e. not a second harmonic).
+#            while True:
+#                current_frequency = float(self.wm.read_frequency(self.channel))
+#                if current_frequency < 430e3: break
+#        except:
+#            pass
+
+        # Read usb4000 thread until last entry
+        while True:
+            ts, data = self._spec_conn.grab_json_data()
+            if data is None:
+                if current_frequency is not None or self.last_frequency is not None:
+                    break
+                else:
+                    time.sleep(0.05)
+                    continue
+            current_frequency = data['frequency']
+
         self.last_frequency = current_frequency
         return current_frequency
 
@@ -82,7 +99,7 @@ class TiSapphire:
 
         try:
             while True:
-                speed = 15 * abs(current-target)
+                speed = 7 * abs(current-target)
                 speed = min(max(speed, 13), 100)
                 self.micrometer.speed = direction * speed
                 
@@ -94,7 +111,7 @@ class TiSapphire:
                     break
 
                 print(f'\rTarget: {target:.3f} nm | Current: {current:.3f} nm | Speed: {direction*speed:.1f} %', end='')
-                time.sleep(0.4)
+                time.sleep(0.2)
         finally:
             self.micrometer.off()
             print()

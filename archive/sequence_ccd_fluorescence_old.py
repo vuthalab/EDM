@@ -38,9 +38,9 @@ YRANGE = [600,1200]
 
 
 configuration = {
-    'filter_mount_angle': 0, # deg
+    'filter_mount_angle': 35, # deg
 
-    'ximea_exposure': 200, # s
+    'ximea_exposure': 100, # s
 
     'verdi_power': {
         'start': 5, # W
@@ -49,26 +49,28 @@ configuration = {
     },
 
     'wavelength_range': {
-        'start': 840, # nm
-        'end': 900, # nm
-        'steps': 61,
+        'start': 800, # nm
+        'end': 840, # nm
+        'steps': 17,
     },
 
     'growth': {
         'time': 3, # sccm
         'buffer_flow': 30, # sccm
         'neon_flow': 0, # sccm
+        'ablation_frequency': 0, # Hz
     },
 
     'front_filters': [ # (name, count, angle)
-        ('FESH0900', 1, 0),
+        ('SEMROCK842', 2, 0),
         ('FILTER_WHEEL', 1, 0),
     ],
     'back_filters': [ # (name, count)
-        ('FELH0900', 3),
-        ('FEL0900', 1),
+        ('FELH0850', 2),
+        ('FEL0850', 2),
     ],
     'mounted_filters': [ # (name, count)
+        ('FELH0900', 3),
     ]
 }
 

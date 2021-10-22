@@ -117,6 +117,11 @@ fields = {
     ('publisher memory usage', 'KB'): ('debug', 'memory'),
     ('system memory usage', 'KB'): ('debug', 'system-memory'),
 
+    ('fridge temperature', '°C  '): ('temperatures', 'fridge'),
+    ('QE Pro CCD temperature', '°C  '): ('temperatures', 'qe-pro'),
+    ('fridge RH', ' % '): ('fridge', 'relative_humidity'),
+    ('fridge absolute humidity', 'g/m$^3$'): ('fridge', 'absolute_humidity'),
+
     ('pulsetube coolant in', '°C '): ('pt', 'coolant in temp [C]'),
     ('pulsetube coolant out', '°C '): ('pt', 'coolant out temp [C]'),
     ('pulsetube helium', '°C '): ('pt', 'helium temp [C]'),
@@ -160,6 +165,10 @@ axis_labels = [
     'μs',
     'hr',
     'KB',
+
+    '°C  ',
+    ' % ',
+    'g/m$^3$',
 
     '°C ',
     'psi',

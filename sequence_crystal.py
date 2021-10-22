@@ -220,10 +220,10 @@ try:
 #    deep_clean()
 
 #    NORMAL PROCEDURE FOR GOOD CRYSTALS
-    melt_and_grow(start_temp = 6.5, neon_flow = 0, buffer_flow = 30, growth_time = 3 * HOUR)
+#    melt_and_grow(start_temp = 6.5, neon_flow = 0, buffer_flow = 30, growth_time = 3 * HOUR)
 #    stationary_polish()
 
-#    grow_only(start_temp=4.5,neon_flow=10,buffer_flow=10,target_thickness=150)
+    grow_only(start_temp=6.5,neon_flow=0,buffer_flow=30,growth_time=1.5*HOUR)
 
 finally:
     mfc.off()

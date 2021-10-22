@@ -3,6 +3,7 @@ import itertools
 import threading
 import psutil
 import traceback
+from collections import defaultdict
 
 from colorama import Fore, Style
 from uncertainties import ufloat
@@ -27,13 +28,16 @@ from threads.ctc import ctc_thread
 from threads.pt import pt_thread
 from threads.mfc import mfc_thread 
 from threads.verdi import verdi_thread 
+from threads.usb4000 import usb4000_thread 
+from threads.ei1050 import ei1050_thread
+from threads.qe_pro import qe_pro_thread 
 
 
 PUBLISH_INTERVAL = 2/1.4 # publish every x seconds.
 
 ##### Dictionary of threads. Key must be the name of the publisher each thread creates. #####
 THREADS = {
-    'spectrometer': spectrometer_thread,
+#    'spectrometer': spectrometer_thread,
     'wavemeter': wavemeter_thread,
     'fringe-cam': camera_thread,
     'pressure': pressure_thread,
@@ -42,6 +46,9 @@ THREADS = {
     'pt': pt_thread,
     'mfc': mfc_thread,
     'verdi': verdi_thread,
+    'usb4000': usb4000_thread,
+    'ei1050': ei1050_thread,
+    'qe-pro': qe_pro_thread,
 }
 
 
@@ -75,10 +82,10 @@ def run_publisher():
                     if thread_data is None: break
                     raw_data[key] = thread_data
 
-            thread_up = {
+            thread_up = defaultdict(lambda: False, {
                 key: (key in raw_data)
                 for key in THREADS.keys()
-            }
+            })
 
             # Artificially fill in values if spectrometer doesn't return anything
             if 'spectrometer' in raw_data:
@@ -89,7 +96,7 @@ def run_publisher():
 
             ##### Extract/rearrange all relevant data. Change this when adding new threads. #####
             data = {}
-            data['thread-up'] = thread_up
+            data['thread-up'] = dict(thread_up)
             data['running'] = {}
 
             if thread_up['ctc']:
@@ -107,6 +114,18 @@ def run_publisher():
                 data['freq'] = raw_data['wavemeter']['freq']
                 data['intensities'] = raw_data['wavemeter']['power']
                 data['temperatures']['wavemeter'] = raw_data['wavemeter']['temp']
+
+            if thread_up['usb4000']:
+                freq = raw_data['usb4000']['frequency']
+                if freq is not None:
+                    data['freq']['ti-saph'] = freq
+
+            if thread_up['qe-pro']:
+                data['temperatures']['qe-pro'] = raw_data['qe-pro']['temperature']
+
+            if thread_up['ei1050']:
+                data['temperatures']['fridge'] = raw_data['ei1050']['temperature']
+                data['fridge'] = raw_data['ei1050']
 
             if thread_up['pressure']:
                 data['pressure'] = raw_data['pressure']['pressure']

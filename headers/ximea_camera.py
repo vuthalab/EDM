@@ -1,4 +1,5 @@
 import threading
+import time
 
 import numpy as np
 
@@ -11,7 +12,7 @@ from ximea import xiapi
 
 
 class Ximea:
-    def __init__(self, exposure=1):
+    def __init__(self, exposure=1e-3):
         self.cam = xiapi.Camera()
         self.cam.open_device()
         self.cam.set_imgdataformat('XI_RAW16')
@@ -28,11 +29,23 @@ class Ximea:
         self.cam.set_offsetX(x)
         self.cam.set_offsetY(y)
 
+    def interrupt(self):
+        """Interrupt the existing capture, if any."""
+        cache = self.exposure
+        self.exposure = 1.2345
+        self.exposure = cache
+
     def capture(self):
-#        print(f'Capturing image with {self._exposure} s exposure...')
+        start_time = time.monotonic()
         self.cam.get_image(self._img, timeout=max(round(2e3*self.exposure), 500))
+
+        # Redo capture if cached
+        if time.monotonic() - start_time < 0.8 * self.exposure:
+            print('Skipping cached image')
+            self.capture()
+            return
+
         self.image = self._img.get_image_data_numpy().astype(np.uint16)
-#        print('Captured.')
 
     def async_capture(self):
         self.image = None
@@ -40,8 +53,31 @@ class Ximea:
         capture_thread.start()
 
     @property
-    def intensity(self):
-        return ufloat(self.image.mean(), self.image.std()/np.sqrt(self.image.size))
+    def raw_rate(self):
+        """Return raw total count rate."""
+        return self.raw_rate_image.sum()
+
+    @property
+    def saturation(self):
+        """Return maximum saturation in %."""
+        # Percentile to ignore salt-and-pepper noise
+#        return 100 * np.percentile(self.background_subtracted_image, 99) / 4095
+        return 100 * np.percentile(self.image, 99) / 4095
+
+    @property
+    def background_subtracted_image(self):
+        background = np.percentile(self.image, 5) # Compute background level
+        return self.image - background
+
+    @property
+    def rate_image(self):
+        """Return an image showing hit rate (counts/s) in each pixel."""
+        return self.background_subtracted_image / self.exposure
+
+    @property
+    def raw_rate_image(self):
+        """Return an image showing hit rate (counts/s) in each pixel."""
+        return self.image / self.exposure
 
     @property
     def exposure(self): return self._exposure
@@ -50,6 +86,7 @@ class Ximea:
     def exposure(self, value):
         self.cam.set_exposure(value * 1e6)
         self._exposure = value
+        time.sleep(0.1)
 
     def close(self):
         self.cam.stop_acquisition()
@@ -63,21 +100,21 @@ if __name__ == '__main__':
     from util import plot
 
     if True:
-        cam = Ximea(exposure=1e-4)
+        exposure = float(input('Exposure time (s)? '))
+        cam = Ximea(exposure=exposure)
 
         while True:
             print('Capturing...')
             cam.capture()
 
-            image = cam.image.astype(float)
-            print(image.shape)
-            resized = cv2.resize(image, (968, 728))
+            rate_image = cam.rate_image
+            resized = cv2.resize(rate_image, (968, 728))
+            peak = np.percentile(resized, 99)
+            cv2.imshow('Image', np.maximum(np.minimum(256 * resized/(1.2*peak), 255), 0).astype(np.uint8))
+            raw_rate = (cam.image/cam.exposure).sum()
+            print(f'{raw_rate/1e6:.3f} Mcounts/s raw | {rate_image.sum()/1e6:.3f} Mcounts/s | Saturation: {cam.saturation:.2f} %')
 
-#            log = np.round(30 * np.log10(resized + 1)).astype(np.uint8)
-            clipped = np.minimum(resized/16, 255).astype(np.uint8)
-            cv2.imshow('Image', clipped[200:400, 500:700])
-
-            print(np.mean(image), np.std(image), np.max(image))
+            time.sleep(0.5)
 
             if cv2.waitKey(1) == ord('q'): break
         cv2.destroyAllWindows()
