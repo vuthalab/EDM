@@ -1,3 +1,5 @@
+import threading
+import time
 import numpy as np
 
 try:
@@ -10,10 +12,37 @@ except:
 GARBAGE_POINTS = 20 # Discard this many points from start of data
 
 class USB4000Spectrometer(USBTMCDevice):
-    def __init__(self, multiplexer_port=31421, name=None):
-        super().__init__(multiplexer_port, mode='multiplexed', name=name)
+    def __init__(self, multiplexer_port=31421, name=None, timeout=30):
+        super().__init__(multiplexer_port, mode='multiplexed', name=name, timeout=timeout)
         self._exposure = None
         self._wavelengths = None
+        self._intensities = None
+
+    def reset(self):
+        """Interrupt the current capture."""
+        cache = self.exposure
+        self.exposure = 12345
+        self.exposure = cache
+
+    def capture(self, fresh_sample=False):
+        if fresh_sample: self.reset()
+
+        while True:
+            start_time = time.monotonic()
+            response = self.query(f'INTENSITIES')
+            if not fresh_sample: break
+
+            # Ensure we get a fresh capture
+            if time.monotonic() - start_time > 0.9 * self.exposure / 1e6: break
+            print('Skipping cached spectrum')
+            time.sleep(0.5)
+
+        self._intensities = np.array([float(x) for x in response.split()])[GARBAGE_POINTS:]
+
+    def async_capture(self, fresh_sample=False):
+        self._intensities = None
+        capture_thread = threading.Thread(target=lambda: self.capture(fresh_sample=fresh_sample))
+        capture_thread.start()
 
     @property
     def exposure(self):
@@ -37,8 +66,7 @@ class USB4000Spectrometer(USBTMCDevice):
 
     @property
     def intensities(self):
-        response = self.query(f'INTENSITIES')
-        return np.array([float(x) for x in response.split()])[GARBAGE_POINTS:]
+        return self._intensities
 
 
 if __name__ == '__main__':
@@ -46,10 +74,12 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
 
     spec = USB4000Spectrometer()
-#    spec.exposure = 10
+    spec.exposure = 10
+
 
     plt.ion()
     fig = plt.figure()
+    spec.capture()
     line, = plt.plot(spec.wavelengths, spec.intensities)
 
     plt.xlabel('Wavelength (nm)')
@@ -57,6 +87,7 @@ if __name__ == '__main__':
     plt.ylim(0, 65536)
     while True:
         time.sleep(0.5)
+        spec.capture()
         line.set_ydata(spec.intensities)
         fig.canvas.draw()
         fig.canvas.flush_events()

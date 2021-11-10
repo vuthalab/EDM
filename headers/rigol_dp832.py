@@ -59,9 +59,12 @@ class RigolDP832(USBTMCDevice):
 
 
 
-class LaserSign(RigolDP832):
+class EOM(RigolDP832):
+    def __init__(self):
+        super().__init__('/dev/upper_power_supply', 2)
+
     def on(self):
-        self.voltage = 24
+        self.voltage = 5
         self.current = 0.1
         self.enable()
 
@@ -70,6 +73,7 @@ class LaserSign(RigolDP832):
 
     def is_on(self):
         return self.enabled
+
 
 
 class TiSaphMicrometer:
@@ -100,7 +104,7 @@ class TiSaphMicrometer:
         assert volt <= 5 and volt >= -5
 
         if volt != 0:
-            self._direction.voltage = 0 if volt > 0 else -12
+            self._direction.voltage = 0 if volt > 0 else -14
             time.sleep(0.1)
         self._magnitude.voltage = abs(volt)
 
@@ -119,6 +123,6 @@ class TiSaphMicrometer:
     def stop(self): self.off()
 
 if __name__ == '__main__':
-#    laser_sign = LaserSign()
 #    micrometer = TiSaphMicrometer()
     upper = RigolDP832('/dev/upper_power_supply', 2)
+    eom = EOM()

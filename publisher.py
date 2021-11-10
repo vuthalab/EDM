@@ -48,7 +48,7 @@ THREADS = {
     'verdi': verdi_thread,
     'usb4000': usb4000_thread,
     'ei1050': ei1050_thread,
-    'qe-pro': qe_pro_thread,
+#    'qe-pro': qe_pro_thread,
 }
 
 
@@ -98,6 +98,7 @@ def run_publisher():
             data = {}
             data['thread-up'] = dict(thread_up)
             data['running'] = {}
+            data['freq'] = {}
 
             if thread_up['ctc']:
                 data['temperatures'] = raw_data['ctc']['temperatures']
@@ -116,9 +117,10 @@ def run_publisher():
                 data['temperatures']['wavemeter'] = raw_data['wavemeter']['temp']
 
             if thread_up['usb4000']:
+                data['ti-saph'] = raw_data['usb4000']
                 freq = raw_data['usb4000']['frequency']
                 if freq is not None:
-                    data['freq']['ti-saph'] = freq
+                    data['freq']['ti-saph-spec'] = freq
 
             if thread_up['qe-pro']:
                 data['temperatures']['qe-pro'] = raw_data['qe-pro']['temperature']
@@ -197,9 +199,8 @@ def run_publisher():
 ##### No need to touch the below code #####
 
 def wrap_thread(name, thread_func):
-    delay = 5
+    delay = 10
 
-    # Exponential backoff retry
     while True:
         print(f'Starting {Style.BRIGHT}{name}{Style.RESET_ALL} thread')
         try:
@@ -207,9 +208,7 @@ def wrap_thread(name, thread_func):
         except:
             print(f'{Fore.RED}{name} thread crashed!{Style.RESET_ALL} Retrying after {delay} seconds...')
             traceback.print_exc()
-
             time.sleep(delay)
-            delay *= 2
 
 
 

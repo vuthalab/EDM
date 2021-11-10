@@ -1,24 +1,17 @@
 import tkinter as tk
 from tkinter import font
 
-from headers.zmq_client_socket import zmq_client_socket
+from headers.zmq_client_socket import connect_to
 
 # Which laser to monitor
 LASER = 'baf'
 #LASER = 'calcium'
 
-
-connection_settings = {
-    'ip_addr': 'localhost', # ip address
-    'port': 5551, # our open port
-    'topic': 'edm-monitor', # device
-}
-monitor_socket = zmq_client_socket(connection_settings)
-monitor_socket.make_connection()
+monitor_socket = connect_to('wavemeter')
 
 def get_freq():
     time, data = monitor_socket.blocking_read()
-    return data['freq']['baf']
+    return data['freq'][LASER]
 
 
 root = tk.Tk()

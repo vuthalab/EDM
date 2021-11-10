@@ -36,10 +36,21 @@ configuration = {
     'filter_mount_angle': {
         'start': 0, # deg
         'end': 35, # deg
-        'steps': 12,
+        'steps': 32,
     },
 
     'ximea_exposure': 10, # s
+    'samples_per_point': 2,
+    'roi': {
+#        'center_x': 526*2,
+#        'center_y': 375*2,
+#        'radius': 30*2,
+
+        'x_min': 481*2,
+        'x_max': 651*2,
+        'y_min': 338*2,
+        'y_max': 420*2,
+    },
 
     'photodiode_resistor': 100, # ohm
 
@@ -49,15 +60,16 @@ configuration = {
         'steps': 1,
     },
 
+#    'wavelength_range': 'custom',
     'wavelength_range': {
-        'start': 760, # nm
-        'end': 830, # nm
-        'steps': 29,
+        'start': 750, # nm
+        'end': 850, # nm
+        'steps': 101,
     },
 
     'growth': {
-        'time': 3, # sccm
-        'buffer_flow': 30, # sccm
+        'time': 0, # hours
+        'buffer_flow': 0, # sccm
         'neon_flow': 0, # sccm
         'ablation_frequency': 0, # Hz
     },
@@ -76,7 +88,7 @@ configuration = {
     'mounted_filters': [ # (name, count)
 #        ('FELH0900', 3),
         ('FESH0900', 1),
-    ]
+    ],
 }
 
 
@@ -127,6 +139,20 @@ with open(folder / 'configuration.json', 'w') as f: json.dump(configuration, f, 
 
 
 
+def get_intensity(rate_image):
+    roi = configuration['roi']
+
+    if 'radius' in roi:
+        # Circular ROI
+        h, w = rate_image.shape
+        x, y = np.meshgrid(np.arange(w), np.arange(h))
+        mask = (x - roi['center_x'])**2 + (y - roi['center_y'])**2 < roi['radius']**2
+        return rate_image[mask].sum()
+    else:
+        # Rectangular ROI
+        return rate_image[roi['y_min']:roi['y_max'], roi['x_min']:roi['x_max']].sum()
+
+
 
 
 # Main data collection loop
@@ -153,23 +179,28 @@ with open(folder / f'data.txt','w') as f:
 
                         voltages = []
                         wavelengths = []
-                        images = []
-                        rates = []
                         angles = []
 
+                        images = []
                         background_images = []
-                        background_rates = []
-                        for i in range(2):
+                        net_rates = []
+
+                        for i in range(configuration['samples_per_point']):
                             wheel.position = 2
                             time.sleep(3)
 
                             print('Collecting background rate...', end='\r', flush=True)
                             cam.interrupt()
-                            cam.capture()
+                            cam.async_capture()
+                            while cam.image is None:
+                                print(f'Collecting background samples... {len(wavelengths)}', end='\r', flush=True)
+                                wavelengths.append(ti_saph.wavelength)
+                                angles.append(filter_stage.angle)
+                                time.sleep(0.5)
                             image = cam.raw_rate_image
+                            background_rate = get_intensity(image)
                             background_images.append(image)
-                            background_rates.append(image.sum())
-                            print(f'Background rate is {image.sum()*1e-6:.4f} Mcounts/s.')
+                            print(f'Background rate is {background_rate*1e-3:.4f} kcounts/s.')
 
                             wheel.position = 6
                             time.sleep(3)
@@ -180,35 +211,42 @@ with open(folder / f'data.txt','w') as f:
 
                             # Read power + wavelength samples until capture finishes
                             while cam.image is None:
-                                print(f'Collecting foreground samples... {len(voltages)}', end='\r', flush=True)
+                                print(f'Collecting foreground samples... {len(wavelengths)}', end='\r', flush=True)
                                 voltages.append(np.average(scope.trace))
                                 wavelengths.append(ti_saph.wavelength)
                                 angles.append(filter_stage.angle)
                                 time.sleep(0.5)
                             image = cam.raw_rate_image
-                            rate = image.sum()
-
+                            rate = get_intensity(image)
                             images.append(image)
-                            rates.append(rate)
+                            print(f'Foreground rate is {rate*1e-3:.4f} kcounts/s. Saturation: {cam.saturation:.3f} %')
 
-                            print(f'Foreground rate is {rate*1e-6:.4f} Mcounts/s. Saturation: {cam.saturation:.3f} %')
+                            net_rates.append(rate - background_rate)
+
 
                         # Process data
                         voltage = unweighted_mean(voltages)
                         wavelength = unweighted_mean(wavelengths)
-                        rate = unweighted_mean(rates) - unweighted_mean(background_rates)
+                        rate = unweighted_mean(net_rates)
 
                         current = voltage / configuration['photodiode_resistor']
 
                         print(f'Wavelength: {wavelength:.4f} nm.')
                         print(f'Ti sapph photodiode reads {voltage:.4f} V ({current*1e3:.4f} mA).')
-                        print(f'Camera intensity is {rate*1e-6:.4f} Mcounts/s.')
+                        print(f'Camera intensity is {rate*1e-3:.4f} kcounts/s.')
                         print()
 
                         # Save Image
                         timestamp = time.strftime('%Y-%m-%d-%H-%M-%S')
-                        np.save(folder / 'images' / f'{timestamp}-foreground.npy', np.mean(images, axis=0))
-                        np.save(folder / 'images' / f'{timestamp}-background.npy', np.mean(background_images, axis=0))
+                        np.savez(
+                            folder / 'images' / f'{timestamp}.npz',
+                            foreground=np.mean(images, axis=0),
+                            background=np.mean(background_images, axis=0),
+                            net_rates=net_rates,
+                            voltages=voltages,
+                            angles=angles,
+                            wavelengths=wavelengths,
+                        )
 
                         # Save Data
                         real_angle = unweighted_mean(angles)
@@ -217,5 +255,6 @@ with open(folder / f'data.txt','w') as f:
             except Exception as e:
                 print(repr(e))
                 cam.close()
+                ti_saph.power = 4.5
                 ti_saph.micrometer.off()
                 os.exit()

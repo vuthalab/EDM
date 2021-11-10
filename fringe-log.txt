@@ -155,3 +155,26 @@
 1634653887.8384373 Growing crystal at with 10.0 sccm neon line, 10.0 sccm buffer flow. Will ramp temperature from 6.5 K to 6.5 K during growth.
 1634653927.2144914 Growing crystal at with 0.0 sccm neon line, 30.0 sccm buffer flow. Will ramp temperature from 6.5 K to 6.5 K during growth.
 1634659330.9559016 Done growth.
+1635544236.5621848 Growing crystal at with 0.0 sccm neon line, 30.0 sccm buffer flow. Will ramp temperature from 6.5 K to 6.5 K during growth.
+1635544571.5544035 Done growth.
+1635544676.687596 Growing crystal at with 10.0 sccm neon line, 30.0 sccm buffer flow. Will ramp temperature from 6.5 K to 6.5 K during growth.
+1635544961.6358252 Growing crystal at with 14.0 sccm neon line, 0.0 sccm buffer flow. Will ramp temperature from 6.5 K to 6.5 K during growth.
+1635546165.212821 Done growth.
+1635546343.547848 Growing crystal at with 14.0 sccm neon line, 0.0 sccm buffer flow. Will ramp temperature from 6.5 K to 6.5 K during growth.
+1635546449.7183228 Growing crystal at with 14.0 sccm neon line, 0.0 sccm buffer flow. Will ramp temperature from 6.5 K to 6.5 K during growth.
+1635548553.287223 Done growth.
+1635762664.4182525 Melting crystal.
+1635762900.450568 Cooling crystal.
+1635763582.2211668 Melting crystal.
+1635763814.7366946 Cooling crystal.
+1635763944.7339041 Annealing (starting neon line).
+1635764124.7338974 Growing crystal at with 0.0 sccm neon line, 30.0 sccm buffer flow. Will ramp temperature from 6.5 K to 6.5 K during growth.
+1635774928.54016 Done growth.
+1635953220.8393512 Melting crystal.
+1635953399.6120198 Cooling crystal.
+1635953532.4696252 Annealing (starting neon line).
+1635956328.789504 Melting crystal.
+1635956535.3296907 Cooling crystal.
+1635956666.757295 Annealing (starting neon line).
+1635956998.1838608 Growing crystal at with 0.0 sccm neon line, 30.0 sccm buffer flow. Will ramp temperature from 6.5 K to 6.5 K during growth.
+1635967801.4948964 Done growth.

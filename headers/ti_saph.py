@@ -5,21 +5,25 @@ import matplotlib.pyplot as plt
 import numpy as np
 from uncertainties import ufloat, correlated_values
 
-from headers.zmq_client_socket import connect_to
+try:
+    from headers.zmq_client_socket import connect_to
 
-from headers.verdi import Verdi
-from headers.rigol_dp832 import TiSaphMicrometer
-from headers.wavemeter import WM
+    from headers.verdi import Verdi
+    from headers.rigol_dp832 import TiSaphMicrometer
+    from headers.wavemeter import WM
 
-from headers.util import display, nom, std, uarray
+    from headers.util import display, nom, std, uarray
+except:
+    from zmq_client_socket import connect_to
 
+    from verdi import Verdi
+    from rigol_dp832 import TiSaphMicrometer
+    from wavemeter import WM
 
-# Parameters for mode analysis
-mask_width = 20
-window_width = 50
-
+    from util import display, nom, std, uarray
 
 speed_of_light = 299792458 # GHz-nm
+
 
 
 
@@ -32,9 +36,9 @@ class TiSapphire:
         self.channel = 7
 
         self.last_direction = None
-        self.last_frequency = None
 
         self._spec_conn = connect_to('usb4000')
+        self._cache = None
 
 
     def reset_backlash(self, direction):
@@ -45,6 +49,18 @@ class TiSapphire:
             self.micrometer.off()
 
         self.last_direction = direction
+
+
+    def _grab_data(self):
+        """Read usb4000 thread until last entry."""
+        while True:
+            ts, data = self._spec_conn.grab_json_data()
+            if data is not None:
+                self._cache = data
+            else:
+                if self._cache is not None:
+                    break
+            time.sleep(0.01)
             
 
     @property
@@ -53,49 +69,53 @@ class TiSapphire:
         return self.wm.read_laser_power(self.channel)
 
     @property
-    def frequency(self) -> float:
-        """Returns the frequency of the laser [GHz]."""
-        # Failsafe
-        current_frequency = self.last_frequency
+    def wavemeter_wavelength(self) -> float:
+        """Returns the wavelength from the wavemeter [nm]."""
 
-#        try:
-#            # Read until we get a reasonable sample (i.e. not a second harmonic).
-#            while True:
-#                current_frequency = float(self.wm.read_frequency(self.channel))
-#                if current_frequency < 430e3: break
-#        except:
-#            pass
+        # Try reading from wavemeter
+        freq = self.wm.read_frequency(self.channel)
 
-        # Read usb4000 thread until last entry
-        while True:
-            ts, data = self._spec_conn.grab_json_data()
-            if data is None:
-                if current_frequency is not None or self.last_frequency is not None:
-                    break
-                else:
-                    time.sleep(0.05)
-                    continue
-            current_frequency = data['frequency']
+        if not isinstance(freq, float) or freq > 400000:
+            # If we get a bad reading, throw an exception
+            assert False
 
-        self.last_frequency = current_frequency
-        return current_frequency
+        return speed_of_light/freq
 
     @property
-    def wavelength(self) -> float:
-        """Returns the vacuum wavelength of the laser [nm]."""
+    def spectrometer_wavelength(self) -> float:
+        """Returns the vacuum wavelength of the laser as given by spectrometer [nm]."""
         return float(speed_of_light) / float(self.frequency)
+
+    @property
+    def frequency(self) -> float:
+        """Returns the frequency of the laser [GHz]."""
+        self._grab_data()
+        return self._cache['frequency']
+
+    @property
+    def linewidth(self) -> float:
+        """Returns the linewidth of the laser [nm]."""
+        self._grab_data()
+        return self._cache['linewidth']
+    
+    @property
+    def wavelength(self) -> float:
+        """Returns the vacuum wavelength of the laser [nm]. Tries to use the wavemeter, but uses the spectrometer if this does not work."""
+        try:
+            return self.wavemeter_wavelength
+        except AssertionError:
+            return self.spectrometer_wavelength - 1.83
 
 
     @wavelength.setter
     def wavelength(self, target):
         """Coarsely set the wavelength."""
         print(f'Setting wavelength to {target:.3f} nm...')
-        
+       
         current = self.wavelength
         print(f'Starting wavelength is {current:.3f} nm.')
 
         direction = -1 if (current > target) else 1
-
 
         try:
             while True:
@@ -107,7 +127,7 @@ class TiSapphire:
 
                 # Stop when target reached
                 delta = direction * (target - current)
-                if delta < 0:
+                if delta < 0.1: # < 0:
                     break
 
                 print(f'\rTarget: {target:.3f} nm | Current: {current:.3f} nm | Speed: {direction*speed:.1f} %', end='')
@@ -126,3 +146,7 @@ class TiSapphire:
     def off(self):
         self.verdi.off()
         self.micrometer.off()
+
+if __name__ == '__main__':
+    ti_saph = TiSapphire()
+    print('Current wavelength is ', ti_saph.wavelength, 'nm.')

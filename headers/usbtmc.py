@@ -28,6 +28,8 @@ class USBTMCDevice:
             tcp_port: int = 23,
             mode: ModeString = 'serial',
             name: Optional[str] = None,
+
+            timeout=5, # seconds
         ):
         """
         Initializes a connection to the USBTMC device.
@@ -56,38 +58,45 @@ class USBTMCDevice:
             print(f'  [{Fore.YELLOW}WARN{Style.RESET_ALL}] Dry-run mode active. Nothing will actually happen.')
 
         self._mode = mode 
+        self._resource_path = resource_path
+        self._tcp_port = tcp_port
+        self._timeout = timeout
+        self.connect()
 
-        # Open the connection
-        if mode == 'ethernet':
-            print(f'Opening LAN connection on {resource_path}:{tcp_port}...')
-            self._conn = telnetlib.Telnet(resource_path, port=tcp_port, timeout=2)
+        self._name = name or self.query('*IDN?')
+        print(f'  [{Fore.BLUE}INFO{Style.RESET_ALL}] {Style.DIM}Connected to {Style.RESET_ALL}{Style.BRIGHT}{self.name}{Style.RESET_ALL}')
 
-        if mode == 'serial':
-            print(f'Opening serial connection on {resource_path}...')
+
+    def connect(self):
+        """Opens the base-layer connection."""
+        if self._mode == 'ethernet':
+            print(f'Opening LAN connection on {self._resource_path}:{self._tcp_port}...')
+            self._conn = telnetlib.Telnet(self._resource_path, port=self._tcp_port, timeout=self._timeout)
+
+        if self._mode == 'serial':
+            print(f'Opening serial connection on {self._resource_path}...')
             baud = 19200
-            self._conn = serial.Serial(resource_path, baud, timeout=2)
+            self._conn = serial.Serial(self._resource_path, baud, timeout=self._timeout)
 
-        if mode == 'direct':
-            print(f'Opening USBTMC connection on {resource_path}...')
-            self._conn = open(resource_path, 'r+b')
+        if self._mode == 'direct':
+            print(f'Opening USBTMC connection on {self._resource_path}...')
+            self._conn = open(self._resource_path, 'r+b')
 
-        if mode == 'multiplexed':
+        if self._mode == 'multiplexed':
             # For async: defer connection until later.
             self._async_conn = None
-            self._address = ('127.0.0.1', resource_path)
+            self._address = ('127.0.0.1', self._resource_path)
 
             try:
-                print(f'  [{Fore.BLUE}INFO{Style.RESET_ALL}] {Style.DIM}Connecting to multiplexer server on port {Style.RESET_ALL}{Style.BRIGHT}{resource_path}{Style.RESET_ALL}')
+                print(f'  [{Fore.BLUE}INFO{Style.RESET_ALL}] {Style.DIM}Connecting to multiplexer server on port {Style.RESET_ALL}{Style.BRIGHT}{self._resource_path}{Style.RESET_ALL}')
                 self._conn = socket.socket()
                 self._conn.connect(self._address)
-                self._conn.settimeout(5)
+                self._conn.settimeout(self._timeout)
             except:
                 print(f'{Fore.RED}Please start the multiplexer server!{Style.RESET_ALL}')
                 self._conn = None
 
         time.sleep(0.1)
-        self._name = name or self.query('*IDN?')
-        print(f'  [{Fore.BLUE}INFO{Style.RESET_ALL}] {Style.DIM}Connected to {Style.RESET_ALL}{Style.BRIGHT}{self.name}{Style.RESET_ALL}')
 
 
     @property
@@ -221,12 +230,22 @@ class USBTMCDevice:
             # Release lock
             time.sleep(1e-3)
             self._conn.send(b'unlock\n')
-            assert self._conn.recv(32) == b'unlocked'
+            try:
+                assert self._conn.recv(32) == b'unlocked'
+            except (AssertionError, socket.timeout):
+                # Force close connection if failed to unlock
+                self.close()
+                self.connect()
 
         if DEBUG: print(f'  [{Fore.GREEN}RECV{Style.RESET_ALL}] {Style.DIM}{self.short_name:20s} >{Style.RESET_ALL} {Fore.GREEN}{response[:50]}{Style.RESET_ALL}')
 
         # Decode the response to a Python string if raw == False.
         return response if raw else response.decode('utf-8').strip()
+
+
+
+
+
 
 
     ##### Async Code #####
@@ -288,6 +307,11 @@ class USBTMCDevice:
 
         # Decode the response to a Python string if raw == False.
         return response if raw else response.decode('utf-8').strip()
+
+
+
+
+
 
 
     ##### Context Manager Magic Methods #####

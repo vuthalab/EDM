@@ -21,4 +21,25 @@ class QEProSpectrometer(USB4000Spectrometer):
 
 
 if __name__ == '__main__':
+
+    import time
+    import matplotlib.pyplot as plt
+
     spec = QEProSpectrometer()
+    spec.exposure = 1E4 # us
+    spec.temperature = -30
+
+    plt.ion()
+    fig = plt.figure()
+    spec.capture()
+    line, = plt.plot(spec.wavelengths, spec.intensities)
+
+    plt.xlabel('Wavelength (nm)')
+    plt.ylabel('Intensity (counts)')
+    plt.ylim(0, 65536)
+    while True:
+        time.sleep(2)
+        spec.capture()
+        line.set_ydata(spec.intensities)
+        fig.canvas.draw()
+        fig.canvas.flush_events()

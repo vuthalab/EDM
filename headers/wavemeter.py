@@ -26,17 +26,20 @@
 
 
 # wlmData.dll related imports
-from headers.wlmData import LoadDLL
-import headers.wlmConst
-
-
+try:
+    from headers.wlmData import LoadDLL
+    import headers.wlmConst
+    from headers.zmq_publisher import zmqPublisher
+except:
+    from wlmData import LoadDLL
+    import wlmConst
+    from zmq_publisher import zmqPublisher
 # others
 import time
 import ctypes
 import zmq
 import sys
 
-from headers.zmq_publisher import zmqPublisher
 
     
 ##

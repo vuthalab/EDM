@@ -73,12 +73,15 @@ fields = {
     ('transmission (non-roughness sources only)', '%'): ('trans', 'unexpl'),
 
     ('BaF Laser', 'GHz'): ('freq', 'baf'),
-    ('Ti:sapphire Laser', 'GHz'): ('freq', 'ti-saph'),
+    ('Ti:Sapphire Laser (from wavemeter)', 'GHz'): ('freq', 'ti-saph'),
+    ('Ti:Sapphire Laser (from spectrometer)', 'GHz'): ('freq', 'ti-saph-spec'),
 #    ('Ca Laser', 'GHz '): ('freq', 'calcium'),
 
     ('BaF Laser', 'uW into wavemeter'): ('intensities', 'baf'),
-    ('Ti:sapphire Laser', 'uW into wavemeter'): ('intensities', 'ti-saph'),
+    ('Ti:Sapphire Laser', 'uW into wavemeter'): ('intensities', 'ti-saph'),
 #    ('Ca Laser', 'uW into wavemeter'): ('intensities', 'calcium'),
+
+    ('Ti:Sapphire linewidth (from spectrometer)', 'nm '): ('ti-saph', 'linewidth'),
 
     ('rms roughness (from spectrometer)', 'nm'): ('rough', 'surf'),
     ('second-order roughness coefficient', 'micron$^2$'): ('rough', 'second-order'),
@@ -144,6 +147,7 @@ axis_labels = [
     'GHz',
 #    'GHz ',
     'uW into wavemeter',
+    'nm ',
 
     'V',
     '%',

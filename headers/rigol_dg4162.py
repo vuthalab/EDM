@@ -1,6 +1,9 @@
 from typing import Union, Literal
 
-from headers.usbtmc import USBTMCDevice
+try:
+    from headers.usbtmc import USBTMCDevice
+except:
+    from usbtmc import USBTMCDevice
 
 
 Channel = Union[Literal[1], Literal[2]]
@@ -20,7 +23,7 @@ class RigolDG4162(USBTMCDevice):
     """The currently active channel (emulated, not on device)."""
     active_channel: Channel = 1
 
-    def __init__(self, ip_address: str):
+    def __init__(self, ip_address: str = '192.168.0.123'):
         super().__init__(ip_address, tcp_port=5555, mode='ethernet')
         self.active_channel = 1
 
@@ -101,3 +104,7 @@ class RigolDG4162(USBTMCDevice):
     def enabled(self, enable: bool) -> None:
         enable_str = 'ON' if enable else 'OFF'
         self.send_command(f':OUT{self.active_channel} {enable_str}')
+
+
+if __name__ == '__main__':
+    fg = RigolDG4162()

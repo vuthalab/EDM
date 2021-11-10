@@ -4,7 +4,7 @@ from headers.zmq_server_socket import create_server
 from headers.edm_util import deconstruct
 
 from headers.verdi import Verdi
-from headers.rigol_dp832 import LaserSign
+#from headers.rigol_dp832 import LaserSign
 
 def verdi_thread():
     verdi = Verdi()

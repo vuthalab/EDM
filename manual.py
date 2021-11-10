@@ -12,6 +12,7 @@ from headers.turbo import TurboPump
 from headers.ti_saph import TiSapphire
 from headers.elliptec_rotation_stage import ElliptecRotationStage
 from headers.labjack_device import Labjack
+from headers.filter_wheel import FilterWheel
 
 MINUTE = 60
 HOUR = 60 * MINUTE
@@ -25,13 +26,15 @@ HOUR = 60 * MINUTE
 #turbo = TurboPump()
 #pt = PulseTube()
 ti_saph = TiSapphire()
-#mount = ElliptecRotationStage()
+mount = ElliptecRotationStage()
 #pmt_gain = Labjack(470022275)
+wheel = FilterWheel()
+eom = Labjack(470022275)
 
 
 ## Uncomment whatever commands you want and run the file ##
 #pmt_gain.write('DAC0', 1.0)
-#mount.angle = 35
+#mount.angle = 0
 
 #mfc.flow_rate_cell = 0
 #mfc.flow_rate_neon_line = 0
@@ -39,9 +42,16 @@ ti_saph = TiSapphire()
 #time.sleep(1*HOUR)
 #turbo.on()
 #turbo.off()
-#ti_saph.verdi.power = 7
-ti_saph.wavelength = 760
+#ti_saph.verdi.power = 6
+#while True:
+#    ti_saph.wavelength = int(input('Wavelength? '))
 #mount.angle = 15
+
+#while True:
+#    wheel.position = 2
+#    time.sleep(3)
+#    wheel.position = 1
+#    time.sleep(3)
 
 #pt.on()
 #pt.off()

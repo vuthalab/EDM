@@ -37,7 +37,7 @@ class ElliptecRotationStage:
             self,
             port='/dev/rotation_mount', 
             address: int = 0, # Device address on controller bus.
-            offset: int = -9300, # Software angle offset, in encoder counts.
+            offset: int = 22966, # Software angle offset, in encoder counts.
         ):
         self._conn = serial.Serial(port, baudrate=9600, stopbits=1, parity='N', timeout=0.05)
         self.address = 0
@@ -104,13 +104,15 @@ class ElliptecRotationStage:
     @property
     def angle(self):
         """Return the current angle (CCW)."""
-        return self.angle_unwrapped % 360
+        angle = self.angle_unwrapped % 360
+        if angle > 180: angle -= 360
+        return angle
 
     @angle.setter
     def angle(self, degrees):
         delta = degrees - self.angle
-        if delta > 180: delta -= 360
-        if delta < -180: delta += 360
+        while delta > 180: delta -= 360
+        while delta < -180: delta += 360
 
         self.move_by(delta)
 

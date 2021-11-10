@@ -27,7 +27,7 @@ publisher = create_server('scope')
 
 ##### Main Program #####
 # Initialize connection
-with RigolDS1102e() as scope:
+with RigolDS1102e(address='/dev/usbtmc0') as scope:
     # # Set scope 2
     # scope.active_channel = 2
     # scope.voltage_scale = 1 # V/div
@@ -117,7 +117,8 @@ with RigolDS1102e() as scope:
                     print(time.time(), ' '.join(f'{x:.5f}' for x in acq2), file=f)
 
                 # Log dip sizes
-                traces = acquisitions[:, 0]
+                traces = acquisitions[:, 0] + 0.2 # TEMPORARY BODGE FOR AC COUPLE
+#                traces = acquisitions[:, 0]
                 dip_size = 100 - 100 * np.min(traces, axis=1) / np.max(traces, axis=1)
                 publisher.send({
                     'dip': {

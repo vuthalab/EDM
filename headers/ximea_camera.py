@@ -35,21 +35,25 @@ class Ximea:
         self.exposure = 1.2345
         self.exposure = cache
 
-    def capture(self):
-        start_time = time.monotonic()
-        self.cam.get_image(self._img, timeout=max(round(2e3*self.exposure), 500))
+    def capture(self, fresh_sample=False):
+        if fresh_sample: self.interrupt()
 
-        # Redo capture if cached
-        if time.monotonic() - start_time < 0.8 * self.exposure:
+        while True:
+            start_time = time.monotonic()
+            self.cam.get_image(self._img, timeout=max(round(2e3*self.exposure), 500))
+            if not fresh_sample: break
+
+            # Ensure we get a fresh capture
+            if time.monotonic() - start_time > 0.9 * self.exposure: break
             print('Skipping cached image')
-            self.capture()
-            return
+            time.sleep(0.5)
 
         self.image = self._img.get_image_data_numpy().astype(np.uint16)
 
-    def async_capture(self):
+
+    def async_capture(self, fresh_sample=False):
         self.image = None
-        capture_thread = threading.Thread(target=self.capture)
+        capture_thread = threading.Thread(target=lambda: self.capture(fresh_sample=fresh_sample))
         capture_thread.start()
 
     @property
@@ -109,12 +113,14 @@ if __name__ == '__main__':
 
             rate_image = cam.rate_image
             resized = cv2.resize(rate_image, (968, 728))
-            peak = np.percentile(resized, 99)
-            cv2.imshow('Image', np.maximum(np.minimum(256 * resized/(1.2*peak), 255), 0).astype(np.uint8))
+            peak = np.percentile(resized, 99.9)
+            processed = np.maximum(np.minimum(256 * resized/(1.2*peak), 255), 0).astype(np.uint8)
+#            processed = np.maximum(np.minimum(30 * np.log(resized), 255), 0).astype(np.uint8)
+            cv2.imshow('Image', processed)
             raw_rate = (cam.image/cam.exposure).sum()
             print(f'{raw_rate/1e6:.3f} Mcounts/s raw | {rate_image.sum()/1e6:.3f} Mcounts/s | Saturation: {cam.saturation:.2f} %')
 
-            time.sleep(0.5)
+            time.sleep(0.2)
 
             if cv2.waitKey(1) == ord('q'): break
         cv2.destroyAllWindows()

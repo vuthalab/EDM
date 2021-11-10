@@ -27,7 +27,10 @@ from headers.turbo import TurboPump
 from headers.util import display, unweighted_mean
 from headers.edm_util import countdown_for, countdown_until, wait_until_quantity
 
-from calibrate_oceanfx import calibrate as calibrate_oceanfx
+try:
+    from calibrate_oceanfx import calibrate as calibrate_oceanfx
+except:
+    pass
 
 
 
@@ -80,7 +83,7 @@ def melt_crystal(speed = 0.1, end_temp = 9):
 
     # Raise saph temperature
     T1.ramp_temperature('heat saph', 35, speed)
-    wait_until_quantity(('temperatures', 'saph'), '>', 20, unit='K') #WAS 32, ONE HEATER CURRENTLY DOWN - AUG 20, 2021.
+    wait_until_quantity(('temperatures', 'saph'), '>', 22, unit='K') #WAS 32, ONE HEATER CURRENTLY DOWN - AUG 20, 2021.
 
     # Ensure crystal is melted
     #wait_until_quantity(('trans', 'spec'), '>', 95, unit='%')
@@ -97,7 +100,10 @@ def melt_crystal(speed = 0.1, end_temp = 9):
     # Cool down a bit, then calibrate OceanFX.
     T1.ramp_temperature('heat saph', end_temp, speed)
     wait_until_quantity(('temperatures', 'saph'), '<', 20, unit='K')
-    calibrate_oceanfx('baseline', time_limit=1.5 * MINUTE)
+    try:
+        calibrate_oceanfx('baseline', time_limit=1.5 * MINUTE)
+    except:
+        pass
     wait_until_quantity(('temperatures', 'saph'), '<', end_temp + 0.01, unit='K')
 
 
@@ -220,10 +226,10 @@ try:
 #    deep_clean()
 
 #    NORMAL PROCEDURE FOR GOOD CRYSTALS
-#    melt_and_grow(start_temp = 6.5, neon_flow = 0, buffer_flow = 30, growth_time = 3 * HOUR)
+    melt_and_grow(start_temp = 6.5, neon_flow = 0, buffer_flow = 30, growth_time = 3 * HOUR)
 #    stationary_polish()
 
-    grow_only(start_temp=6.5,neon_flow=0,buffer_flow=30,growth_time=1.5*HOUR)
+#    grow_only(start_temp=6.5,neon_flow=0,buffer_flow=30,growth_time=3*HOUR)
 
 finally:
     mfc.off()
