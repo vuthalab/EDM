@@ -59,22 +59,6 @@ class RigolDP832(USBTMCDevice):
 
 
 
-class EOM(RigolDP832):
-    def __init__(self):
-        super().__init__('/dev/upper_power_supply', 2)
-
-    def on(self):
-        self.voltage = 5
-        self.current = 0.1
-        self.enable()
-
-    def off(self):
-        self.disable()
-
-    def is_on(self):
-        return self.enabled
-
-
 
 class TiSaphMicrometer:
     def __init__(self):

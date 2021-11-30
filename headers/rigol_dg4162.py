@@ -23,8 +23,8 @@ class RigolDG4162(USBTMCDevice):
     """The currently active channel (emulated, not on device)."""
     active_channel: Channel = 1
 
-    def __init__(self, ip_address: str = '192.168.0.123'):
-        super().__init__(ip_address, tcp_port=5555, mode='ethernet')
+    def __init__(self):
+        super().__init__('/dev/signal_generator', mode='direct')
         self.active_channel = 1
 
 
@@ -47,7 +47,7 @@ class RigolDG4162(USBTMCDevice):
     def frequency(self, frequency: float) -> None:
         """Set the frequency (Hz) of the currently active channel."""
         assert 1e-6 <= frequency <= 160e6
-        return float(self.query(f':SOURCE{self.active_channel}:FREQ {frequency:.3g}'))
+        self.send_command(f':SOURCE{self.active_channel}:FREQ {frequency:.3g}')
 
 
     @property
@@ -59,7 +59,7 @@ class RigolDG4162(USBTMCDevice):
     def waveform(self, shape: str) -> None:
         """Set the waveform shape of the currently active channel."""
         assert shape.lower() in WAVEFORM_SHAPES
-        return self.query(f':SOURCE{self.active_channel}:FUNC {shape.upper()}')
+        self.send_command(f':SOURCE{self.active_channel}:FUNC {shape.upper()}')
 
 
     @property
@@ -98,12 +98,64 @@ class RigolDG4162(USBTMCDevice):
     @property
     def enabled(self) -> bool:
         """Query whether the currently selected channel is outputting a signal."""
-        return self.query(f':OUT{self.active_channel}?') == 'ON'
+        return self.query(f':OUTPUT{self.active_channel}?') == 'ON'
 
     @enabled.setter
     def enabled(self, enable: bool) -> None:
         enable_str = 'ON' if enable else 'OFF'
-        self.send_command(f':OUT{self.active_channel} {enable_str}')
+        self.send_command(f':OUTPUT{self.active_channel} {enable_str}')
+
+
+    ##### Square Wave Utils #####
+    @property
+    def duty_cycle(self) -> float:
+        """
+        Return the duty cycle (%) of the currently active channel.
+        Must be a square wave.
+        """
+        return float(self.query(f':SOURCE{self.active_channel}:FUNC:SQUARE:DCYCLE?'))
+
+    @duty_cycle.setter
+    def duty_cycle(self, cycle):
+        """
+        Sets the duty cycle (%) of the currently active channel.
+        Must be a square wave.
+        """
+        self.send_command(f':SOURCE{self.active_channel}:FUNC:SQUARE:DCYCLE {cycle:.3f}')
+
+    @property
+    def high(self) -> float:
+        """
+        Return the high voltage of the currently active channel.
+        Must be a square wave.
+        """
+        return float(self.query(f':SOURCE{self.active_channel}:VOLT:HIGH?'))
+
+    @high.setter
+    def high(self, value: float) -> None:
+        """
+        Sets the high voltage of the currently active channel.
+        Must be a square wave.
+        """
+        self.send_command(f':SOURCE{self.active_channel}:VOLT:HIGH {value:.3g}')
+
+    @property
+    def low(self) -> float:
+        """
+        Return the low voltage of the currently active channel.
+        Must be a square wave.
+        """
+        return float(self.query(f':SOURCE{self.active_channel}:VOLT:LOW?'))
+
+    @low.setter
+    def low(self, value: float) -> None:
+        """
+        Sets the low voltage of the currently active channel.
+        Must be a square wave.
+        """
+        self.send_command(f':SOURCE{self.active_channel}:VOLT:LOW {value:.3g}')
+
+
 
 
 if __name__ == '__main__':

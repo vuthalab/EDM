@@ -2,11 +2,20 @@ import time
 
 import numpy as np
 
+from uncertainties import ufloat
+
 from headers.usb4000spectrometer import USB4000Spectrometer
 from headers.zmq_server_socket import create_server
 
 from headers.edm_util import deconstruct
 from headers.util import nom, std, unweighted_mean
+
+
+slope = ufloat(-6.51, 0.05) * 1e-3
+intercept = ufloat(-1.4614, 0.0015)
+def correction(spec_wl):
+    return slope * (spec_wl - 860) + intercept
+
 
 
 window_width = 100
@@ -37,10 +46,13 @@ def usb4000_thread():
                 time.sleep(0.5)
                 continue
 
+            # Correction factor calibrated to wavemeter
+            peak_fine += correction(peak_fine)
+
             data = {
-                'wavelength': peak_fine,
+                'wavelength': deconstruct(peak_fine),
                 'linewidth': 2 * peak_stdev, 
-                'frequency': speed_of_light / peak_fine,
+                'frequency': deconstruct(speed_of_light / peak_fine),
             }
             publisher.send(data)
 

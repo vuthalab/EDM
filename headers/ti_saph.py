@@ -72,10 +72,12 @@ class TiSapphire:
     def wavemeter_wavelength(self) -> float:
         """Returns the wavelength from the wavemeter [nm]."""
 
+#        assert False # TEMP
+
         # Try reading from wavemeter
         freq = self.wm.read_frequency(self.channel)
 
-        if not isinstance(freq, float) or freq > 400000:
+        if not isinstance(freq, float) or freq > 500000:
             # If we get a bad reading, throw an exception
             assert False
 
@@ -84,13 +86,13 @@ class TiSapphire:
     @property
     def spectrometer_wavelength(self) -> float:
         """Returns the vacuum wavelength of the laser as given by spectrometer [nm]."""
-        return float(speed_of_light) / float(self.frequency)
+        return float(speed_of_light) / self.frequency
 
     @property
     def frequency(self) -> float:
-        """Returns the frequency of the laser [GHz]."""
+        """Returns the frequency of the laser from spectrometer [GHz]."""
         self._grab_data()
-        return self._cache['frequency']
+        return ufloat(*self._cache['frequency'])
 
     @property
     def linewidth(self) -> float:
@@ -120,7 +122,8 @@ class TiSapphire:
         try:
             while True:
                 speed = 7 * abs(current-target)
-                speed = min(max(speed, 13), 100)
+#                speed = min(max(speed, 13), 100)
+                speed = min(max(speed, 13), 40)
                 self.micrometer.speed = direction * speed
                 
                 current = self.wavelength

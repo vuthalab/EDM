@@ -63,19 +63,21 @@ fields = {
 #    ('intensity (broadband)', 'V '): ('intensities', 'broadband'),
 #    ('intensity (LED)', 'V '): ('intensities', 'LED'),
 
-    ('reflection (from camera, centroid)', 'V'): ('refl', 'cam'),
-    ('reflection (from camera, neural network)', 'V'): ('refl', 'ai'),
+#    ('reflection (from camera, centroid)', 'V'): ('refl', 'cam'),
+#    ('reflection (from camera, neural network)', 'V'): ('refl', 'ai'),
 
-    ('fringe count', 'fringes'): ('fringe', 'count'),
-    ('fringe amplitude', '%  '): ('fringe', 'ampl'),
+#    ('fringe count', 'fringes'): ('fringe', 'count'),
+#    ('fringe amplitude', '%  '): ('fringe', 'ampl'),
 
-    ('transmission (overall, from spectrometer)', '%'): ('trans', 'spec'),
-    ('transmission (non-roughness sources only)', '%'): ('trans', 'unexpl'),
+#    ('transmission (overall, from spectrometer)', '%'): ('trans', 'spec'),
+#    ('transmission (non-roughness sources only)', '%'): ('trans', 'unexpl'),
 
-    ('BaF Laser', 'GHz'): ('freq', 'baf'),
+    ('BaF Laser', 'GHz '): ('freq', 'baf'),
     ('Ti:Sapphire Laser (from wavemeter)', 'GHz'): ('freq', 'ti-saph'),
     ('Ti:Sapphire Laser (from spectrometer)', 'GHz'): ('freq', 'ti-saph-spec'),
 #    ('Ca Laser', 'GHz '): ('freq', 'calcium'),
+
+    ('BaF error signal', 'mV'): ('error-signals', 'baf'),
 
     ('BaF Laser', 'uW into wavemeter'): ('intensities', 'baf'),
     ('Ti:Sapphire Laser', 'uW into wavemeter'): ('intensities', 'ti-saph'),
@@ -83,13 +85,22 @@ fields = {
 
     ('Ti:Sapphire linewidth (from spectrometer)', 'nm '): ('ti-saph', 'linewidth'),
 
-    ('rms roughness (from spectrometer)', 'nm'): ('rough', 'surf'),
-    ('second-order roughness coefficient', 'micron$^2$'): ('rough', 'second-order'),
-    ('fourth-order roughness coefficient (rayleigh $- K \sigma^4$)', 'micron nm$^3$'): ('rough', 'fourth-order'),
+    ('pump beam power, total', 'mW'): ('pump', 'power'),
+    ('pump beam power, vertically polarized component', 'mW'): ('pump', 'power-vert'),
+    ('pump beam power, horizontally polarized component', 'mW'): ('pump', 'power-horiz'),
+
+    ('pump beam angle (from photodiode calibration)', 'degrees'): ('pump', 'angle'),
+    ('pump beam angle (from EOM gain calibration) ', 'degrees'): ('pump', 'angle-model'),
+
+
+
+#    ('rms roughness (from spectrometer)', 'nm'): ('rough', 'surf'),
+#    ('second-order roughness coefficient', 'micron$^2$'): ('rough', 'second-order'),
+#    ('fourth-order roughness coefficient (rayleigh $- K \sigma^4$)', 'micron nm$^3$'): ('rough', 'fourth-order'),
     ('crystal thickness (dead reckoning)', 'micron'): ('height',),
 
-    ('roughness reduced-$\\chi^2$', ''): ('rough', 'chisq'),
-    ('oceanfx hdr reduced-$\\chi^2$', ''): ('rough', 'hdr-chisq'),
+#    ('roughness reduced-$\\chi^2$', ''): ('rough', 'chisq'),
+#    ('oceanfx hdr reduced-$\\chi^2$', ''): ('rough', 'hdr-chisq'),
 
     ('saph heat', 'W'): ('heaters', 'heat saph'),
     ('nozzle heat', 'W'): ('heaters', 'heat coll'),
@@ -109,13 +120,12 @@ fields = {
     ('verdi baseplate', '°C'): ('temperatures', 'verdi', 'baseplate'),
     ('verdi vanadate', '°C'): ('temperatures', 'verdi', 'vanadate'),
     ('highfinesse wavemeter', '°C'): ('temperatures', 'wavemeter'),
-
     ('verdi power', 'W'): ('verdi', 'power'),
 
-    ('beam center x (from camera)', '% '): ('center', 'x'),
-    ('beam center y (from camera)', '% '): ('center', 'y'),
+#    ('beam center x (from camera)', '% '): ('center', 'x'),
+#    ('beam center y (from camera)', '% '): ('center', 'y'),
 
-    ('camera integration time', 'μs'): ('center', 'exposure'),
+#    ('camera integration time', 'μs'): ('center', 'exposure'),
     ('uptime', 'hr'): ('debug', 'uptime'),
     ('publisher memory usage', 'KB'): ('debug', 'memory'),
     ('system memory usage', 'KB'): ('debug', 'system-memory'),
@@ -145,28 +155,31 @@ axis_labels = [
     'sccm',
 
     'GHz',
-#    'GHz ',
+    'GHz ',
+    'mV',
     'uW into wavemeter',
     'nm ',
+    'mW',
+    'degrees',
 
-    'V',
-    '%',
+#    'V',
+#    '%',
 
-    'nm',
-    'micron$^2$',
-    'micron nm$^3$',
+#    'nm',
+#    'micron$^2$',
+#    'micron nm$^3$',
     'micron',
 
-    'fringes',
-    '%  ',
+#    'fringes',
+#    '%  ',
 
-    'V ',
-    '% ',
+#    'V ',
+#    '% ',
 #    'pixels',
 #    'counts',
 
-    '',
-    'μs',
+#    '',
+#    'μs',
     'hr',
     'KB',
 
@@ -228,7 +241,7 @@ locator = mpdates.AutoDateLocator()
 formatter = mpdates.ConciseDateFormatter(locator)
 plt.gca().xaxis.set_major_formatter(formatter)
 
-for label in ['torr', 'μs', '', 'uW into wavemeter']:
+for label in ['torr', 'uW into wavemeter']:#, 'μs', '']:
     axes[axis_labels.index(label)].set_yscale('log')
 
 ##### animated plot #####

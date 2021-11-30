@@ -10,9 +10,10 @@ from headers.mfc import MFC
 from headers.pulse_tube import PulseTube
 from headers.turbo import TurboPump
 from headers.ti_saph import TiSapphire
-from headers.elliptec_rotation_stage import ElliptecRotationStage
-from headers.labjack_device import Labjack
 from headers.filter_wheel import FilterWheel
+from usb_power_meter.Power_meter_2 import PM16 
+
+from headers.api import EOM, MountedBandpass, PumpLaser
 
 MINUTE = 60
 HOUR = 60 * MINUTE
@@ -25,16 +26,24 @@ HOUR = 60 * MINUTE
 #mfc = MFC(31417)
 #turbo = TurboPump()
 #pt = PulseTube()
-ti_saph = TiSapphire()
-mount = ElliptecRotationStage()
-#pmt_gain = Labjack(470022275)
-wheel = FilterWheel()
-eom = Labjack(470022275)
 
+eom = EOM()
+bandpass = MountedBandpass()
+pump = PumpLaser()
+pm = PM16('/dev/power_meter')
 
 ## Uncomment whatever commands you want and run the file ##
-#pmt_gain.write('DAC0', 1.0)
-#mount.angle = 0
+pump.source = 'tisaph'
+pump.ti_saph.verdi.power = 8
+while True:
+    print(pump)
+    pump.wavelength = int(input('Wavelength? '))
+
+print(bandpass.wavelength)
+
+#eom.high = 5
+#eom.low = 0
+#eom.frequency = 0.05
 
 #mfc.flow_rate_cell = 0
 #mfc.flow_rate_neon_line = 0
@@ -42,36 +51,19 @@ eom = Labjack(470022275)
 #time.sleep(1*HOUR)
 #turbo.on()
 #turbo.off()
-#ti_saph.verdi.power = 6
-#while True:
-#    ti_saph.wavelength = int(input('Wavelength? '))
-#mount.angle = 15
-
-#while True:
-#    wheel.position = 2
-#    time.sleep(3)
-#    wheel.position = 1
-#    time.sleep(3)
 
 #pt.on()
 #pt.off()
-#print(ti_saph.wavelength)
 
+#cracking crystal procedure
+#print('cracking')
 #T1.enable_output()
 #T2.enable_output()
-#T1.ramp_temperature('heat saph', 90.0, 1.0)
-#T1.ramp_temperature('heat coll', 90.0, 1.0)
-
-#T1.ramp_temperature('heat saph', 30, 1.0)
-#T1.ramp_temperature('heat coll', 320, 1.0)
-#T2.ramp_temperature('srb4k out', 320, 1.0)
-#T2.ramp_temperature('srb45k out', 320, 1.0)
-#time.sleep(30 * MINUTE)
-
-#time.sleep(2 * HOUR)
-#T1.disable_PID('heat saph')
-#T1.disable_PID('heat coll')
-#T2.disable_PID('srb4k out')
-#T2.disable_PID('srb45k out')
+#T1.ramp_temperature('heat saph', 11.0, 0.5)
+#T1.ramp_temperature('heat saph', 7.0 , 0.5)
+#T1.ramp_temperature('heat saph', 11.0, 0.5)
+#T1.ramp_temperature('heat saph', 5.0, 0.5)
+#T1.ramp_temperature('heat saph',11.0, 0.5)
+#T1.ramp_temperature('heat saph',4.5, 0.5 )
+#T1.ramp_temperature('heat saph',12.0, 0.5)
 #T1.disable_output()
-#T2.disable_output()

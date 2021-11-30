@@ -13,7 +13,7 @@ from struct import unpack
 
 
 class PulseTube:
-    def __init__(self,address='192.168.0.118'):
+    def __init__(self,address='192.168.0.101'):
         self.device = ModbusTcpClient(address)
         if self.device.connect(): print(f"connected to pulse tube @ {address} \n")
 

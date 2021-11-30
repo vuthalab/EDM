@@ -25,15 +25,15 @@ ti_saph = TiSapphire()
 scope = RigolDS1102e(LABJACK_SCOPE)
 
 # ===== Define Operating parameters =====
-RESISTANCE = 10000 # photodiode resistor
-FILTER = 1.0 #ND filter
+RESISTANCE = 100 # photodiode resistor
+FILTER = 0.0 #ND filter
 
 # Ti:Saph wavelengths to scan
-START_WAVELENGTH = 760 # nm
-END_WAVELENGTH = 900 # nm
+START_WAVELENGTH = 900 # nm
+END_WAVELENGTH = 940 # nm
 WAVELENGTH_SCAN_SPEED = 15 # percentage of maximum
 
-VERDI_POWERS = np.array([5.0])#np.linspace(5, 9, 17) # Powers to scan over
+VERDI_POWERS = np.array([10.0])#np.linspace(5, 9, 17) # Powers to scan over
 SCANS_PER_POWER = 10 # Number of scans at each tisaph power
 
 

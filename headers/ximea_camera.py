@@ -114,6 +114,7 @@ if __name__ == '__main__':
             rate_image = cam.rate_image
             resized = cv2.resize(rate_image, (968, 728))
             peak = np.percentile(resized, 99.9)
+            peak = 4096
             processed = np.maximum(np.minimum(256 * resized/(1.2*peak), 255), 0).astype(np.uint8)
 #            processed = np.maximum(np.minimum(30 * np.log(resized), 255), 0).astype(np.uint8)
             cv2.imshow('Image', processed)

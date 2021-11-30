@@ -188,7 +188,12 @@ class WM:
         """ Returns laser power of channel in uW """
         power = self.dll.GetPowerNum(channel,0)
         return float(power)
-        
+
+    @_mode_check
+    def read_linewidth(self, channel):
+        """Returns the linewidth of channel in GHz."""
+        linewidth = self.dll.GetLinewidthNum(channel, 0)
+        return float(linewidth)
     
     @_mode_check
     def get_lock_setpoint(self,channel):

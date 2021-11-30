@@ -37,14 +37,18 @@ pt.off()
 
 
 # [Optional] Accelerate warmup.
-#T1.enable_output()
-#T2.enable_output()
-#T1.ramp_temperature('heat saph', 310, 0.5)
-#T2.ramp_temperature('srb45k out', 310, 0.5)
-#T2.ramp_temperature('srb4k out', 310, 0.5)
+T1.enable_output()
+T2.enable_output()
+T1.ramp_temperature('heat saph', 310, 0.5)
+T1.ramp_temperature('heat coll', 310, 0.5)
+T2.ramp_temperature('srb45k out', 310, 0.5)
+T2.ramp_temperature('srb4k out', 310, 0.5)
 
 # Wait for room temperature.
-#wait_until_quantity(
-#    ('temperatures', 'saph'), '>', 300,
-#    unit='K'
-#)
+wait_until_quantity(
+    ('temperatures', 'srb45k'), '>', 300,
+    unit='K'
+)
+
+T1.disable_output()
+T2.disable_output()

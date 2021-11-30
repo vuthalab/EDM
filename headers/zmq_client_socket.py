@@ -47,6 +47,12 @@ class zmq_client_socket:
 
         print('Connected to', connection_settings['topic'], 'on port', connection_settings['port'])
 
+    def flush(self):
+        """Clear all data in buffer."""
+        while True:
+            _, data = self.grab_json_data()
+            if data is None: break
+
 
     def grab_json_data(self):
         data = self.grab_data()

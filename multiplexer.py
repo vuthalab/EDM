@@ -115,7 +115,7 @@ class ClientThread(threading.Thread):
                 # where stuff actually happens.
                 try:
                     self.multiplexer._handler(self, msg)
-                except:
+                except Exception as e:
                     print('Error in handler:', e)
         except Exception as e:
             print(e)

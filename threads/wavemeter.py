@@ -32,34 +32,43 @@ def wavemeter_thread():
         while True:
             frequencies = {}
             powers = {}
+            voltages = {}
+#            linewidths = {}
 
             freq_samples = {c: [] for c in channels.keys()}
             power_samples = {c: [] for c in channels.keys()}
+            volt_samples = {c: [] for c in channels.keys()}
+#            linewidth_samples = {c: [] for c in channels.keys()}
             temp_samples = []
             for i in range(8):
                 temp_samples.append(wm.read_temperature())
                 time.sleep(5e-3)
 
                 for c, c_num in channels.items():
+                    for method, dst in [
+                        (wm.read_frequency, freq_samples),
+                        (wm.read_laser_power, power_samples),
+                        (wm.get_external_output, volt_samples),
+#                        (wm.read_linewidth, linewidth_samples),
+                    ]:
+                        sample = method(c_num)
+                        if isinstance(sample, float): dst[c].append(sample)
+                        time.sleep(5e-3)
 
-                    sample = wm.read_frequency(c_num)
-                    if isinstance(sample, float): freq_samples[c].append(sample)
-                    time.sleep(5e-3)
-
-                    sample = wm.read_laser_power(c_num)
-                    if isinstance(sample, float): power_samples[c].append(sample)
-                    time.sleep(5e-3)
-
-            for key, vals in freq_samples.items():
-                if len(vals) > 1:
-                    frequencies[key] = (np.mean(vals), np.std(vals, ddof=1))
-
-            for key, vals in power_samples.items():
-                if len(vals) > 1:
-                    powers[key] = (np.mean(vals), np.std(vals, ddof=1))
+            for src, dst in [
+                (freq_samples, frequencies),
+                (power_samples, powers),
+                (volt_samples, voltages),
+#                (linewidth_samples, linewidths),
+            ]:
+                for key, vals in src.items():
+                    if len(vals) > 1:
+                        dst[key] = (np.mean(vals), np.std(vals, ddof=1))
 
             publisher.send({
                 'freq': frequencies,
                 'power': powers,
+                'voltages': voltages,
+#                'linewidth': linewidths,
                 'temp': (np.mean(temp_samples), np.std(temp_samples, ddof=1))
             })

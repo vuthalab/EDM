@@ -117,8 +117,8 @@ with RigolDS1102e(address='/dev/usbtmc0') as scope:
                     print(time.time(), ' '.join(f'{x:.5f}' for x in acq2), file=f)
 
                 # Log dip sizes
-                traces = acquisitions[:, 0] + 0.2 # TEMPORARY BODGE FOR AC COUPLE
-#                traces = acquisitions[:, 0]
+#                traces = acquisitions[:, 0] + 0.2 # TEMPORARY BODGE FOR AC COUPLE
+                traces = acquisitions[:, 0]
                 dip_size = 100 - 100 * np.min(traces, axis=1) / np.max(traces, axis=1)
                 publisher.send({
                     'dip': {

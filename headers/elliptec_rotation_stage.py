@@ -37,7 +37,7 @@ class ElliptecRotationStage:
             self,
             port='/dev/rotation_mount', 
             address: int = 0, # Device address on controller bus.
-            offset: int = 22966, # Software angle offset, in encoder counts.
+            offset: int = 9175, # Software angle offset, in encoder counts.
         ):
         self._conn = serial.Serial(port, baudrate=9600, stopbits=1, parity='N', timeout=0.05)
         self.address = 0

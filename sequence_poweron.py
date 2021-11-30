@@ -36,6 +36,7 @@ mfc.off()
 T1.enable_output()
 T2.disable_output()
 T1.ramp_temperature('heat saph', 77, 1e-2)
+T1.ramp_temperature('heat coll', 77, 1e-2)
 pt.on()
 
 

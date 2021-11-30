@@ -17,6 +17,7 @@ from headers.rigol_ds1102e import RigolDS1102e
 
 from models.fringe_counter import FringeCounter
 from models.growth_rate import GrowthModel
+from models.polarization import power_and_polarization, eom_angle_from_gain
 
 from threads.spectrometer import spectrometer_thread
 from threads.webcam import webcam_thread
@@ -31,6 +32,8 @@ from threads.verdi import verdi_thread
 from threads.usb4000 import usb4000_thread 
 from threads.ei1050 import ei1050_thread
 from threads.qe_pro import qe_pro_thread 
+from threads.scope import scope_thread
+from threads.labjack import labjack_thread
 
 
 PUBLISH_INTERVAL = 2/1.4 # publish every x seconds.
@@ -39,16 +42,18 @@ PUBLISH_INTERVAL = 2/1.4 # publish every x seconds.
 THREADS = {
 #    'spectrometer': spectrometer_thread,
     'wavemeter': wavemeter_thread,
-    'fringe-cam': camera_thread,
+#    'fringe-cam': camera_thread,
     'pressure': pressure_thread,
     'turbo': turbo_thread,
-    'ctc': ctc_thread,
+#    'ctc': ctc_thread,
     'pt': pt_thread,
     'mfc': mfc_thread,
     'verdi': verdi_thread,
     'usb4000': usb4000_thread,
     'ei1050': ei1050_thread,
 #    'qe-pro': qe_pro_thread,
+    'scope': scope_thread,
+    'labjack': labjack_thread,
 }
 
 
@@ -114,6 +119,8 @@ def run_publisher():
             if thread_up['wavemeter']:
                 data['freq'] = raw_data['wavemeter']['freq']
                 data['intensities'] = raw_data['wavemeter']['power']
+                data['error-signals'] = raw_data['wavemeter']['voltages']
+#                data['linewidths'] = raw_data['wavemeter']['linewidth']
                 data['temperatures']['wavemeter'] = raw_data['wavemeter']['temp']
 
             if thread_up['usb4000']:
@@ -152,9 +159,17 @@ def run_publisher():
                 data['running'] = {**data['running'], **raw_data['verdi']['running']}
                 data['temperatures']['verdi'] = data['verdi']['temp']
 
+            if thread_up['scope']:
+                v1 = raw_data['scope']['ch1']
+                v2 = raw_data['scope']['ch2']
+                data['pump'] = {'v1': v1, 'v2': v2}
+
+            if thread_up['labjack']:
+                if 'pump' not in data: data['pump'] = {}
+                data['pump']['eom-gain'] = raw_data['labjack']['dac0']
 
             # Update models
-            if thread_up['ctc'] and thread_up['mfc'] and thread_up['fringe-cam']:
+            if thread_up['ctc'] and thread_up['mfc']:
                 saph_temp = data['temperatures']['saph']
 
                 if saph_temp is not None:
@@ -163,17 +178,47 @@ def run_publisher():
                         ufloat(*data['flows']['cell']),
                         saph_temp
                     )
-                    fringe_counter.update(
-                        data['refl']['ai'][0],
-                        grow=(growth_model._growth_rate.n > 0)
-                    )
-                    if saph_temp > 13: fringe_counter.reset()
-
                     data['height'] = deconstruct(growth_model.height)
-                    data['fringe'] = {
-                        'count': fringe_counter.fringe_count,
-                        'ampl': fringe_counter.amplitude,
-                    }
+
+                    if thread_up['fringe-cam']:
+                        fringe_counter.update(
+                            data['refl']['ai'][0],
+                            grow=(growth_model._growth_rate.n > 0)
+                        )
+                        if saph_temp > 13: fringe_counter.reset()
+                        data['fringe'] = {
+                            'count': fringe_counter.fringe_count,
+                            'ampl': fringe_counter.amplitude,
+                        }
+
+                data['running'] = {**data['running'], **raw_data['verdi']['running']}
+                data['temperatures']['verdi'] = data['verdi']['temp']
+
+            if thread_up['scope'] and 'freq' in data:
+                freq = None
+
+                if 'ti-saph' in data['freq']:
+                    freq = ufloat(*data['freq']['ti-saph'])
+                elif 'ti-saph-spec' in data['freq']:
+                    freq = ufloat(*data['freq']['ti-saph-spec'])
+
+                if freq is not None:
+                    v1 = ufloat(*data['pump']['v1'])
+                    v2 = ufloat(*data['pump']['v2'])
+
+                    speed_of_light = 299792458
+                    wl = speed_of_light / freq
+
+                    power_vert, power_horiz, angle = power_and_polarization(v1, v2, wl)
+                    data['pump']['power'] = deconstruct(power_vert + power_horiz)
+                    data['pump']['power-vert'] = deconstruct(power_vert)
+                    data['pump']['power-horiz'] = deconstruct(power_horiz)
+                    data['pump']['angle'] = deconstruct(angle)
+
+                    if 'eom-gain' in data['pump']:
+                        gain = ufloat(*data['pump']['eom-gain'])
+                        model_angle = eom_angle_from_gain(gain, wl)
+                        data['pump']['angle-model'] = deconstruct(model_angle)
 
 
             # Add debug info
