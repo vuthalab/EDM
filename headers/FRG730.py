@@ -9,6 +9,8 @@ class FRG730:
         self._gauge = serial.Serial(address,baudrate=9600,stopbits=1,parity='N',timeout=0.1)
         self._last_reading = (None, None)
 
+        self.set_torr()
+
     def read(self, Nbyte):
         return self._gauge.read(Nbyte) #Reads Nbyte bytes from values being streamed by ion gauge
 

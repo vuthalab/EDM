@@ -135,6 +135,9 @@ fields = {
     ('fridge RH', ' % '): ('fridge', 'relative_humidity'),
     ('fridge absolute humidity', 'g/m$^3$'): ('fridge', 'absolute_humidity'),
 
+    ('turbo speed', 'Hz'): ('turbo', 'frequency'),
+    ('turbo current', 'mA'): ('turbo', 'current'),
+
     ('pulsetube coolant in', '°C '): ('pt', 'coolant in temp [C]'),
     ('pulsetube coolant out', '°C '): ('pt', 'coolant out temp [C]'),
     ('pulsetube helium', '°C '): ('pt', 'helium temp [C]'),
@@ -186,6 +189,9 @@ axis_labels = [
     '°C  ',
     ' % ',
     'g/m$^3$',
+
+    'Hz',
+    'mA',
 
     '°C ',
     'psi',

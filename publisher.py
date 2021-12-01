@@ -3,6 +3,7 @@ import itertools
 import threading
 import psutil
 import traceback
+import random
 from collections import defaultdict
 
 from colorama import Fore, Style
@@ -45,7 +46,7 @@ THREADS = {
 #    'fringe-cam': camera_thread,
     'pressure': pressure_thread,
     'turbo': turbo_thread,
-#    'ctc': ctc_thread,
+    'ctc': ctc_thread,
     'pt': pt_thread,
     'mfc': mfc_thread,
     'verdi': verdi_thread,
@@ -191,9 +192,6 @@ def run_publisher():
                             'ampl': fringe_counter.amplitude,
                         }
 
-                data['running'] = {**data['running'], **raw_data['verdi']['running']}
-                data['temperatures']['verdi'] = data['verdi']['temp']
-
             if thread_up['scope'] and 'freq' in data:
                 freq = None
 
@@ -244,14 +242,14 @@ def run_publisher():
 ##### No need to touch the below code #####
 
 def wrap_thread(name, thread_func):
-    delay = 10
 
     while True:
         print(f'Starting {Style.BRIGHT}{name}{Style.RESET_ALL} thread')
         try:
             thread_func()
         except:
-            print(f'{Fore.RED}{name} thread crashed!{Style.RESET_ALL} Retrying after {delay} seconds...')
+            delay = 10 + 3 * random.random()
+            print(f'{Fore.RED}{name} thread crashed!{Style.RESET_ALL} Retrying after {delay:.2f} seconds...')
             traceback.print_exc()
             time.sleep(delay)
 

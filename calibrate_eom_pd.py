@@ -22,7 +22,7 @@ pm = PM16('/dev/power_meter')
 
 monitor = connect_to('scope')
 
-gains = np.linspace(0, 5, 26)
+gains = np.linspace(0, 5, 21)
 
 def mean(arr): return ufloat(np.mean(arr), np.std(arr))
 
@@ -36,7 +36,7 @@ def get_samples(f, wl):
 
         samples = [], []
         power_samples = []
-        for i in range(5):
+        for i in range(3):
             print(f'{gain:.3f} V gain | {i} samples', end='\r')
             
             try:
@@ -75,8 +75,8 @@ while True:
     print('Ti:sapphire Laser')
     pump.source = 'tisaph'
 
-    wavelengths = np.linspace(840, 900, 13)
-    powers = np.linspace(6, 9, 4)
+    wavelengths = np.linspace(750, 910, 33)
+    powers = np.linspace(7, 9, 3)
     np.random.shuffle(wavelengths)
     with open('calibration/tisaph_pd.txt', 'a') as f:
         for wavelength in wavelengths:

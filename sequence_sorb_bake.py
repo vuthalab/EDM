@@ -30,5 +30,5 @@ T2.ramp_temperature('srb4k out', 330, 0.5)
 T2.enable_output()
 
 # Wait for a while, then end bake.
-time.sleep(30 * MINUTE)
+time.sleep(90 * MINUTE)
 T2.disable_output()

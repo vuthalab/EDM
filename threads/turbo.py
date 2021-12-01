@@ -12,6 +12,8 @@ def turbo_thread():
             status = turbo.operation_status
             publisher.send({
                 'status': status,
+                'frequency': turbo.speed,
+                'current': turbo.current,
                 'running': (status == 'normal'),
             })
             time.sleep(0.5)

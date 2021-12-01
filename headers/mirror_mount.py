@@ -746,7 +746,7 @@ class microcontroller:
 
 
     def music_scan(self, amplitude=1):
-        self.client_socket = connect_to('scope')
+        self.client_socket = connect_to('ablation-scope')
         self.client_socket.make_connection()
         self.model = MirrorModel()
 

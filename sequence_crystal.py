@@ -83,7 +83,7 @@ def melt_crystal(speed = 0.1, end_temp = 9):
 
     # Raise saph temperature
     T1.ramp_temperature('heat saph', 35, speed)
-    wait_until_quantity(('temperatures', 'saph'), '>', 22, unit='K') #WAS 32, ONE HEATER CURRENTLY DOWN - AUG 20, 2021.
+    wait_until_quantity(('temperatures', 'saph'), '>', 22, unit='K', source='ctc') #WAS 32, ONE HEATER CURRENTLY DOWN - AUG 20, 2021.
 
     # Ensure crystal is melted
     #wait_until_quantity(('trans', 'spec'), '>', 95, unit='%')
@@ -99,12 +99,12 @@ def melt_crystal(speed = 0.1, end_temp = 9):
 
     # Cool down a bit, then calibrate OceanFX.
     T1.ramp_temperature('heat saph', end_temp, speed)
-    wait_until_quantity(('temperatures', 'saph'), '<', 20, unit='K')
+    wait_until_quantity(('temperatures', 'saph'), '<', 20, unit='K', source='ctc')
     try:
         calibrate_oceanfx('baseline', time_limit=1.5 * MINUTE)
     except:
         pass
-    wait_until_quantity(('temperatures', 'saph'), '<', end_temp + 0.01, unit='K')
+    wait_until_quantity(('temperatures', 'saph'), '<', end_temp + 0.01, unit='K', source='ctc')
 
 
 # total time: 6 minutes
@@ -115,14 +115,14 @@ def melt_and_anneal(neon_flow = 4, end_temp = 9):
     log_entry('Annealing (starting neon line).')
     mfc.flow_rate_neon_line = 4
     T1.ramp_temperature('heat saph', 9.5, 0.005)
-    wait_until_quantity(('temperatures', 'saph'), '<', 9.6, unit='K')
+    wait_until_quantity(('temperatures', 'saph'), '<', 9.6, unit='K', source='ctc')
 
     # Grow a few layers.
     countdown_for(2 * MINUTE)
 
     # Cool down to temp slowly.
     T1.ramp_temperature('heat saph', end_temp, 0.1)
-    wait_until_quantity(('temperatures', 'saph'), '<', end_temp + 0.01, unit='K')
+    wait_until_quantity(('temperatures', 'saph'), '<', end_temp + 0.01, unit='K', source='ctc')
 
 #    mfc.off() # commented out to avoid pause between anneal + growth
 

@@ -17,17 +17,17 @@ log_file = root_dir / (time.strftime('%Y-%m-%d %H꞉%M꞉%S') + '.txt')
 
 N_AVERAGE = 16 # How many traces to average over
 
-ENABLE_LOGGING = True
+ENABLE_LOGGING = False
 
 if not ENABLE_LOGGING:
     print(f'{Fore.RED}WARNING: LOGGING IS OFF!{Style.RESET_ALL}')
     time.sleep(5)
 
-publisher = create_server('scope')
+publisher = create_server('ablation-scope')
 
 ##### Main Program #####
 # Initialize connection
-with RigolDS1102e(address='/dev/usbtmc0') as scope:
+with RigolDS1102e(address='/dev/usbtmc2') as scope:
     # # Set scope 2
     # scope.active_channel = 2
     # scope.voltage_scale = 1 # V/div

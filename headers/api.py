@@ -88,7 +88,7 @@ class PumpLaser:
 
         self._monitor = connect_to('scope')
         self._cache = None
-        self.polarization = 45
+        self._target_polarization = 45
 
     ##### Internal Methods #####
     @property

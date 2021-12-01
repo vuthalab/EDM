@@ -20,7 +20,7 @@ Physical preparations.
 
 
 Software preparations: 
-10) set up screens for multiplexer, publisher, plotter, and sequence (see operation_procedure.md for instructions) in this order
+10) set up screens for multiplexer, publisher, logger, plotter, and sequence (see operation_procedure.md for instructions) in this order
         10.1 multiplexer runs multiplexer.py, publisher runs publisher.py, plotter runs, liveplot_server.sh, and sequence will run the various growth sequences necessary.
 
 Starting Experiment: 
