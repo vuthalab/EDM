@@ -27,7 +27,7 @@ from headers.verdi import Verdi
 from headers.qe_pro import QEProSpectrometer
 from headers.CTC100 import CTC100
 
-from headers.api import EOM, PumpLaser
+from api.pump_laser import EOM, PumpLaser
 
 
 configuration = {

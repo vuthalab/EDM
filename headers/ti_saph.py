@@ -106,7 +106,15 @@ class TiSapphire:
         try:
             return self.wavemeter_wavelength
         except AssertionError:
-            return self.spectrometer_wavelength - 1.83
+            return self.spectrometer_wavelength
+
+    @property
+    def fast_wavelength(self) -> float:
+        """Returns the vacuum wavelength of the laser [nm]. Tries to use the spectrometer, but uses the wavemeter if this does not work."""
+        try:
+            return self.spectrometer_wavelength
+        except:
+            return self.wavemeter_wavelength
 
 
     @wavelength.setter
@@ -120,18 +128,28 @@ class TiSapphire:
         direction = -1 if (current > target) else 1
 
         try:
+            min_delta = 999999
+
             while True:
                 speed = 7 * abs(current-target)
 #                speed = min(max(speed, 13), 100)
                 speed = min(max(speed, 13), 40)
                 self.micrometer.speed = direction * speed
                 
-                current = self.wavelength
+#                current = nom(self.fast_wavelength)
+                current = nom(self.wavelength)
 
                 # Stop when target reached
                 delta = direction * (target - current)
-                if delta < 0.1: # < 0:
+                if delta < 0.1: # Allow stopping a bit early
                     break
+
+                min_delta = min(min_delta, delta)
+                if delta > min_delta + 20: # Wavelength jumps up: wraparound?
+                    self.micrometer.speed = -100 * direction
+                    time.sleep(5)
+                    raise ValueError('Wavelength out of range!')
+
 
                 print(f'\rTarget: {target:.3f} nm | Current: {current:.3f} nm | Speed: {direction*speed:.1f} %', end='')
                 time.sleep(0.2)

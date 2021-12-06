@@ -661,12 +661,15 @@ class microcontroller:
 
     @property
     def _dip_size(self):
+        # TODO FIX
+        return 5
         samples = []
         while True:
             ret = self.client_socket.grab_data()
             if ret is None: break
 
             ts, data = self.client_socket._decode(ret)
+
             samples.append(data['dip'][DIP_CHANNEL])
 
         if len(samples) > 0:

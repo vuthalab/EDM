@@ -12,16 +12,16 @@ from colorama import Style, Fore
 # Date format must be YYYY-MM-DD
 # Time format must be HH:MM:SS (24-hour format)
 # End time can be in the future to get all data after a certain point
-START_TIME = ('2021-07-25', '21:40:00')
-END_TIME = ('2021-07-26', '22:00:00')
+START_TIME = ('2021-11-03', '21:40:00')
+END_TIME = ('2021-11-03', '22:00:00')
 
 # Map from plot labels (name, unit) to paths in data
 # Choose which fields you want to extract here
 fields = {
 #    ('pressure', 'torr'): ('pressure',),
 
-    ('buffer flow', 'sccm'): ('flows', 'cell'),
-    ('neon flow', 'sccm'): ('flows', 'neon'),
+#    ('buffer flow', 'sccm'): ('flows', 'cell'),
+#    ('neon flow', 'sccm'): ('flows', 'neon'),
 
 #    ('intensity (broadband)', 'V '): ('intensities', 'broadband'),
 #    ('intensity (LED)', 'V '): ('intensities', 'LED'),
@@ -29,35 +29,35 @@ fields = {
 #    ('reflection (from camera, centroid)', 'V'): ('refl', 'cam'),
 #    ('reflection (from camera, neural network)', 'V'): ('refl', 'ai'),
 
-    ('fringe count', 'fringes'): ('fringe', 'count'),
-    ('fringe amplitude', '%  '): ('fringe', 'ampl'),
+#    ('fringe count', 'fringes'): ('fringe', 'count'),
+#    ('fringe amplitude', '%  '): ('fringe', 'ampl'),
 
 #    ('transmission (photodiode)', '%'): ('trans', 'pd'),
 #    ('transmission (spectrometer)', '%'): ('trans', 'spec'),
-    ('transmission (non-roughness sources)', '%'): ('trans', 'unexpl'),
+#    ('transmission (non-roughness sources)', '%'): ('trans', 'unexpl'),
 
 #    ('BaF Laser', 'GHz'): ('freq', 'baf'),
 #    ('Ca Laser', 'GHz'): ('freq', 'calcium'),
 
-    ('rms roughness (spectrometer)', 'nm'): ('rough', 'surf'),
-    ('second-order roughness coefficient', 'micron$^2$'): ('rough', 'second-order'),
-    ('fourth-order roughness coefficient (rayleigh $- K \sigma^4$)', 'micron nm$^3$'): ('rough', 'fourth-order'),
-    ('crystal thickness (dead reckoning)', 'micron'): ('model', 'height'),
+#    ('rms roughness (spectrometer)', 'nm'): ('rough', 'surf'),
+#    ('second-order roughness coefficient', 'micron$^2$'): ('rough', 'second-order'),
+#    ('fourth-order roughness coefficient (rayleigh $- K \sigma^4$)', 'micron nm$^3$'): ('rough', 'fourth-order'),
+#    ('crystal thickness (dead reckoning)', 'micron'): ('model', 'height'),
 
 #    ('saph heat', 'W'): ('heaters', 'heat saph'),
 #    ('nozzle heat', 'W'): ('heaters', 'heat coll'),
 #    ('45K heat', 'W'): ('heaters', 'srb45k out'),
 #    ('4K heat', 'W'): ('heaters', 'srb4k out'),
 
-#    ('bottom hs', 'K'): ('temperatures', 'bott hs'),
+    ('bottom hs', 'K'): ('temperatures', 'bott hs'),
 #    ('buffer cell', 'K'): ('temperatures', 'cell'),
-#    ('45K sorb', 'K'): ('temperatures', 'srb45k'),
-#    ('45K plate', 'K'): ('temperatures', '45k plate'),
+    ('45K sorb', 'K'): ('temperatures', 'srb45k'),
+    ('45K plate', 'K'): ('temperatures', '45k plate'),
 
     ('sapphire mount', 'K'): ('temperatures', 'saph'),
 #    ('nozzle', 'K'): ('temperatures', 'coll'),
 #    ('4K sorb', 'K'): ('temperatures', 'srb4k'),
-#    ('4K plate', 'K'): ('temperatures', '4k plate'),
+    ('4K plate', 'K'): ('temperatures', '4k plate'),
 
 #    ('beam center x (from camera)', '% '): ('center', 'x'),
 #    ('beam center y (from camera)', '% '): ('center', 'y'),

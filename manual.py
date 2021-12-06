@@ -13,7 +13,8 @@ from headers.ti_saph import TiSapphire
 from headers.filter_wheel import FilterWheel
 from usb_power_meter.Power_meter_2 import PM16 
 
-from headers.api import EOM, MountedBandpass, PumpLaser
+from api.pump_laser import EOM, MountedBandpass, PumpLaser
+from api.ablation import AblationSystem
 
 MINUTE = 60
 HOUR = 60 * MINUTE
@@ -27,25 +28,27 @@ HOUR = 60 * MINUTE
 #turbo = TurboPump()
 #pt = PulseTube()
 
-eom = EOM()
-bandpass = MountedBandpass()
+#eom = EOM()
+#bandpass = MountedBandpass()
 pump = PumpLaser()
-pm = PM16('/dev/power_meter')
+#pm = PM16('/dev/power_meter')
+
+#ablation = AblationSystem()
 
 ## Uncomment whatever commands you want and run the file ##
-pump.source = 'tisaph'
-pump.ti_saph.verdi.power = 8
-while True:
-    print(pump)
-    pump.wavelength = int(input('Wavelength? '))
-
-print(bandpass.wavelength)
-
+#pump.source = 'tisaph'
+#pump.ti_saph.verdi.power = 8
+#while True:
+#    print(pump)
+#    pump.wavelength = int(input('Wavelength? '))
+#
+#print(bandpass.wavelength)
+#
 #eom.high = 5
 #eom.low = 0
 #eom.frequency = 0.05
 
-#mfc.flow_rate_cell = 0
+#mfc.flow_rate_cell = 10
 #mfc.flow_rate_neon_line = 0
 #mfc.off()
 #time.sleep(1*HOUR)

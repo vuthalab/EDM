@@ -11,8 +11,8 @@ from headers.zmq_client_socket import connect_to
 
 # Devices
 from headers.verdi import Verdi
-from headers.api import EOM, PumpLaser
 from usb_power_meter.Power_meter_2 import PM16 
+from api.pump_laser import EOM, PumpLaser
 
 
 verdi = Verdi()
@@ -59,28 +59,31 @@ def get_samples(f, wl):
 
 while True:
     # BaF laser
-    print('BaF Laser')
-    pump.source = 'baf'
-    pm.set_wavelength(860)
-    with open('calibration/baf_pd.txt', 'a') as f: get_samples(f, 860)
+#    print('BaF Laser')
+#    pump.source = 'baf'
+#    pm.set_wavelength(860)
+#    with open('calibration/baf_pd.txt', 'a') as f: get_samples(f, 860)
 
     # Nothing
-    print('Background')
-    pump.source = None
-    time.sleep(2)
-    with open('calibration/background_pd.txt', 'a') as f: get_samples(f, 0)
+#    print('Background')
+#    pump.source = None
+#    time.sleep(2)
+#    with open('calibration/background_pd.txt', 'a') as f: get_samples(f, 0)
 
 
     # Ti:Saph
     print('Ti:sapphire Laser')
     pump.source = 'tisaph'
 
-    wavelengths = np.linspace(750, 910, 33)
-    powers = np.linspace(7, 9, 3)
+    wavelengths = np.linspace(740, 900, 33)
+    powers = np.linspace(7, 9, 5)  #np.linspace(7, 9, 3)
     np.random.shuffle(wavelengths)
     with open('calibration/tisaph_pd.txt', 'a') as f:
         for wavelength in wavelengths:
-            pump.wavelength = wavelength
+            try:
+                pump.wavelength = wavelength
+            except ValueError:
+                continue
 
             np.random.shuffle(powers)
             for pump_power in powers:

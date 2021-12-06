@@ -1,24 +1,27 @@
 import time
+import itertools
 
 import cv2
 
 import numpy as np
 import matplotlib.pyplot as plt
 
+from uncertainties import ufloat
+
 from simple_pyspin import Camera
 
 from headers.zmq_client_socket import connect_to
 from headers.util import plot, uarray
 
-from models.image_track import fit_image
+from models.image_track import fit_image_spot
 from models.cbs import decay_model
 
 
 # Select which cameras to show here.
 SHOW_CAMERAS = [
-#    'webcam',
+    'webcam',
 #    'plume',
-    'fringe',
+#    'fringe',
 #    'cbs',
 ]
 
@@ -29,11 +32,6 @@ plume_size = 200
 
 print('Initializing cameras...')
 
-if 'plume' in SHOW_CAMERAS:
-    plume_camera = Camera(0)
-    plume_camera.init()
-    plume_camera.start()
-
 if 'cbs' in SHOW_CAMERAS:
     plt.ion()
     fig = plt.figure()
@@ -43,6 +41,7 @@ if 'cbs' in SHOW_CAMERAS:
 
 ## connect
 print('Connecting to publisher...')
+if 'plume' in SHOW_CAMERAS: plume_socket = connect_to('plume-cam')
 if 'fringe' in SHOW_CAMERAS: fringe_socket = connect_to('fringe-cam')
 if 'webcam' in SHOW_CAMERAS: webcam_socket = connect_to('webcam')
 
@@ -54,7 +53,7 @@ def from_png(buff, color=False):
 
 print('Starting.')
 start = time.monotonic()
-while True:
+for i in itertools.count():
     timestamp = f'[{time.monotonic() - start:.3f}]'
 
     if 'fringe' in SHOW_CAMERAS:
@@ -110,36 +109,42 @@ while True:
     if 'webcam' in SHOW_CAMERAS:
         _, data = webcam_socket.grab_json_data()
         if data is not None:
-            frame = from_png(data['annotated'], color=True)
+            frame = from_png(data['raw'], color=True)
             cv2.imshow('Webcam', frame)
 
             print(timestamp, 'webcam')
 
 
     if 'plume' in SHOW_CAMERAS:
-        plume_image = plume_camera.get_array()
+        _, data = plume_socket.grab_json_data()
+        if data is not None:
+            delay = time.time() - data['timestamp']
 
-        # Extract plume location
-        cx, cy, intensity, _ = fit_image(plume_image)
-        height, width = plume_image.shape
-        cx = round(cx.n * width / 100)
-        cy = round(cy.n * height / 100)
-        plume_image = plume_image[
-            max(cy-plume_size, 0) : cy+plume_size,
-            max(cx-plume_size, 0) : cx+plume_size
-        ]
-        cv2.imshow('Plume', plume_image)
+            frame = from_png(data['png'], color=False)
 
-        print(timestamp, 'plume')
+            cx = ufloat(*data['center']['x'])
+            cy = ufloat(*data['center']['y'])
+            intensity = data['intensity']
+            saturation = data['saturation']
+            print(cx, cy, intensity, saturation)
+
+            color = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
+            annotated = cv2.circle(
+                color,
+                (round(cx.n), round(cy.n)),
+                25, # Radius
+                (0, 0, 255), # Color
+                2 # Thickness
+            )
+            if i % 2 == 0:
+                cv2.imshow('Plume', annotated)
+
+            print(timestamp, f'plume {delay:.3f}')
 
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
-    time.sleep(5e-2)
-
-if 'plume' in SHOW_CAMERAS:
-    plume_camera.stop()
-    plume_camera.close()
+    time.sleep(2e-2)
 
 cv2.destroyAllWindows()

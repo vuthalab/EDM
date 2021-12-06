@@ -3,15 +3,14 @@ import numpy as np
 from uncertainties import ufloat
 from uncertainties.umath import sqrt, atan2
 
+from headers.util import nom
 
-base_1 = ufloat(0.993, 0.003) # Sensitivity of PD 1 @ 830 nm
-base_2 = ufloat(1.602, 0.005) # Sensitivity of PD 2 @ 830 nm
 
-slope_1 = ufloat(-1.81, 0.06) * 1e-3 # Slope of sensitivity of PD 1 w.r.t. wavelength
-slope_2 = ufloat(-2.28, 0.10) * 1e-3 # Slope of sensitivity of PD 1 w.r.t. wavelength
+bg_1 = ufloat(-0.102, 0.006) # Background voltage of PD 1
+bg_2 = ufloat(-0.119, 0.006) # Background voltage of PD 2
 
-bg_1 = ufloat(-0.102, 0.012) # Background voltage of PD 1
-bg_2 = ufloat(-0.118, 0.012) # Background voltage of PD 2
+# PD Sensitivity Calibration
+cal_wl, cal_sens_1, cal_sens_2 = np.loadtxt('calibration/pd_coefficients.txt').T
 
 def power_and_polarization(v1_raw, v2_raw, wl):
     """
@@ -22,8 +21,8 @@ def power_and_polarization(v1_raw, v2_raw, wl):
     v1 = v1_raw - bg_1
     v2 = v2_raw - bg_2
 
-    sens_1 = slope_1 * (wl - 860) + base_1
-    sens_2 = slope_2 * (wl - 860) + base_2
+    sens_1 = np.interp(nom(wl), cal_wl, cal_sens_1)
+    sens_2 = np.interp(nom(wl), cal_wl, cal_sens_2)
 
     power_1 = v1 * sens_1
     power_2 = v2 * sens_2
@@ -37,12 +36,12 @@ def power_and_polarization(v1_raw, v2_raw, wl):
 
 
 # EOM Response Characteristics
-responsivity_slope = ufloat(-0.0143, 0.0003) # degrees/V/nm
-responsivity_intercept = ufloat(10.258, 0.008) # degrees/V
+responsivity_slope = ufloat(-0.0164, 0.0002) # degrees/V/nm
+responsivity_intercept = ufloat(11.045, 0.011) # degrees/V
 
-bias_curvature = ufloat(-1.48, 0.19) * 1e-5 # V/nm^2
-bias_slope = ufloat(-1.02, 0.08) * 1e-3 # V/nm
-bias_intercept = ufloat(0.173, 0.007) # V
+bias_curvature = ufloat(-1.31, 0.10) * 1e-5 # V/nm^2
+bias_slope = ufloat(-1.25, 0.04) * 1e-3 # V/nm
+bias_intercept = ufloat(0.096, 0.002) # V
 
 def eom_responsivity_and_bias(wl):
     z = wl - 830

@@ -11,7 +11,7 @@ from headers.zmq_client_socket import connect_to
 
 # Devices
 from headers.verdi import Verdi
-from headers.api import EOM, PumpLaser
+from api.pump_laser import EOM, PumpLaser
 from usb_power_meter.Power_meter_2 import PM16 
 
 
@@ -23,14 +23,19 @@ pump.ti_saph.verdi.power = 8
 
 
 
-wavelengths = np.linspace(840, 900, 13)
+wavelengths = np.linspace(770, 890, 25)
 polarizations = np.linspace(0, 50, 11)
 
 while True:
     np.random.shuffle(wavelengths)
     with open('calibration/eom_drift.txt', 'a') as f:
         for wavelength in wavelengths:
-            pump.wavelength = wavelength
+            try:
+                pump.wavelength = wavelength
+            except ValueError:
+                print('Wavelength out of range!')
+                continue
+
             time.sleep(0.5)
 
             wls = []
@@ -50,7 +55,7 @@ while True:
                 start_time = time.monotonic()
                 pump.polarization = polarization
 
-                for i in range(480):
+                for i in range(240):
                     try:
                         t = time.monotonic() - start_time
                         pol, power = pump.polarization, pump.power

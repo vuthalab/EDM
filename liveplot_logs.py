@@ -117,13 +117,15 @@ fields = {
     ('4K sorb', 'K '): ('temperatures', 'srb4k'),
     ('4K plate', 'K '): ('temperatures', '4k plate'),
 
-    ('verdi baseplate', '°C'): ('temperatures', 'verdi', 'baseplate'),
-    ('verdi vanadate', '°C'): ('temperatures', 'verdi', 'vanadate'),
     ('highfinesse wavemeter', '°C'): ('temperatures', 'wavemeter'),
     ('verdi power', 'W'): ('verdi', 'power'),
 
 #    ('beam center x (from camera)', '% '): ('center', 'x'),
 #    ('beam center y (from camera)', '% '): ('center', 'y'),
+
+    ('ablation position x (from camera)', 'pixels'): ('ablation', 'center', 'x'),
+    ('ablation position y (from camera)', 'pixels'): ('ablation', 'center', 'y'),
+    ('ablation HeNe reflection intensity (from camera)', 'arbitrary'): ('ablation', 'intensity'),
 
 #    ('camera integration time', 'μs'): ('center', 'exposure'),
     ('uptime', 'hr'): ('debug', 'uptime'),
@@ -135,13 +137,15 @@ fields = {
     ('fridge RH', ' % '): ('fridge', 'relative_humidity'),
     ('fridge absolute humidity', 'g/m$^3$'): ('fridge', 'absolute_humidity'),
 
-    ('turbo speed', 'Hz'): ('turbo', 'frequency'),
+#    ('turbo speed', 'Hz'): ('turbo', 'frequency'),
     ('turbo current', 'mA'): ('turbo', 'current'),
 
     ('pulsetube coolant in', '°C '): ('pt', 'coolant in temp [C]'),
     ('pulsetube coolant out', '°C '): ('pt', 'coolant out temp [C]'),
     ('pulsetube helium', '°C '): ('pt', 'helium temp [C]'),
     ('pulsetube oil', '°C '): ('pt', 'oil temp [C]'),
+    ('verdi baseplate', '°C '): ('temperatures', 'verdi', 'baseplate'),
+    ('verdi vanadate', '°C '): ('temperatures', 'verdi', 'vanadate'),
 
     ('pulsetube high pressure', 'psi'): ('pt', 'high pressure [psi]'),
     ('pulsetube low pressure', 'psi'): ('pt', 'low pressure [psi]'),
@@ -178,8 +182,9 @@ axis_labels = [
 
 #    'V ',
 #    '% ',
-#    'pixels',
-#    'counts',
+
+    'pixels',
+    'arbitrary',
 
 #    '',
 #    'μs',
@@ -190,7 +195,7 @@ axis_labels = [
     ' % ',
     'g/m$^3$',
 
-    'Hz',
+#    'Hz',
     'mA',
 
     '°C ',
@@ -240,6 +245,7 @@ for axis, label in zip(axes, axis_labels):
     axis.legend(loc='upper left')
     axis.margins(0,0.1)
     axis.set_ylabel(label)
+    axis.grid(alpha=0.3)
 
 
 # set data formatter

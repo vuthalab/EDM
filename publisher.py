@@ -22,6 +22,7 @@ from models.polarization import power_and_polarization, eom_angle_from_gain
 
 from threads.spectrometer import spectrometer_thread
 from threads.webcam import webcam_thread
+from threads.plume_camera import plume_camera_thread
 from threads.wavemeter import wavemeter_thread
 from threads.camera import camera_thread
 from threads.pressure import pressure_thread
@@ -55,6 +56,8 @@ THREADS = {
 #    'qe-pro': qe_pro_thread,
     'scope': scope_thread,
     'labjack': labjack_thread,
+    'webcam': webcam_thread,
+    'plume-cam': plume_camera_thread,
 }
 
 
@@ -168,6 +171,13 @@ def run_publisher():
             if thread_up['labjack']:
                 if 'pump' not in data: data['pump'] = {}
                 data['pump']['eom-gain'] = raw_data['labjack']['dac0']
+
+            if thread_up['plume-cam']:
+                data['ablation'] = {
+                    'center': raw_data['plume-cam']['center'],
+                    'intensity': raw_data['plume-cam']['intensity'],
+                    'saturation': raw_data['plume-cam']['saturation'],
+                }
 
             # Update models
             if thread_up['ctc'] and thread_up['mfc']:
