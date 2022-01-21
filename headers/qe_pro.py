@@ -21,13 +21,12 @@ class QEProSpectrometer(USB4000Spectrometer):
 
 
 if __name__ == '__main__':
-
     import time
     import matplotlib.pyplot as plt
 
     spec = QEProSpectrometer()
-    spec.exposure = 1E6 # us
-    spec.temperature = -30
+    spec.exposure = 5E5 # us
+    spec.temperature = -29
 
     plt.ion()
     fig = plt.figure()
@@ -38,7 +37,7 @@ if __name__ == '__main__':
     plt.ylabel('Intensity (counts)')
     plt.ylim(0, 65536)
     while True:
-        time.sleep(2)
+        time.sleep(0.5)
         spec.capture()
         line.set_ydata(spec.intensities)
         fig.canvas.draw()

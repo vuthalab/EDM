@@ -55,7 +55,7 @@ while True:
                 start_time = time.monotonic()
                 pump.polarization = polarization
 
-                for i in range(240):
+                for i in range(60):
                     try:
                         t = time.monotonic() - start_time
                         pol, power = pump.polarization, pump.power

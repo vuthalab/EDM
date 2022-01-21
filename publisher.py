@@ -36,6 +36,7 @@ from threads.ei1050 import ei1050_thread
 from threads.qe_pro import qe_pro_thread 
 from threads.scope import scope_thread
 from threads.labjack import labjack_thread
+from threads.interlock import interlock_thread
 
 
 PUBLISH_INTERVAL = 2/1.4 # publish every x seconds.
@@ -58,6 +59,7 @@ THREADS = {
     'labjack': labjack_thread,
     'webcam': webcam_thread,
     'plume-cam': plume_camera_thread,
+    'interlock': interlock_thread,
 }
 
 
@@ -164,13 +166,15 @@ def run_publisher():
                 data['temperatures']['verdi'] = data['verdi']['temp']
 
             if thread_up['scope']:
-                v1 = raw_data['scope']['ch1']
-                v2 = raw_data['scope']['ch2']
-                data['pump'] = {'v1': v1, 'v2': v2}
+                if 'pmt' not in data: data['pmt'] = {}
+                v1 = ufloat(*raw_data['scope']['ch1'])
+                resistor = 10e3
+                data['pmt']['current'] = deconstruct(-1e6 * v1/resistor)
 
             if thread_up['labjack']:
-                if 'pump' not in data: data['pump'] = {}
-                data['pump']['eom-gain'] = raw_data['labjack']['dac0']
+#                if 'pump' not in data: data['pump'] = {}
+                if 'pmt' not in data: data['pmt'] = {}
+                data['pmt']['gain'] = raw_data['labjack']['dac0']
 
             if thread_up['plume-cam']:
                 data['ablation'] = {
@@ -178,6 +182,10 @@ def run_publisher():
                     'intensity': raw_data['plume-cam']['intensity'],
                     'saturation': raw_data['plume-cam']['saturation'],
                 }
+
+            if thread_up['interlock']:
+                data['interlock-uptime'] = raw_data['interlock']['uptime']
+
 
             # Update models
             if thread_up['ctc'] and thread_up['mfc']:
@@ -202,31 +210,32 @@ def run_publisher():
                             'ampl': fringe_counter.amplitude,
                         }
 
-            if thread_up['scope'] and 'freq' in data:
-                freq = None
 
-                if 'ti-saph' in data['freq']:
-                    freq = ufloat(*data['freq']['ti-saph'])
-                elif 'ti-saph-spec' in data['freq']:
-                    freq = ufloat(*data['freq']['ti-saph-spec'])
-
-                if freq is not None:
-                    v1 = ufloat(*data['pump']['v1'])
-                    v2 = ufloat(*data['pump']['v2'])
-
-                    speed_of_light = 299792458
-                    wl = speed_of_light / freq
-
-                    power_vert, power_horiz, angle = power_and_polarization(v1, v2, wl)
-                    data['pump']['power'] = deconstruct(power_vert + power_horiz)
-                    data['pump']['power-vert'] = deconstruct(power_vert)
-                    data['pump']['power-horiz'] = deconstruct(power_horiz)
-                    data['pump']['angle'] = deconstruct(angle)
-
-                    if 'eom-gain' in data['pump']:
-                        gain = ufloat(*data['pump']['eom-gain'])
-                        model_angle = eom_angle_from_gain(gain, wl)
-                        data['pump']['angle-model'] = deconstruct(model_angle)
+#            if thread_up['scope'] and 'freq' in data:
+#                freq = None
+#
+#                if 'ti-saph' in data['freq']:
+#                    freq = ufloat(*data['freq']['ti-saph'])
+#                elif 'ti-saph-spec' in data['freq']:
+#                    freq = ufloat(*data['freq']['ti-saph-spec'])
+#
+#                if freq is not None:
+#                    v1 = ufloat(*data['pump']['v1'])
+#                    v2 = ufloat(*data['pump']['v2'])
+#
+#                    speed_of_light = 299792458
+#                    wl = speed_of_light / freq
+#
+#                    power_vert, power_horiz, angle = power_and_polarization(v1, v2, wl)
+#                    data['pump']['power'] = deconstruct(power_vert + power_horiz)
+#                    data['pump']['power-vert'] = deconstruct(power_vert)
+#                    data['pump']['power-horiz'] = deconstruct(power_horiz)
+#                    data['pump']['angle'] = deconstruct(angle)
+#
+#                    if 'eom-gain' in data['pump']:
+#                        gain = ufloat(*data['pump']['eom-gain'])
+#                        model_angle = eom_angle_from_gain(gain, wl)
+#                        data['pump']['angle-model'] = deconstruct(model_angle)
 
 
             # Add debug info

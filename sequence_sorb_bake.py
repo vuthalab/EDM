@@ -19,7 +19,7 @@ turbo = TurboPump()
 pt = PulseTube()
 
 
-#assert not pt.is_on()
+assert not pt.is_on()
 
 # Turn turbo off before bake.
 #if turbo.operation_status == 'normal': turbo.off()

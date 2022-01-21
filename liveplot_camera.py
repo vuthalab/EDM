@@ -19,8 +19,8 @@ from models.cbs import decay_model
 
 # Select which cameras to show here.
 SHOW_CAMERAS = [
-    'webcam',
-#    'plume',
+#    'webcam', # Micrometer webcam
+    'plume', # Ablation Positioning Camera
 #    'fringe',
 #    'cbs',
 ]
@@ -136,7 +136,8 @@ for i in itertools.count():
                 (0, 0, 255), # Color
                 2 # Thickness
             )
-            if i % 2 == 0:
+#            if i % 2 == 0:
+            if i % 10 == 0:
                 cv2.imshow('Plume', annotated)
 
             print(timestamp, f'plume {delay:.3f}')

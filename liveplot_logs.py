@@ -85,13 +85,15 @@ fields = {
 
     ('Ti:Sapphire linewidth (from spectrometer)', 'nm '): ('ti-saph', 'linewidth'),
 
-    ('pump beam power, total', 'mW'): ('pump', 'power'),
-    ('pump beam power, vertically polarized component', 'mW'): ('pump', 'power-vert'),
-    ('pump beam power, horizontally polarized component', 'mW'): ('pump', 'power-horiz'),
+#    ('pump beam power, total', 'mW'): ('pump', 'power'),
+#    ('pump beam power, vertically polarized component', 'mW'): ('pump', 'power-vert'),
+#    ('pump beam power, horizontally polarized component', 'mW'): ('pump', 'power-horiz'),
 
-    ('pump beam angle (from photodiode calibration)', 'degrees'): ('pump', 'angle'),
-    ('pump beam angle (from EOM gain calibration) ', 'degrees'): ('pump', 'angle-model'),
+#    ('pump beam angle (from photodiode calibration)', 'degrees'): ('pump', 'angle'),
+#    ('pump beam angle (from EOM gain calibration) ', 'degrees'): ('pump', 'angle-model'),
 
+    ('PMT current', 'uA'): ('pmt', 'current'),
+    ('PMT gain', 'V'): ('pmt', 'gain'),
 
 
 #    ('rms roughness (from spectrometer)', 'nm'): ('rough', 'surf'),
@@ -128,7 +130,8 @@ fields = {
     ('ablation HeNe reflection intensity (from camera)', 'arbitrary'): ('ablation', 'intensity'),
 
 #    ('camera integration time', 'μs'): ('center', 'exposure'),
-    ('uptime', 'hr'): ('debug', 'uptime'),
+    ('publisher uptime', 'hr'): ('debug', 'uptime'),
+    ('interlock uptime', 'hr'): ('interlock-uptime',),
     ('publisher memory usage', 'KB'): ('debug', 'memory'),
     ('system memory usage', 'KB'): ('debug', 'system-memory'),
 
@@ -166,11 +169,15 @@ axis_labels = [
     'mV',
     'uW into wavemeter',
     'nm ',
-    'mW',
-    'degrees',
+
+#    'mW',
+#    'degrees',
 
 #    'V',
 #    '%',
+
+    'uA',
+    'V',
 
 #    'nm',
 #    'micron$^2$',
@@ -206,6 +213,7 @@ axis_labels = [
 
 ##### BEGIN CODE #####
 filepath = '/home/vuthalab/Desktop/edm_data/logs/system_logs/continuous.txt'
+#filepath = '/home/vuthalab/Desktop/edm_data/logs/system_logs/2021-11-24.txt'
 
 
 ###### initial plot #####

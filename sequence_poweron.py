@@ -20,46 +20,40 @@ mfc = MFC(31417)
 turbo = TurboPump()
 pt = PulseTube()
 
-# Ensure MFC is off.
+# Ensure MFC, pulse tube are off.
 mfc.off()
+assert not pt.is_on()
 
-# Optional pause
+# [Optional] Bake sorbs to reduce final pressure
+T2.ramp_temperature('srb45k out', 320, 0.5)
+T2.ramp_temperature('srb4k out', 320, 0.5)
+T2.enable_output()
+
+# [Optional] Pause to schedule cooldown
 countdown_for(0*HOUR)
 
-# Wait for pressure to drop sufficiently,  then enable turbo.
+# Wait for pressure to drop sufficiently, then enable turbo.
 wait_until_quantity(
     ('pressure',), '<', 0.5,
     unit='torr', source='pressure',
 )
-if turbo.operation_status != 'normal':
-    # If not started, turn on and wait for spinup.
-    turbo.on()
-    countdown_for(1*MINUTE)
+turbo.on()
 
-# Ensure system is cool (optional).
-T1.disable_output()
-T2.disable_output()
-wait_until_quantity(
-    ('temperatures', 'srb45k',), '<', 320,
-    unit='K', source='ctc',
-)
-
-
-# Wait for pressure to drop sufficiently.
+# Wait for pressure to drop sufficiently, then enable pulse tube.
 wait_until_quantity(
     ('pressure',), '<', 1.5e-5,
     unit='torr', source='pressure',
 )
+pt.on()
 
 # Slowly ramp down the saph temperature to liquid nitrogen temp.
 T1.ramp_temperature('heat saph', 77, 1e-2)
 T1.ramp_temperature('heat coll', 77, 1e-2)
 T1.enable_output()
 T2.disable_output()
-pt.on()
 
 
-# Wait for 45K sorb to drop below 70 K.
+# Wait for 45K sorb to drop below 70 K, to get rid of all nitrogen.
 wait_until_quantity(
     ('temperatures', 'srb45k'), '<', 70,
     unit='K', source='ctc',

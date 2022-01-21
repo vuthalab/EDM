@@ -25,4 +25,4 @@ def verdi_thread():
                 'running': running,
                 'status': status,
             })
-            time.sleep(0.5)
+            time.sleep(1.2)

@@ -4,8 +4,8 @@ from tkinter import font
 from headers.zmq_client_socket import connect_to
 
 # Which laser to monitor
-LASER = 'baf'
-#LASER = 'ti-saph'
+#LASER = 'baf'
+LASER = 'ti-saph'
 #LASER = 'calcium'
 
 monitor_socket = connect_to('wavemeter')
@@ -27,6 +27,7 @@ freq_label.pack()
 
 
 def refresh_freq():
+    print('Refresh')
     try:
         freq, power = get_freq()
         freq, uncertainty = freq

@@ -21,6 +21,7 @@ class Ximea:
         self._img = xiapi.Image()
         self.exposure = exposure
         self.image = None
+        self._capture_time = None # time of last capture
 
 
     def set_roi(self, width, height, x, y):
@@ -44,11 +45,12 @@ class Ximea:
             if not fresh_sample: break
 
             # Ensure we get a fresh capture
-            if time.monotonic() - start_time > 0.9 * self.exposure: break
+            if time.monotonic() - start_time > 0.8 * self.exposure: break
             print('Skipping cached image')
-            time.sleep(0.5)
+            time.sleep(0.05)
 
         self.image = self._img.get_image_data_numpy().astype(np.uint16)
+        self._capture_time = time.time()
 
 
     def async_capture(self, fresh_sample=False):
@@ -114,7 +116,7 @@ if __name__ == '__main__':
             rate_image = cam.rate_image
             resized = cv2.resize(rate_image, (968, 728))
             peak = np.percentile(resized, 99.9)
-            peak = 4096
+#            peak = 4096 # Disable autoscale
             processed = np.maximum(np.minimum(256 * resized/(1.2*peak), 255), 0).astype(np.uint8)
 #            processed = np.maximum(np.minimum(30 * np.log(resized), 255), 0).astype(np.uint8)
             cv2.imshow('Image', processed)

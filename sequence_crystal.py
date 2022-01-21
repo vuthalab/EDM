@@ -82,8 +82,8 @@ def melt_crystal(speed = 0.1, end_temp = 9):
     turbo.off() # To avoid damage
 
     # Raise saph temperature
-    T1.ramp_temperature('heat saph', 35, speed)
-    wait_until_quantity(('temperatures', 'saph'), '>', 22, unit='K', source='ctc') #WAS 32, ONE HEATER CURRENTLY DOWN - AUG 20, 2021.
+    T1.ramp_temperature('heat saph', 25, speed)
+    wait_until_quantity(('temperatures', 'saph'), '>', 20, unit='K', source='ctc') #WAS 32, ONE HEATER CURRENTLY DOWN - AUG 20, 2021.
 
     # Ensure crystal is melted
     #wait_until_quantity(('trans', 'spec'), '>', 95, unit='%')
@@ -91,10 +91,10 @@ def melt_crystal(speed = 0.1, end_temp = 9):
 
     # Lower temperature slowly
     log_entry('Cooling crystal.')
-    T1.ramp_temperature('heat saph', 20, speed)
+    T1.ramp_temperature('heat saph', 15, speed)
 
     # Wait for pressure to drop before enabling turbo
-    wait_until_quantity(('pressure',), '<', 1, unit='torr')
+    wait_until_quantity(('pressure',), '<', 1e-1, unit='torr')
     turbo.on()
 
     # Cool down a bit, then calibrate OceanFX.
@@ -226,13 +226,17 @@ try:
 #    deep_clean()
 
 #    NORMAL PROCEDURE FOR GOOD CRYSTALS
-#    melt_and_grow(start_temp = 6.5, neon_flow = 0, buffer_flow = 30, growth_time = 3 * HOUR)
+    melt_and_grow(start_temp = 6.5, neon_flow = 0, buffer_flow = 30, growth_time = 2 * HOUR)
+#    grow_only(start_temp=6.5, neon_flow=0, buffer_flow=30, growth_time=3*HOUR)
+
 #    stationary_polish()
 
     # Frosty crystal
-    melt_and_grow(start_temp=8, neon_flow = 14, buffer_flow = 0, growth_time = 30 * MINUTE)
+#    melt_and_grow(start_temp=8, neon_flow = 14, buffer_flow = 0, growth_time = 30 * MINUTE)
 
-#    grow_only(start_temp=6.5,neon_flow=0,buffer_flow=30,growth_time=3*HOUR)
+#    melt_crystal(end_temp=5)
+
+#    grow_only(start_temp=6.5,neon_flow=0,buffer_flow=30,growth_time=60 * MINUTE)
 
 finally:
     mfc.off()

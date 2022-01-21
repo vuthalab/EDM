@@ -1,137 +1,86 @@
 import time
-
 import numpy as np
 
-from colorama import Fore, Style
+from headers.mfc import MFC
+from headers.wavemeter import WM
+from api.ablation_hardware import AblationHardware
 
-from uncertainties import ufloat
+# Auxiliary functions
+center = np.array([780, 560]) # Center of target (pixels) on camera
+RADIUS = 100 # radius (pixels) of target on camera
 
-from headers.zmq_client_socket import connect_to
-from headers.util import display
+def spiral(n):
+    """Given an integer n, returns the location n steps along a spiral pattern out from the center."""
+    assert n >= 0
+    theta = 3 * np.sqrt(n) # radians
+    r = theta * 1.0 # pixels
+    return center + r * np.array([np.cos(theta), np.sin(theta)])
 
-from headers.rigol_ds1102e import RigolDS1102e
-from headers.mirror_mount import microcontroller
-from headers.rigol_dg4162 import RigolDG4162
-
-
-x_calibration = -0.01858 # pixels per mirror step
-y_calibration =  0.01871 # pixels per mirror step
 
 class AblationSystem:
-    """Class for managing ablation with the Nd:YAG laser."""
+    def __init__(
+        self,
+        start_position=0, # Index of start position in spiral
+        move_threshold = 0.2, # Dip size (%) below which to move to next spot
+        frequency = 15,
+    ):
+        self.hardware = AblationHardware()
+        self.hardware.frequency = frequency
 
+        self.position = start_position
+        self.threshold = move_threshold
 
-    def __init__(self, mirror_speed=1000):
-        self.scope = RigolDS1102e('/dev/absorption_scope')
-        self.mirror = microcontroller()
-        self.fg = RigolDG4162()
+        # Safety interlock devices
+        self.wm = WM()
+        self.mfc = MFC(31417)
 
-        # Set mirror speeds
-        self.mirror.set_speed(1, mirror_speed)
-        self.mirror.set_speed(2, mirror_speed)
-        self._mirror_speed = mirror_speed
-        self._delay_buffer = 0.2
+    def _check_interlocks(self):
+        baf_freq = self.wm.read_frequency(8)
 
-        self._plume_camera = connect_to('plume-cam')
-        self._cache = None
-
-    def _update_cache(self):
-        while True:
-            _, data = self._plume_camera.grab_json_data()
-            if data is not None: self._cache = data
-            if data is None and self._cache is not None: break
-
-    def _monitor_move(self, motor, steps):
-        """
-        Move mirror motor for given number of steps.
-        Monitor the spot intensity to make sure it does not disappear.
-        """
-        duration = abs(steps)/self._mirror_speed + self._delay_buffer
-
-        self.mirror.move(motor, steps)
-
-        start_time = time.monotonic()
-        while time.monotonic() < start_time + duration:
-            intensity = self.hene_intensity
-            print(f'Moving mirror motor {motor} for {steps} steps. Intensity: {intensity:.3f}', end='\r')
-            time.sleep(0.2)
-
-        if intensity < 20:
-            print('Spot disappeared, retracing.')
-            self.mirror.move(motor, -steps)
-            time.sleep(duration)
-            raise ValueError('Spot disappeared!')
-        print()
-
-    @property
-    def _delay(self):
-        """Returns the delay of the current cache contents."""
-        return time.time() - self._cache['timestamp']
+        try:
+            assert self.hardware.hene_intensity > 20
+            assert self.mfc.flow_rate_cell > 2
+            assert baf_freq is None or abs(baf_freq - 348676.3) < 0.05
+        except Exception as e:
+            self.off()
+            raise ValueError(e)
 
     ##### Public API #####
-    @property
-    def is_on(self): return self.fg.enabled
     def on(self):
-        self.fg.enabled = True
-        print(f'{Fore.RED}##### ABLATION ON #####{Style.RESET_ALL}')
+        self._check_interlocks()
+        self.hardware.on()
 
     def off(self):
-        self.fg.enabled = False
-        print(f'{Fore.RED}##### ABLATION OFF #####{Style.RESET_ALL}')
+        self.hardware.off()
 
-
-    @property
-    def position(self):
-        """Returns the XY position of the ablation target, in pixel space on the camera."""
-        self._update_cache()
-        center = self._cache['center']
-        return (ufloat(*center['x']), ufloat(*center['y']))
-
-    @position.setter
-    def position(self, xy):
-        """Sets the XY position of the ablation target, in pixel space on the camera."""
-        xp, yp = xy
-        assert 0 < xp < 1440
-        assert 0 < yp < 1080 
-
-        x, y = self.position
-        dx, dy = xp - x.n, yp - y.n
-
-        dx_steps = round(dx/x_calibration)
-        dy_steps = round(dy/y_calibration)
-
-        self._monitor_move(2, dx_steps)
-        self._monitor_move(1, dy_steps)
-
-    @property
-    def frequency(self):
-        """Returns the ablation frequency."""
-        return self.fg.frequency
-
-    @frequency.setter
-    def frequency(self, value):
-        """Sets the ablation frequency."""
-        self.fg.frequency = value
-
-    @property
-    def hene_intensity(self):
-        """Returns the intensity of the HeNe spot on the camera. Arbitrary units."""
-        self._update_cache()
-        return self._cache['intensity']
-
-    @property
-    def trace(self):
+    def ablate_until_depleted(self):
         """
-        Return the absorption trace.
-        Depending on how the scope in configured, may involve adding together multiple channels (AC/DC coupled).
-        """
-        self.scope.active_channel = 1
-        return self.scope.trace
+        Ablate the current position in spiral until absorption threshold is reached.
 
-    @property
-    def dip_size(self):
-        """Return the size of the ablation dip, in percent."""
-        trace = self.trace
-        baseline = np.median(trace)
-        dip = np.min(trace)
-        return 100 * (1 - dip/baseline)
+        Returns a generator yielding information about ablation.
+        """
+        print(f'Ablating at position {self.position} in spiral.')
+        self.hardware.position = spiral(self.position)
+        while True:
+            self._check_interlocks()
+            dip_size = self.hardware.dip_size
+            pos = self.hardware.position
+
+            if not self.hardware.is_on: break
+            if dip_size < self.threshold: break
+            yield (self.position, pos, dip_size)
+            time.sleep(0.25)
+
+    def ablate_continuously(self):
+        """
+        Run ablation until stopped.
+
+        Returns a generator yielding information about ablation.
+        """
+        while True:
+            for update in self.ablate_until_depleted():
+                yield update
+
+            if not self.hardware.is_on: break
+            self.position += 1
+

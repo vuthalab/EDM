@@ -56,7 +56,7 @@ class TiSapphire:
         while True:
             ts, data = self._spec_conn.grab_json_data()
             if data is not None:
-                self._cache = data
+                self._cache = (time.time(), data)
             else:
                 if self._cache is not None:
                     break
@@ -92,13 +92,14 @@ class TiSapphire:
     def frequency(self) -> float:
         """Returns the frequency of the laser from spectrometer [GHz]."""
         self._grab_data()
-        return ufloat(*self._cache['frequency'])
+        if time.time() - self._cache[0] > 2: raise ValueError('Stale data!') # Check if data is stale
+        return ufloat(*self._cache[1]['frequency'])
 
     @property
     def linewidth(self) -> float:
         """Returns the linewidth of the laser [nm]."""
         self._grab_data()
-        return self._cache['linewidth']
+        return self._cache[1]['linewidth']
     
     @property
     def wavelength(self) -> float:
@@ -113,7 +114,7 @@ class TiSapphire:
         """Returns the vacuum wavelength of the laser [nm]. Tries to use the spectrometer, but uses the wavemeter if this does not work."""
         try:
             return self.spectrometer_wavelength
-        except:
+        except ValueError:
             return self.wavemeter_wavelength
 
 
@@ -136,8 +137,12 @@ class TiSapphire:
                 speed = min(max(speed, 13), 40)
                 self.micrometer.speed = direction * speed
                 
-#                current = nom(self.fast_wavelength)
-                current = nom(self.wavelength)
+                try:
+                    current = nom(self.fast_wavelength)
+#                current = nom(self.wavelength)
+                except Exception as e:
+                    time.sleep(0.5)
+                    continue
 
                 # Stop when target reached
                 delta = direction * (target - current)

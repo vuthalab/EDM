@@ -20,4 +20,4 @@ def ei1050_thread():
                 'relative_humidity': deconstruct(RH),
                 'absolute_humidity': deconstruct(humidity),
             })
-            time.sleep(0.2)
+            time.sleep(1.0)

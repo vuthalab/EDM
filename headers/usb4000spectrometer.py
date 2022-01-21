@@ -12,11 +12,12 @@ except:
 GARBAGE_POINTS = 20 # Discard this many points from start of data
 
 class USB4000Spectrometer(USBTMCDevice):
-    def __init__(self, multiplexer_port=31421, name=None, timeout=30):
+    def __init__(self, multiplexer_port=31421, name=None, timeout=120):
         super().__init__(multiplexer_port, mode='multiplexed', name=name, timeout=timeout)
         self._exposure = None
         self._wavelengths = None
         self._intensities = None
+        self._capture_time = None
 
     def reset(self):
         """Interrupt the current capture."""
@@ -38,6 +39,7 @@ class USB4000Spectrometer(USBTMCDevice):
             time.sleep(0.5)
 
         self._intensities = np.array([float(x) for x in response.split()])[GARBAGE_POINTS:]
+        self._capture_time = time.time()
 
     def async_capture(self, fresh_sample=False):
         self._intensities = None

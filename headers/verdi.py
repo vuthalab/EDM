@@ -11,6 +11,8 @@ class Verdi(USBTMCDevice):
         self.query('E = 0')
         self.query('> = 0')
 
+        self._power = None
+
     @property
     def power(self):
         """Return the current output power in watts."""
@@ -18,8 +20,10 @@ class Verdi(USBTMCDevice):
 
     @power.setter
     def power(self, power: float):
-        """Return the current output power in watts."""
-        self.query(f'P = {power:.4f}')
+        """Set the current output power in watts."""
+        if self._power != power: # Cache to avoid unnecessary messages
+            self.query(f'P = {power:.4f}')
+        self._power = power
 
 
     @property

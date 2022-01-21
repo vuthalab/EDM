@@ -22,16 +22,15 @@ HOUR = 60 * MINUTE
 
 # Initialize devices.
 # Port numbers are defined in multiplexer.py.
-#T1 = CTC100(31415)
+T1 = CTC100(31415)
 #T2 = CTC100(31416)
-#mfc = MFC(31417)
+mfc = MFC(31417)
 #turbo = TurboPump()
 #pt = PulseTube()
 
 #eom = EOM()
 #bandpass = MountedBandpass()
-pump = PumpLaser()
-#pm = PM16('/dev/power_meter')
+#pump = PumpLaser()
 
 #ablation = AblationSystem()
 
@@ -47,6 +46,11 @@ pump = PumpLaser()
 #eom.high = 5
 #eom.low = 0
 #eom.frequency = 0.05
+
+#T1.ramp_temperature('heat saph', 5, 0.5);
+#T1.ramp_temperature('heat coll', 12, 0.5);
+#T1.enable_output()
+
 
 #mfc.flow_rate_cell = 10
 #mfc.flow_rate_neon_line = 0

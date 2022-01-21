@@ -12,15 +12,18 @@ from colorama import Style, Fore
 # Date format must be YYYY-MM-DD
 # Time format must be HH:MM:SS (24-hour format)
 # End time can be in the future to get all data after a certain point
-START_TIME = ('2021-11-03', '21:40:00')
-END_TIME = ('2021-11-03', '22:00:00')
+START_TIME = ('2021-12-22', '00:00:00')
+END_TIME = ('2021-12-22', '23:59:00')
+
+#START_TIME = ('2021-11-07', '14:00:00')
+#END_TIME = ('2021-11-07', '22:00:00')
 
 # Map from plot labels (name, unit) to paths in data
 # Choose which fields you want to extract here
 fields = {
 #    ('pressure', 'torr'): ('pressure',),
 
-#    ('buffer flow', 'sccm'): ('flows', 'cell'),
+    ('buffer flow', 'sccm'): ('flows', 'cell'),
 #    ('neon flow', 'sccm'): ('flows', 'neon'),
 
 #    ('intensity (broadband)', 'V '): ('intensities', 'broadband'),
@@ -49,15 +52,15 @@ fields = {
 #    ('45K heat', 'W'): ('heaters', 'srb45k out'),
 #    ('4K heat', 'W'): ('heaters', 'srb4k out'),
 
-    ('bottom hs', 'K'): ('temperatures', 'bott hs'),
+#    ('bottom hs', 'K'): ('temperatures', 'bott hs'),
 #    ('buffer cell', 'K'): ('temperatures', 'cell'),
-    ('45K sorb', 'K'): ('temperatures', 'srb45k'),
-    ('45K plate', 'K'): ('temperatures', '45k plate'),
+#    ('45K sorb', 'K'): ('temperatures', 'srb45k'),
+#    ('45K plate', 'K'): ('temperatures', '45k plate'),
 
     ('sapphire mount', 'K'): ('temperatures', 'saph'),
 #    ('nozzle', 'K'): ('temperatures', 'coll'),
 #    ('4K sorb', 'K'): ('temperatures', 'srb4k'),
-    ('4K plate', 'K'): ('temperatures', '4k plate'),
+#    ('4K plate', 'K'): ('temperatures', '4k plate'),
 
 #    ('beam center x (from camera)', '% '): ('center', 'x'),
 #    ('beam center y (from camera)', '% '): ('center', 'y'),

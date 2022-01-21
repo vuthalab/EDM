@@ -21,4 +21,4 @@ def labjack_thread():
                 'dac0': deconstruct(dac0)
             })
 
-            time.sleep(0.5)
+            time.sleep(0.8)
