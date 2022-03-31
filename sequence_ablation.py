@@ -1,3 +1,8 @@
+"""
+Run the automated BaF ablation system.
+
+Assumes that buffer gas has already started.
+"""
 import time
 import sys
 

@@ -1,0 +1,2 @@
+python3 calibrate_temperature_response.py 0
+python3 calibrate_temperature_response.py 1

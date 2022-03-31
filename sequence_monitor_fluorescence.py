@@ -1,3 +1,6 @@
+"""
+Continuously monitor fluorescence at a specfic pump wavelength.
+"""
 import time 
 
 import numpy as np 
@@ -12,6 +15,8 @@ from headers.util import unweighted_mean
 
 configuration = {
     'exposure': 10, # s
+
+    'wavelength': 840,
 
     'roi': {
         'center_x': 465*2,
@@ -29,7 +34,7 @@ configuration = {
 cam = Ximea(exposure = configuration['exposure'])
 pump = PumpLaser()
 T1 = CTC100(31415)
-T1.ramp_temperature('heat coll', 8, 0.5)
+T1.ramp_temperature('heat coll', 10, 0.5)
 
 def get_intensity(rate_image):
     """Returns the intensity (counts/s) summed over the ROI given a rate image."""
@@ -57,7 +62,7 @@ background_rate = unweighted_mean(bg_rates)
 print(f'Background Rate: {background_rate*1e-3:.3f} kcount/s')
 
 pump.ti_saph.verdi.power = 8
-pump.wavelength = 815
+pump.wavelength = configuration['wavelength']
 pump.source = 'tisaph-low'
 
 start_time = time.time()

@@ -3,22 +3,22 @@ import math
 
 import numpy as np
 
-from api.ablation import AblationSystem
+from api.ablation_hardware import AblationHardware
 
 from headers.util import unweighted_mean
 
-ablation = AblationSystem(mirror_speed = 1000)
+ablation = AblationHardware(mirror_speed = 1000)
 
 def random_point():
     """Return random point in a circle."""
     while True:
-        x = np.random.uniform(-150, 150)
-        y = np.random.uniform(-150, 150)
-        if math.hypot(x, y) > 150**2: continue
-        return (x+700, y+550)
+        x = np.random.uniform(-200, 200)
+        y = np.random.uniform(-200, 200)
+        if math.hypot(x, y) > 200**2: continue
+        return (x+650, y+550)
 
 
-last_point = (700, 550)
+last_point = (650, 550)
 with open('calibration/target_map.txt', 'a') as f:
     while True:
         point = random_point()

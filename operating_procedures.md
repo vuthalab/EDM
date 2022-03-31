@@ -1,3 +1,13 @@
+# PRE-START CHECKLIST
+
+# AFTER BOTTLE SWAP
+- KEEP BOTTLE CLOSED. Open MFCs and all OTHER valves to vent air out of system. This avoids back-contamination.
+- Use sniffer to check for neon leaks.
+
+# ABLATION
+- Turn keyswitch on YAG water cooler and press on button on Litron touchscreen. If the pump cycles on and off (doesn't start), unplug the cooler and plug it back in.
+
+
 # Setup 24/7 logging
 1. Run `screen -S multiplexer` to start a new virtual terminal. Run `multiplexer.py` to create a multiplexer server. This allows multiple programs to use the lab equipment simultaneously. Press Ctrl + A, then D, to detach from this terminal.
 2. Run `screen -S publisher`, then `publisher.py`, to start the ZMQ publisher. This creates a stream of data logging all sensors in the system.

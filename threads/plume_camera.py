@@ -24,6 +24,7 @@ def plume_camera_thread():
 
     camera.ExposureAuto = 'Off'
     camera.ExposureTime = 200 # Microseconds
+#    camera.ExposureTime = 1000000 # Microseconds
 
     camera.start()
 

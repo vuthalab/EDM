@@ -110,7 +110,8 @@ for i in itertools.count():
         _, data = webcam_socket.grab_json_data()
         if data is not None:
             frame = from_png(data['raw'], color=True)
-            cv2.imshow('Webcam', frame)
+            if i % 10 == 0:
+                cv2.imshow('Webcam', frame)
 
             print(timestamp, 'webcam')
 
@@ -136,8 +137,7 @@ for i in itertools.count():
                 (0, 0, 255), # Color
                 2 # Thickness
             )
-#            if i % 2 == 0:
-            if i % 10 == 0:
+            if i % 2 == 0:
                 cv2.imshow('Plume', annotated)
 
             print(timestamp, f'plume {delay:.3f}')

@@ -1,4 +1,5 @@
 import time
+import random
 import numpy as np
 
 from headers.mfc import MFC
@@ -6,8 +7,7 @@ from headers.wavemeter import WM
 from api.ablation_hardware import AblationHardware
 
 # Auxiliary functions
-center = np.array([780, 560]) # Center of target (pixels) on camera
-RADIUS = 100 # radius (pixels) of target on camera
+center = np.array([700, 550]) # Center of target (pixels) on camera
 
 def spiral(n):
     """Given an integer n, returns the location n steps along a spiral pattern out from the center."""
@@ -35,18 +35,35 @@ class AblationSystem:
         self.mfc = MFC(31417)
 
     def _check_interlocks(self):
+        # Set multiplexer to BaF channel
         baf_freq = self.wm.read_frequency(8)
 
         try:
             assert self.hardware.hene_intensity > 20
-            assert self.mfc.flow_rate_cell > 2
-            assert baf_freq is None or abs(baf_freq - 348676.3) < 0.05
+            if random.random() < 0.2:
+                assert self.mfc.flow_rate_cell > 2
+#            assert baf_freq is None or abs(baf_freq - 348676.3) < 0.05
+
+            # TODO TEMP until laser is fixed
+            if baf_freq is None or abs(baf_freq - 348676.3) < 0.05:
+                return True
+            else:
+                if self.wm.get_external_output(8) < 1:
+                    # Try to jiggle lock back into position
+                    print('Fixing laser...')
+                    self.wm.set_lock_setpoint(8, 380000)
+                    time.sleep(5)
+                    self.wm.set_lock_setpoint(8, 348676.3)
+                    time.sleep(3)
         except Exception as e:
             self.off()
             raise ValueError(e)
 
+        return False
+
     ##### Public API #####
     def on(self):
+        self.wm.set_baf()
         self._check_interlocks()
         self.hardware.on()
 
@@ -62,9 +79,13 @@ class AblationSystem:
         print(f'Ablating at position {self.position} in spiral.')
         self.hardware.position = spiral(self.position)
         while True:
-            self._check_interlocks()
             dip_size = self.hardware.dip_size
             pos = self.hardware.position
+
+            # TODO TEMP until laser is fixed
+            if not self._check_interlocks():
+                print('BaF laser unlocked!')
+                dip_size = np.random.uniform(0.195, 0.3)
 
             if not self.hardware.is_on: break
             if dip_size < self.threshold: break

@@ -37,7 +37,7 @@ class ElliptecRotationStage:
             self,
             port='/dev/rotation_mount', 
             address: int = 0, # Device address on controller bus.
-            offset: int = 9175, # Software angle offset, in encoder counts.
+            offset: int = 0, # Software angle offset, in encoder counts.
         ):
         self._conn = serial.Serial(port, baudrate=9600, stopbits=1, parity='N', timeout=0.05)
         self.address = 0
@@ -59,7 +59,7 @@ class ElliptecRotationStage:
         while True:
             response += self._conn.read(8192)
             if response.endswith(b'\r\n'): break
-            time.sleep(0.2)
+            time.sleep(0.1)
 
         header, data = response[:3], response[3:-2]
         assert chr(header[0]) == str(self.address)
@@ -128,4 +128,5 @@ class ElliptecRotationStage:
         self._conn.close()
 
 if __name__ == '__main__':
-    mount = ElliptecRotationStage()
+#    mount = ElliptecRotationStage(port='/dev/rotation_mount_2', offset=38306)
+    mount = ElliptecRotationStage(port='/dev/rotation_mount_3', offset=0)

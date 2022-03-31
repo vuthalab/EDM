@@ -90,8 +90,9 @@ class USBTMCDevice:
             try:
                 print(f'  [{Fore.BLUE}INFO{Style.RESET_ALL}] {Style.DIM}Connecting to multiplexer server on port {Style.RESET_ALL}{Style.BRIGHT}{self._resource_path}{Style.RESET_ALL}')
                 self._conn = socket.socket()
-                self._conn.connect(self._address)
+                self._conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1) # Disable Nagle's
                 self._conn.settimeout(self._timeout)
+                self._conn.connect(self._address)
             except:
                 print(f'{Fore.RED}Please start the multiplexer server!{Style.RESET_ALL}')
                 self._conn = None

@@ -18,22 +18,19 @@ from usb_power_meter.Power_meter_2 import PM16
 from models.bandpass import target_angle, target_wavelength
 from models.polarization import power_and_polarization, eom_gain_from_angle, eom_angle_from_gain
 
-
 class EOM(RigolDG4162):
     def __init__(self):
         super().__init__()
         self.active_channel = 2
         self.waveform = 'square'
-        self.frequency = 20 # Hz
+        self.frequency = 1e6 # Hz
+#        self.duty_cycle = 20 # %
         self.duty_cycle = 50 # %
         self.enabled = True
 
-        self.on()
-
         # Labjack gain controller
-#        self._gain_controller = USBTMCDevice(31419, mode='multiplexed', name='EOM Drive Controller')
-        self._gain_controller = None # SET TO AVOID DAMAGING PMT
-        self.gain = 2.5
+        self._gain_controller = USBTMCDevice(31419, mode='multiplexed', name='EOM Drive Controller')
+#        self.gain = 5
 
     def on(self):
         self.high = 5
@@ -42,6 +39,10 @@ class EOM(RigolDG4162):
     def off(self):
         self.low = 0
         self.high = 0.05
+
+    def start_pulse(self):
+        self.high = 5
+        self.low = 0
 
     def is_on(self):
         return self.high > 2.5
@@ -54,7 +55,7 @@ class EOM(RigolDG4162):
     @gain.setter
     def gain(self, gain: float):
         assert 0 <= gain <= 5
-#        self._gain_controller.send_command(f'DAC0 {gain:.4f}')
+        self._gain_controller.send_command(f'DAC0 {gain:.4f}', delay=0.05)
 
 
 
@@ -75,24 +76,22 @@ class MountedBandpass(ElliptecRotationStage):
 WHEEL_DICT = [
     'tisaph-low',
     None,
-#    'baf',
     'tisaph-vert', # Vertically polarized, high power
+    'tisaph-high-bad',
+    'tisaph-high-bad',
     'tisaph-high',
-    'tisaph-high',
-    'tisaph-high',
+#    'baf',
 ]
 class PumpLaser:
     def __init__(self):
         self.ti_saph = TiSapphire()
         self.wheel = FilterWheel()
-        self.bandpass = MountedBandpass()
+        self.qwp = ElliptecRotationStage(port='/dev/waveplate', offset=12078)
         self.wm = WM()
         self.eom = EOM()
         self.pm = PM16('/dev/power_meter')
 
-        self._monitor = connect_to('scope')
-        self._cache = None
-        self._target_polarization = 45
+        self.polarization = 45
         self._update_optics()
 
     ##### Internal Methods #####
@@ -102,22 +101,9 @@ class PumpLaser:
         if freq is None: return 860
         return 299792458/freq
 
-    def _update_cache(self):
-        while True:
-            _, data = self._monitor.grab_json_data()
-            if data is None:
-                if self._cache is not None:
-                    break
-                else:
-                    time.sleep(0.5)
-            if data is not None and 'ch1' in data:
-                v1, v2 = ufloat(*data['ch1']), ufloat(*data['ch2'])
-                self._cache = power_and_polarization(v1, v2, self.wavelength)
-
     def _update_optics(self):
         """Adjust the bandpass and EOM to maintain desired passband and polarization."""
         wl = self.wavelength
-        self.bandpass.wavelength = wl
         self.polarization = self._target_polarization
         self.pm.set_wavelength(wl)
 
@@ -140,9 +126,9 @@ class PumpLaser:
     @source.setter
     def source(self, value):
         """Set the current laser source. Must be 'tisaph-low', 'tisaph-high', 'baf', or None."""
-        self.wheel.position = 1 + WHEEL_DICT.index(value)
 
         print(f'Setting pump laser source to {Fore.YELLOW}{value}{Style.RESET_ALL}.')
+        self.wheel.position = 1 + WHEEL_DICT.index(value)
 
         # Disable tisaph when selecting baf laser
         if value == 'baf': self.ti_saph.verdi.power = 2 
@@ -153,7 +139,7 @@ class PumpLaser:
             self.ti_saph.verdi.power = 6
             time.sleep(2)
 
-        # Adjust bandpass + EOM to match
+        # Adjust EOM and power meter to match
         if value is not None: self._update_optics()
 #        time.sleep(2)
 
@@ -188,12 +174,14 @@ class PumpLaser:
 
         Source is power meter (if available), otherwise from photodiodes.
         """
-        if self.source is None:
-            return self.pm_power
-        else:
-            # From photodiode
-            self._update_cache()
-            return self._cache[0] + self._cache[1]
+        return self.pm_power # TEMP since EOM is out
+
+#        if self.source is None:
+#            return self.pm_power
+#        else:
+#            # From photodiode
+#            self._update_cache()
+#            return self._cache[0] + self._cache[1]
 
     @property
     def pm_power(self):
@@ -204,18 +192,17 @@ class PumpLaser:
 
     @property
     def polarization(self):
-        """Return the polarization angle out of EOM, in degrees."""
-        self._update_cache()
-        return self._cache[2]
+        """Return the polarization angle out of QWP, in degrees."""
+        try:
+            return self.qwp.angle
+        except:
+            return self._target_polarization
 
     @polarization.setter
     def polarization(self, angle):
-        """Set the polarization angle out of EOM, in degrees."""
-        gain = eom_gain_from_angle(angle, self.wavelength).n
-        self.eom.gain = max(min(gain, 5), 0)
-        self._target_polarization = angle
-
-    @property
-    def model_polarization(self):
-        """Return the polarization angle out of EOM, in degrees, estimated from the EOM gain and wavelength."""
-        return eom_angle_from_gain(self.eom.gain, self.wavelength)
+        """Set the polarization angle out of QWP, in degrees."""
+        try:
+            self.qwp.angle = angle
+            self._target_polarization = angle
+        except:
+            pass

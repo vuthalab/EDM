@@ -1,3 +1,8 @@
+"""
+Warms up the experiment to room temperature.
+
+You may want to melt off any neon before running (to prevent pressure spikes).
+"""
 import time
 
 from headers.pulse_tube import PulseTube
@@ -21,7 +26,7 @@ turbo = TurboPump()
 pt = PulseTube()
 
 # Optional pause
-#countdown_for(10 * MINUTE)
+#countdown_for(2 * HOUR + 20 * MINUTE)
 
 # Turn off everything.
 mfc.off()
@@ -37,12 +42,13 @@ pt.off()
 
 
 # [Optional] Accelerate warmup.
-T1.enable_output()
-T2.enable_output()
-T1.ramp_temperature('heat saph', 300, 0.5)
-T1.ramp_temperature('heat coll', 300, 0.5)
-T2.ramp_temperature('srb45k out', 300, 0.5)
-T2.ramp_temperature('srb4k out', 300, 0.5)
+if True:
+    T1.enable_output()
+    T2.enable_output()
+    T1.ramp_temperature('heat saph', 300, 0.5)
+#    T1.ramp_temperature('heat mirror', 300, 0.5)
+    T2.ramp_temperature('heat cell', 300, 0.5)
+    T2.ramp_temperature('srb45k out', 320, 0.5)
 
 # Wait for room temperature.
 wait_until_quantity(

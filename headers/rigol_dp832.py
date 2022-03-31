@@ -62,10 +62,13 @@ class RigolDP832(USBTMCDevice):
 
 class TiSaphMicrometer:
     def __init__(self):
-        self._magnitude = RigolDP832('/dev/upper_power_supply', 3)
+#        self._magnitude = RigolDP832('/dev/upper_power_supply', 3)
+#        assert 'DP832' in self._magnitude.name
+
+        self._magnitude = RigolDP832('/dev/lower_power_supply', 1)
         self._direction = RigolDP832('/dev/lower_power_supply', 3)
 
-        assert 'DP832' in self._magnitude.name
+        assert 'DP831' in self._magnitude.name
         assert 'DP831' in self._direction.name
 
         self._magnitude.voltage = 0
@@ -85,21 +88,21 @@ class TiSaphMicrometer:
 
     @voltage.setter
     def voltage(self, volt: float):
-        assert volt <= 5 and volt >= -5
+        assert volt <= 8 and volt >= -8
 
         if volt != 0:
-            self._direction.voltage = 0 if volt > 0 else -14
+            self._direction.voltage = 0 if volt > 0 else -15
             time.sleep(0.1)
         self._magnitude.voltage = abs(volt)
 
     @property
     def speed(self):
-        return 100 * self.voltage / 5
+        return 100 * self.voltage / 8
 
     @speed.setter
     def speed(self, speed: float):
         if speed > 100 or speed < -100: raise ValueError('Speed must be between -100 and 100!')
-        self.voltage = speed * 5/100
+        self.voltage = speed * 8/100
 
     def off(self):
         self.voltage = 0
@@ -107,6 +110,6 @@ class TiSaphMicrometer:
     def stop(self): self.off()
 
 if __name__ == '__main__':
-#    micrometer = TiSaphMicrometer()
-    upper = RigolDP832('/dev/upper_power_supply', 2)
-    eom = EOM()
+    micrometer = TiSaphMicrometer()
+#    upper = RigolDP832('/dev/upper_power_supply', 2)
+#    eom = EOM()

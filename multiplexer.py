@@ -52,6 +52,7 @@ class Multiplexer(threading.Thread):
 
         # Create a listener server on the given port
         self._local_sock = socket.socket()
+        self._local_sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1) # Disable Nagle's
         self._local_sock.bind(('localhost', local_port))
         self._local_sock.listen(5)
 
@@ -249,8 +250,8 @@ if __name__ == '__main__':
 
     print('Connecting to spectrometer 1 (might take a while)...')
     usb4000 = sb.Spectrometer.from_serial_number('USB4E03256')
-    print('Connecting to spectrometer 2 (might take a while)...')
-    qe_pro = sb.Spectrometer.from_serial_number('QEP03844')
+#    print('Connecting to spectrometer 2 (might take a while)...')
+#    qe_pro = sb.Spectrometer.from_serial_number('QEP03844')
 
 
     verdi_handler = lambda c, m: serial_handler(c, m, empty_ok=True)
@@ -266,4 +267,4 @@ if __name__ == '__main__':
     Multiplexer(31418, turbo, serial_handler).start()
     Multiplexer(31420, verdi, verdi_handler).start()
     Multiplexer(31421, usb4000, spectrometer_handler).start()
-    Multiplexer(31422, qe_pro, spectrometer_handler).start()
+#    Multiplexer(31422, qe_pro, spectrometer_handler).start()

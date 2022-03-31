@@ -32,6 +32,7 @@ class Ximea:
 
     def interrupt(self):
         """Interrupt the existing capture, if any."""
+        return # TEMP
         cache = self.exposure
         self.exposure = 1.2345
         self.exposure = cache
@@ -47,7 +48,7 @@ class Ximea:
             # Ensure we get a fresh capture
             if time.monotonic() - start_time > 0.8 * self.exposure: break
             print('Skipping cached image')
-            time.sleep(0.05)
+            if self.exposure > 0.1: time.sleep(0.05)
 
         self.image = self._img.get_image_data_numpy().astype(np.uint16)
         self._capture_time = time.time()
@@ -105,8 +106,13 @@ if __name__ == '__main__':
     from uncertainties import ufloat
     from util import plot
 
+    import sys
+
     if True:
-        exposure = float(input('Exposure time (s)? '))
+        if len(sys.argv) > 1:
+            exposure = float(sys.argv[1])
+        else:
+            exposure = float(input('Exposure time (s)? '))
         cam = Ximea(exposure=exposure)
 
         while True:

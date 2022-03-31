@@ -62,6 +62,7 @@ HOUR = 60 * MINUTE
 
 def deep_clean():
     start = time.monotonic()
+    turbo.off() # To avoid damage
 
     log_entry('Starting deep clean. Melting crystal.')
     T1.ramp_temperature('heat saph', 40, 0.5)
@@ -74,6 +75,10 @@ def deep_clean():
     T1.ramp_temperature('heat saph', 4, 0.15)
     countdown_until(start + 11 * MINUTE)
 
+    # Wait for pressure to drop before enabling turbo
+    wait_until_quantity(('pressure',), '<', 1e-1, unit='torr')
+    turbo.on()
+
     log_entry('Done deep clean.')
 
 
@@ -83,11 +88,11 @@ def melt_crystal(speed = 0.1, end_temp = 9):
 
     # Raise saph temperature
     T1.ramp_temperature('heat saph', 25, speed)
-    wait_until_quantity(('temperatures', 'saph'), '>', 20, unit='K', source='ctc') #WAS 32, ONE HEATER CURRENTLY DOWN - AUG 20, 2021.
+    wait_until_quantity(('temperatures', 'saph'), '>', 22, unit='K', source='ctc')
 
     # Ensure crystal is melted
     #wait_until_quantity(('trans', 'spec'), '>', 95, unit='%')
-    #countdown_for(2 * MINUTE)
+    countdown_for(2 * MINUTE)
 
     # Lower temperature slowly
     log_entry('Cooling crystal.')
@@ -100,16 +105,16 @@ def melt_crystal(speed = 0.1, end_temp = 9):
     # Cool down a bit, then calibrate OceanFX.
     T1.ramp_temperature('heat saph', end_temp, speed)
     wait_until_quantity(('temperatures', 'saph'), '<', 20, unit='K', source='ctc')
-    try:
-        calibrate_oceanfx('baseline', time_limit=1.5 * MINUTE)
-    except:
-        pass
+#    try:
+#        calibrate_oceanfx('baseline', time_limit=1.5 * MINUTE)
+#    except:
+#        pass
     wait_until_quantity(('temperatures', 'saph'), '<', end_temp + 0.01, unit='K', source='ctc')
 
 
 # total time: 6 minutes
 def melt_and_anneal(neon_flow = 4, end_temp = 9):
-    melt_crystal(end_temp = 10)
+    melt_crystal(end_temp = 11)
 
     # Anneal.
     log_entry('Annealing (starting neon line).')
@@ -219,15 +224,20 @@ turbo = TurboPump()
 
 # Initial conditions
 #mfc.off()
-T1.ramp_temperature('heat coll', 12, 0.5) # Keep nozzle at consistent temperature
+T1.ramp_temperature('heat mirror', 10, 0.5) # Keep nozzle at consistent temperature
 T1.enable_output()
+
+T2.ramp_temperature('srb45k out', 5, 0.5) # Keep nozzle at consistent temperature
+T2.ramp_temperature('heat cell', 15, 0.5) # Keep nozzle at consistent temperature
+T2.enable_output()
 
 try:
 #    deep_clean()
 
 #    NORMAL PROCEDURE FOR GOOD CRYSTALS
     melt_and_grow(start_temp = 6.5, neon_flow = 0, buffer_flow = 30, growth_time = 2 * HOUR)
-#    grow_only(start_temp=6.5, neon_flow=0, buffer_flow=30, growth_time=3*HOUR)
+#    melt_and_grow(start_temp = 6.5, neon_flow = 14, buffer_flow = 0, growth_time = 20 * MINUTE)
+#    grow_only(start_temp=6.5, neon_flow=0, buffer_flow=30, growth_time=1 * HOUR)
 
 #    stationary_polish()
 

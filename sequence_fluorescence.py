@@ -42,6 +42,12 @@ configuration = {
         'steps': 1,
      },
 
+    'polarization_range': {
+        'start': 0, # deg
+        'end': 90, # deg
+        'steps': 19,
+     },
+
     'growth': {
         'temperature': 6.5, #K
         'time': 2, # hours
@@ -51,8 +57,8 @@ configuration = {
     },
 
     'front_filters': [ # (name, count, angle)
-        ('SEMROCKTLP01-887-SP1', 1, 0),
-        ('SEMROCKTLP01-887-SP2', 1, 0),
+#        ('SEMROCKTLP01-887-SP1', 1, 0),
+#        ('SEMROCKTLP01-887-SP2', 1, 0),
 #        ('automated-SEMROCKFF01-900/11-25', 1, 0),
 #        ('FELH0800',1,45),
 #        ('FELH0800',1,45),
@@ -80,9 +86,14 @@ configuration = {
 }
 
 system = FluorescenceSystem(
-    ximea_exposure = 5,
+#    ximea_exposure = 20,
+    ximea_exposure = 0.1,
     samples_per_point = 5,
-    use_qe_pro = False
+    background_samples = 0,
+
+#    pump_source = 'tisaph-vert'
+#    pump_source = 'tisaph-high'
+    pump_source = 'tisaph-low'
 )
 
 
@@ -107,9 +118,10 @@ else:
 
 CRYSTAL_TEMP_RANGE = linspace('temperature_range')
 VERDI_POWER = linspace('verdi_power')
+POLARIZATION = linspace('polarization_range')
 
+#system.pump.eom.frequency = 2e6
 
-# Initialize devices
 
 ###### Set Up Files #####
 timestamp = time.strftime('%Y-%m-%d')
@@ -124,12 +136,6 @@ with open(folder / 'configuration.json', 'w') as f: json.dump(configuration, f, 
 
 
 ##### BEGIN MAIN DATA COLLECTION LOOP #####
-with open(folder / f'data.txt', 'w') as f:
-    print('# Timestamp\tRun Number\tVerdi Power(W)\tEOM Angle (deg)\tEOM Angle Err\tTemperature (K)\tTemp Err\tWavelength (nm)\tWavelength Err\tPower (mW)\tPower Err', file=f, flush=True)
-
-
-    
-
 run_number = 0
 total_samples = 0
 
@@ -144,47 +150,42 @@ while True:
 
                 np.random.shuffle(VERDI_POWER)
                 for pump_power in VERDI_POWER:
-                    data = system.take_data(
-                        wavelength = wavelength,
-                        power = pump_power,
-                        temperature = temperature,
-                    )
-                    fg = data['foreground-raw']
-                    background = data['background-raw']
 
-                    # Save data
-                    timestamp = datetime.now().strftime('%Y-%m-%d-%H-%M-%S-%f')
-                    np.savez(
-                        folder / 'data' / f'{timestamp}.npz',
-                        run = run_number,
+                    np.random.shuffle(POLARIZATION)
+                    for i, polarization in enumerate(POLARIZATION):
+                        data = system.take_data(
+                            wavelength = wavelength if i == 0 else None,
+                            power = pump_power,
+                            temperature = temp,
+                            polarization=polarization,
+                        )
+                        fg = data['foreground-raw']
+                        background = data['background-raw']
 
-                        foreground_image = fg['image'].meanstderr,
-                        background_image = background['image'].meanstderr,
-                        image_times = fg['image-time'],
-                        foreground_rates = fg['rate'],
-                        background_rates = background['rate'],
+                        # Save data
+                        timestamp = datetime.now().strftime('%Y-%m-%d-%H-%M-%S-%f')
+                        np.savez(
+                            folder / 'data' / f'{timestamp}.npz',
+                            run = run_number,
 
-#                        foreground_spectra = np.array(fg['spectrum']),
-#                        background_spectra = np.array(background['spectrum']),
-#                        spec_times = fg['spectrum-time'],
-#                        spec_wavelength = system.spec.wavelengths,
-#                        ccd_temperature = np.array(fg['ccd-temperature']),
+#                           foreground_image = fg['image'].meanstderr,
+#                           background_image = background['image'].meanstderr,
 
-                        sample_times = fg['sample-times'],
+                            image_times = fg['image-time'],
+                            foreground_rates = fg['rate'],
+                            background_rates = background['rate'],
 
-                        pump_power = pump_power,
-                        pump_wavelength = nom(fg['wavelength']),
-                        pump_linewidth = nom(fg['linewidth']),
+                            sample_times = fg['sample-times'],
 
-                        pmt_gain = system.pmt.gain.n,
-                        foreground_pmt_current = nom(fg['pmt-current']),
-                        background_pmt_current = nom(background['pmt-current']),
+                            pump_power = pump_power,
+                            pump_wavelength = nom(fg['wavelength']),
+                            pump_linewidth = nom(fg['linewidth']),
 
-                        foreground_power = nom(fg['power']),
-                        background_power = nom(background['power']),
+                            foreground_power = nom(fg['power']),
+                            background_power = nom(background['power']),
 
-                        eom_angle = nom(fg['angle']),
-                        crystal_temperature = nom(fg['temperature']),
+                            polarization = nom(fg['angle']),
+                            crystal_temperature = nom(fg['temperature']),
                     )
 
     except Exception as e:

@@ -72,16 +72,19 @@ fields = {
 #    ('transmission (overall, from spectrometer)', '%'): ('trans', 'spec'),
 #    ('transmission (non-roughness sources only)', '%'): ('trans', 'unexpl'),
 
-    ('BaF Laser', 'GHz '): ('freq', 'baf'),
-    ('Ti:Sapphire Laser (from wavemeter)', 'GHz'): ('freq', 'ti-saph'),
+#    ('BaF Laser', 'GHz '): ('freq', 'baf'),
+#    ('Ti:Sapphire Laser (from wavemeter)', 'GHz'): ('freq', 'ti-saph'),
+    ('Ti:Sapphire/BaF Laser (from wavemeter)', 'GHz'): ('freq', 'multiplexed'),
     ('Ti:Sapphire Laser (from spectrometer)', 'GHz'): ('freq', 'ti-saph-spec'),
 #    ('Ca Laser', 'GHz '): ('freq', 'calcium'),
 
-    ('BaF error signal', 'mV'): ('error-signals', 'baf'),
+#    ('BaF error signal', 'mV'): ('error-signals', 'baf'),
+    ('Ti:Sapphire/BaF error signal', 'mV'): ('error-signals', 'multiplexed'),
 
-    ('BaF Laser', 'uW into wavemeter'): ('intensities', 'baf'),
-    ('Ti:Sapphire Laser', 'uW into wavemeter'): ('intensities', 'ti-saph'),
+#    ('BaF Laser', 'uW into wavemeter'): ('intensities', 'baf'),
+#    ('Ti:Sapphire Laser', 'uW into wavemeter'): ('intensities', 'ti-saph'),
 #    ('Ca Laser', 'uW into wavemeter'): ('intensities', 'calcium'),
+    ('Ti:Sapphire/BaF Laser', 'uW into wavemeter'): ('intensities', 'multiplexed'),
 
     ('Ti:Sapphire linewidth (from spectrometer)', 'nm '): ('ti-saph', 'linewidth'),
 
@@ -92,7 +95,6 @@ fields = {
 #    ('pump beam angle (from photodiode calibration)', 'degrees'): ('pump', 'angle'),
 #    ('pump beam angle (from EOM gain calibration) ', 'degrees'): ('pump', 'angle-model'),
 
-    ('PMT current', 'uA'): ('pmt', 'current'),
     ('PMT gain', 'V'): ('pmt', 'gain'),
 
 
@@ -105,17 +107,17 @@ fields = {
 #    ('oceanfx hdr reduced-$\\chi^2$', ''): ('rough', 'hdr-chisq'),
 
     ('saph heat', 'W'): ('heaters', 'heat saph'),
-    ('nozzle heat', 'W'): ('heaters', 'heat coll'),
+    ('mirror heat', 'W'): ('heaters', 'heat mirror'),
+    ('buffer cell heat', 'W'): ('heaters', 'heat cell'),
     ('45K heat', 'W'): ('heaters', 'srb45k out'),
-    ('4K heat', 'W'): ('heaters', 'srb4k out'),
 
     ('bottom hs', 'K'): ('temperatures', 'bott hs'),
-    ('buffer cell', 'K'): ('temperatures', 'cell'),
-    ('45K sorb', 'K'): ('temperatures', 'srb45k'),
+    ('cell end', 'K'): ('temperatures', 'cell shield'),
+    ('cell base', 'K'): ('temperatures', 'cell'),
     ('45K plate', 'K'): ('temperatures', '45k plate'),
-    ('nozzle', 'K'): ('temperatures', 'coll'),
 
     ('sapphire mount', 'K '): ('temperatures', 'saph'),
+    ('mirror', 'K '): ('temperatures', 'mirror'),
     ('4K sorb', 'K '): ('temperatures', 'srb4k'),
     ('4K plate', 'K '): ('temperatures', '4k plate'),
 
@@ -134,11 +136,6 @@ fields = {
     ('interlock uptime', 'hr'): ('interlock-uptime',),
     ('publisher memory usage', 'KB'): ('debug', 'memory'),
     ('system memory usage', 'KB'): ('debug', 'system-memory'),
-
-    ('fridge temperature', '°C  '): ('temperatures', 'fridge'),
-    ('QE Pro CCD temperature', '°C  '): ('temperatures', 'qe-pro'),
-    ('fridge RH', ' % '): ('fridge', 'relative_humidity'),
-    ('fridge absolute humidity', 'g/m$^3$'): ('fridge', 'absolute_humidity'),
 
 #    ('turbo speed', 'Hz'): ('turbo', 'frequency'),
     ('turbo current', 'mA'): ('turbo', 'current'),
@@ -165,7 +162,7 @@ axis_labels = [
     'sccm',
 
     'GHz',
-    'GHz ',
+#    'GHz ',
     'mV',
     'uW into wavemeter',
     'nm ',
@@ -176,7 +173,6 @@ axis_labels = [
 #    'V',
 #    '%',
 
-    'uA',
     'V',
 
 #    'nm',
@@ -197,10 +193,6 @@ axis_labels = [
 #    'μs',
     'hr',
     'KB',
-
-    '°C  ',
-    ' % ',
-    'g/m$^3$',
 
 #    'Hz',
     'mA',

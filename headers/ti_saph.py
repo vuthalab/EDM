@@ -33,7 +33,7 @@ class TiSapphire:
         self.micrometer = TiSaphMicrometer()
 
         self.wm = WM()
-        self.channel = 7
+        self.channel = 8
 
         self.last_direction = None
 
@@ -64,22 +64,21 @@ class TiSapphire:
             
 
     @property
-    def wavemeter_intensity(self) -> float:
-        """Returns the intensity coupled into the wavemeter [uW]."""
-        return self.wm.read_laser_power(self.channel)
-
-    @property
     def wavemeter_wavelength(self) -> float:
         """Returns the wavelength from the wavemeter [nm]."""
 
 #        assert False # TEMP
 
         # Try reading from wavemeter
+#        self.wm.set_tisaph()
         freq = self.wm.read_frequency(self.channel)
 
         if not isinstance(freq, float) or freq > 500000:
             # If we get a bad reading, throw an exception
             assert False
+
+        # Check if multiplexer set to wrong port
+        if abs(freq - 348676.3) < 1: assert False
 
         return speed_of_light/freq
 
@@ -132,9 +131,9 @@ class TiSapphire:
             min_delta = 999999
 
             while True:
-                speed = 7 * abs(current-target)
-#                speed = min(max(speed, 13), 100)
-                speed = min(max(speed, 13), 40)
+                speed = 4 * abs(current-target)
+#                speed = min(max(speed, 14), 100)
+                speed = min(max(speed, 13), 100)
                 self.micrometer.speed = direction * speed
                 
                 try:

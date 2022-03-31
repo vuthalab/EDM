@@ -12,8 +12,8 @@ from colorama import Style, Fore
 # Date format must be YYYY-MM-DD
 # Time format must be HH:MM:SS (24-hour format)
 # End time can be in the future to get all data after a certain point
-START_TIME = ('2021-12-22', '00:00:00')
-END_TIME = ('2021-12-22', '23:59:00')
+START_TIME = ('2022-03-19', '00:00:00')
+END_TIME = ('2022-03-20', '23:59:00')
 
 #START_TIME = ('2021-11-07', '14:00:00')
 #END_TIME = ('2021-11-07', '22:00:00')
@@ -24,7 +24,7 @@ fields = {
 #    ('pressure', 'torr'): ('pressure',),
 
     ('buffer flow', 'sccm'): ('flows', 'cell'),
-#    ('neon flow', 'sccm'): ('flows', 'neon'),
+    ('neon flow', 'sccm'): ('flows', 'neon'),
 
 #    ('intensity (broadband)', 'V '): ('intensities', 'broadband'),
 #    ('intensity (LED)', 'V '): ('intensities', 'LED'),
@@ -57,10 +57,17 @@ fields = {
 #    ('45K sorb', 'K'): ('temperatures', 'srb45k'),
 #    ('45K plate', 'K'): ('temperatures', '45k plate'),
 
-    ('sapphire mount', 'K'): ('temperatures', 'saph'),
+#    ('sapphire mount', 'K'): ('temperatures', 'saph'),
 #    ('nozzle', 'K'): ('temperatures', 'coll'),
 #    ('4K sorb', 'K'): ('temperatures', 'srb4k'),
 #    ('4K plate', 'K'): ('temperatures', '4k plate'),
+
+#    ('pulsetube coolant in', '°C '): ('pt', 'coolant in temp [C]'),
+#    ('pulsetube coolant out', '°C '): ('pt', 'coolant out temp [C]'),
+#    ('pulsetube helium', '°C '): ('pt', 'helium temp [C]'),
+#    ('pulsetube oil', '°C '): ('pt', 'oil temp [C]'),
+#    ('pulsetube high pressure', 'psi'): ('pt', 'high pressure [psi]'),
+#    ('pulsetube low pressure', 'psi'): ('pt', 'low pressure [psi]'),
 
 #    ('beam center x (from camera)', '% '): ('center', 'x'),
 #    ('beam center y (from camera)', '% '): ('center', 'y'),

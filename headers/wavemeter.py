@@ -283,6 +283,7 @@ class WM:
         return stuff
     
     
+    @_mode_check
     def lock_laser(self,channel):
         return self._set_pid(channel,wlmConst.cmiDeviationChannel,channel)
     
@@ -292,6 +293,7 @@ class WM:
         self.lock_laser(channel)
         return self.get_lock_setpoint(channel)
     
+    @_mode_check
     def unlock_laser(self,channel):
         return self._set_pid(channel,wlmConst.cmiDeviationChannel,0)
 
@@ -363,6 +365,25 @@ class WM:
     def fetch_interferogram(self, channel: int):
         res = self._fetch_interferogram(channel)
         return [int(x) for x in res[1:-1].split(',')[:1024]]
+
+    @_mode_check
+    def set_p_gain(self, channel, gain): pass
+    @_mode_check
+    def set_i_gain(self, channel, gain): pass
+    @_mode_check
+    def set_d_gain(self, channel, gain): pass
+
+    @_mode_check
+    def change_bristol_channel(self, channel): pass
+
+    def set_tisaph(self):
+        self.change_bristol_channel(0)
+        self.unlock_laser(8)
+
+    def set_baf(self):
+        self.change_bristol_channel(1)
+        self.lock_laser(8)
+
 
 if __name__=='__main__':
     wm = WM()

@@ -4,8 +4,8 @@ from headers.CTC100 import CTC100
 
 def ctc_thread():
     thermometers = [
-        (CTC100(31415), ['saph', 'coll', 'bott hs', 'cell'], ['heat saph', 'heat coll']),
-        (CTC100(31416), ['srb4k', 'srb45k', '45k plate', '4k plate'], ['srb45k out', 'srb4k out'])
+        (CTC100(31415), ['saph', 'mirror', 'bott hs', 'srb4k'], ['heat saph', 'heat mirror']),
+        (CTC100(31416), ['cell', 'cell shield', '45k plate', '4k plate'], ['srb45k out', 'heat cell'])
     ]
 
     with create_server('ctc') as publisher:

@@ -27,6 +27,8 @@ class RigolDG4162(USBTMCDevice):
         super().__init__('/dev/signal_generator', mode='direct')
         self.active_channel = 1
 
+        self._frequency = None
+
 
     def __str__(self) -> str:
         enabled = 'On' if self.enabled else 'Off'
@@ -41,13 +43,16 @@ class RigolDG4162(USBTMCDevice):
     @property
     def frequency(self) -> float:
         """Return the frequency (Hz) of the currently active channel."""
-        return float(self.query(f':SOURCE{self.active_channel}:FREQ?'))
+        if self._frequency is None:
+            self._frequency = float(self.query(f':SOURCE{self.active_channel}:FREQ?'))
+        return self._frequency
 
     @frequency.setter
     def frequency(self, frequency: float) -> None:
         """Set the frequency (Hz) of the currently active channel."""
         assert 1e-6 <= frequency <= 160e6
         self.send_command(f':SOURCE{self.active_channel}:FREQ {frequency:.3g}')
+        self._frequency = frequency
 
 
     @property

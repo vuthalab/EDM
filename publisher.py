@@ -53,9 +53,9 @@ THREADS = {
     'mfc': mfc_thread,
     'verdi': verdi_thread,
     'usb4000': usb4000_thread,
-    'ei1050': ei1050_thread,
+#    'ei1050': ei1050_thread,
 #    'qe-pro': qe_pro_thread,
-    'scope': scope_thread,
+#    'scope': scope_thread,
     'labjack': labjack_thread,
     'webcam': webcam_thread,
     'plume-cam': plume_camera_thread,
@@ -188,27 +188,30 @@ def run_publisher():
 
 
             # Update models
-            if thread_up['ctc'] and thread_up['mfc']:
-                saph_temp = data['temperatures']['saph']
+            try:
+                if thread_up['ctc'] and thread_up['mfc']:
+                    saph_temp = data['temperatures']['saph']
 
-                if saph_temp is not None:
-                    growth_model.update(
-                        ufloat(*data['flows']['neon']),
-                        ufloat(*data['flows']['cell']),
-                        saph_temp
-                    )
-                    data['height'] = deconstruct(growth_model.height)
-
-                    if thread_up['fringe-cam']:
-                        fringe_counter.update(
-                            data['refl']['ai'][0],
-                            grow=(growth_model._growth_rate.n > 0)
+                    if saph_temp is not None:
+                        growth_model.update(
+                            ufloat(*data['flows']['neon']),
+                            ufloat(*data['flows']['cell']),
+                            saph_temp
                         )
-                        if saph_temp > 13: fringe_counter.reset()
-                        data['fringe'] = {
-                            'count': fringe_counter.fringe_count,
-                            'ampl': fringe_counter.amplitude,
-                        }
+                        data['height'] = deconstruct(growth_model.height)
+
+                        if thread_up['fringe-cam']:
+                            fringe_counter.update(
+                                data['refl']['ai'][0],
+                                grow=(growth_model._growth_rate.n > 0)
+                            )
+                            if saph_temp > 13: fringe_counter.reset()
+                            data['fringe'] = {
+                                'count': fringe_counter.fringe_count,
+                                'ampl': fringe_counter.amplitude,
+                            }
+            except Exception as e:
+                print('Error:', e)
 
 
 #            if thread_up['scope'] and 'freq' in data:

@@ -15,7 +15,7 @@ class PMT:
 
         # Labjack gain controller
         self._monitor = connect_to('scope')
-        self._gain_controller = USBTMCDevice(31419, mode='multiplexed', name='PMT Gain Control')
+#        self._gain_controller = USBTMCDevice(31419, mode='multiplexed', name='PMT Gain Control')
 
     def _update_cache(self):
         while True:
@@ -62,5 +62,5 @@ class PMT:
     @gain.setter
     def gain(self, gain: float):
         assert 0 <= gain <= 1.1
-        self._gain_controller.send_command(f'DAC0 {gain:.4f}')
+#        self._gain_controller.send_command(f'DAC0 {gain:.4f}')
         self._gain = ufloat(gain, 1e-3)

@@ -24,8 +24,7 @@ def wavemeter_thread():
 
     channels = {
         'calcium': 6,
-        'ti-saph': 7,
-        'baf': 8,
+        'multiplexed': 8,
     }
 
     with create_server('wavemeter') as publisher:
