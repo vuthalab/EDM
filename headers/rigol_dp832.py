@@ -97,12 +97,12 @@ class TiSaphMicrometer:
 
     @property
     def speed(self):
-        return 100 * self.voltage / 8
+        return 100 * self.voltage / 7
 
     @speed.setter
     def speed(self, speed: float):
         if speed > 100 or speed < -100: raise ValueError('Speed must be between -100 and 100!')
-        self.voltage = speed * 8/100
+        self.voltage = speed * 7/100
 
     def off(self):
         self.voltage = 0

@@ -12,8 +12,8 @@ from colorama import Style, Fore
 # Date format must be YYYY-MM-DD
 # Time format must be HH:MM:SS (24-hour format)
 # End time can be in the future to get all data after a certain point
-START_TIME = ('2022-03-19', '00:00:00')
-END_TIME = ('2022-03-20', '23:59:00')
+START_TIME = ('2022-05-10', '00:00:00')
+END_TIME = ('2022-05-26', '23:59:00')
 
 #START_TIME = ('2021-11-07', '14:00:00')
 #END_TIME = ('2021-11-07', '22:00:00')
@@ -24,7 +24,7 @@ fields = {
 #    ('pressure', 'torr'): ('pressure',),
 
     ('buffer flow', 'sccm'): ('flows', 'cell'),
-    ('neon flow', 'sccm'): ('flows', 'neon'),
+#    ('neon flow', 'sccm'): ('flows', 'neon'),
 
 #    ('intensity (broadband)', 'V '): ('intensities', 'broadband'),
 #    ('intensity (LED)', 'V '): ('intensities', 'LED'),

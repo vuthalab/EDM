@@ -5,6 +5,7 @@ import numpy as np
 
 
 #Import class objects
+from headers.usbtmc import USBTMCDevice
 from headers.CTC100 import CTC100
 from headers.mfc import MFC
 from headers.pulse_tube import PulseTube
@@ -13,7 +14,7 @@ from headers.ti_saph import TiSapphire
 from headers.filter_wheel import FilterWheel
 from usb_power_meter.Power_meter_2 import PM16 
 
-from api.pump_laser import EOM, MountedBandpass, PumpLaser
+from api.pump_laser import EOM, PumpLaser
 from api.ablation import AblationSystem
 
 MINUTE = 60
@@ -30,7 +31,8 @@ mfc = MFC(31417)
 
 #eom = EOM()
 #bandpass = MountedBandpass()
-#pump = PumpLaser()
+pump = PumpLaser()
+diode_current_controller = USBTMCDevice(31419, mode='multiplexed', name='Diode Current Controller')
 
 #ablation = AblationSystem()
 
@@ -38,8 +40,8 @@ mfc = MFC(31417)
 #pump.source = 'tisaph'
 #pump.ti_saph.verdi.power = 8
 #while True:
-#    print(pump)
-#    pump.wavelength = int(input('Wavelength? '))
+#print(pump)
+#pump.wavelength = 860 #int(input('Wavelength? '))
 #
 #print(bandpass.wavelength)
 #

@@ -40,6 +40,8 @@ class TiSapphire:
         self._spec_conn = connect_to('usb4000')
         self._cache = None
 
+        self._min_speed = 18
+
 
     def reset_backlash(self, direction):
         """Eats up the backlash in the system."""
@@ -53,6 +55,7 @@ class TiSapphire:
 
     def _grab_data(self):
         """Read usb4000 thread until last entry."""
+        start = time.monotonic()
         while True:
             ts, data = self._spec_conn.grab_json_data()
             if data is not None:
@@ -60,7 +63,9 @@ class TiSapphire:
             else:
                 if self._cache is not None:
                     break
-            time.sleep(0.01)
+                if time.monotonic() - start > 1:
+                    raise ValueError('USB4000 Thread Unreachable!')
+            time.sleep(0.02)
             
 
     @property
@@ -132,13 +137,12 @@ class TiSapphire:
 
             while True:
                 speed = 4 * abs(current-target)
-#                speed = min(max(speed, 14), 100)
-                speed = min(max(speed, 13), 100)
+                speed = min(max(speed, self._min_speed), 50)
                 self.micrometer.speed = direction * speed
                 
                 try:
-                    current = nom(self.fast_wavelength)
-#                current = nom(self.wavelength)
+#                    current = nom(self.fast_wavelength)
+                    current = nom(self.wavelength)
                 except Exception as e:
                     time.sleep(0.5)
                     continue

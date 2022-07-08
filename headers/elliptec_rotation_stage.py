@@ -128,5 +128,9 @@ class ElliptecRotationStage:
         self._conn.close()
 
 if __name__ == '__main__':
-#    mount = ElliptecRotationStage(port='/dev/rotation_mount_2', offset=38306)
-    mount = ElliptecRotationStage(port='/dev/rotation_mount_3', offset=0)
+#    mount = ElliptecRotationStage(port='/dev/rotation_mount', offset=22434)
+#    mount = ElliptecRotationStage(port='/dev/rotation_mount_2', offset=29866)
+#    mount = ElliptecRotationStage(port='/dev/rotation_mount_3', offset=-3218)
+    mount = ElliptecRotationStage(port='/dev/ttyUSB8', offset=-14415)
+#    mount = ElliptecRotationStage(port='/dev/waveplate', offset=11179)
+#    mount = ElliptecRotationStage(port='/dev/ttyUSB7', offset=19412)

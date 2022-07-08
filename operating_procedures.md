@@ -2,10 +2,14 @@
 
 # AFTER BOTTLE SWAP
 - KEEP BOTTLE CLOSED. Open MFCs and all OTHER valves to vent air out of system. This avoids back-contamination.
+- After air is purged, close MFCs and open neon bottle.
 - Use sniffer to check for neon leaks.
 
 # ABLATION
 - Turn keyswitch on YAG water cooler and press on button on Litron touchscreen. If the pump cycles on and off (doesn't start), unplug the cooler and plug it back in.
+- Make sure BaF absorption laser is locked at 348676.3 GHz. Increasing the current (SLOWLY) will decrease the frequency.
+- Make sure everything is shielded properly.
+- Start `sequence_ablation.py`. You may need to change the start position. If you want to change the center of the spiral, do it in `api/ablation.py`.
 
 
 # Setup 24/7 logging

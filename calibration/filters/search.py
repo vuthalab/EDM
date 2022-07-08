@@ -23,6 +23,10 @@ winner = (None, None, 0)
 for filename in Path('.').glob('*.txt'):
     if filename.stem.endswith('cutoff'): continue
 
+    # TEMP
+    if 'felh0900' in filename.stem: continue
+    if 'semrock' in filename.stem: continue
+
     with open(filename, 'r') as f:
         next(f)
         wavelengths = np.array([float(x) for x in next(f).split()[1:]])

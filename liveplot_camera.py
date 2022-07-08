@@ -26,10 +26,42 @@ SHOW_CAMERAS = [
 ]
 
 
-# Size of region around plume to show
-plume_size = 200
+
+##### Target Overlay Logic #####
+# Target overlay interpolation
+target_pic = cv2.imread('calibration/target.jpg')
+geometric_factor = 1.00 # Ratio of mm on calibration ring to mm on target
+calibration_diameter = 0.8 * 25.4 # Diameter of calibration ring, in mm
+target_offset = 1.65 # Horizontal offset of target, in mm
+target_height = 12.7 # Height of target, in mm
+target_width = 7.62 # Width of target, in mm
+
+# Camera calibration info
+calibration_points = np.load('calibration/ablation_camera.npy')
+calibration_center = np.mean(calibration_points, axis=0)
+r2 = np.sum(np.square(calibration_points-calibration_center), axis=-1)
+radius = np.sqrt(np.mean(r2))
+pixels_per_mm = (2 * radius / calibration_diameter) * geometric_factor
+
+# Manual offset
+calibration_center_raw = np.array(list(calibration_center))
+calibration_center += np.array([-65, -22])
+
+# Compute calibration points
+t_left, t_top = map(round, calibration_center + np.array([
+    -target_offset - target_width/2,
+    -target_height/2
+]) * pixels_per_mm)
+t_right, t_bottom = map(round, calibration_center + np.array([
+    -target_offset + target_width/2,
+    target_height/2
+]) * pixels_per_mm)
+print(t_right, t_left, t_top, t_bottom)
+target_scaled = cv2.resize(target_pic, (t_right - t_left, t_bottom - t_top), interpolation=cv2.INTER_CUBIC)
 
 
+
+##### Initialize Cameras #####
 print('Initializing cameras...')
 
 if 'cbs' in SHOW_CAMERAS:
@@ -130,6 +162,28 @@ for i in itertools.count():
             print(cx, cy, intensity, saturation)
 
             color = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
+            color = cv2.circle(
+                color,
+                (round(calibration_center_raw[0]), round(calibration_center_raw[1])),
+                round(0.5 * calibration_diameter * pixels_per_mm), # Radius
+                (255, 0, 0), # Color
+                2 # Thickness
+            )
+
+            mask = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR) / 255.0
+#            color[t_top:t_bottom, t_left:t_right] = target_scaled[::-1, ::-1]
+            color[t_top:t_bottom, t_left:t_right] = target_scaled
+
+            color = cv2.circle(
+                color,
+                (round(calibration_center[0]), round(calibration_center[1])),
+                round(0.5 * 11.0 * pixels_per_mm) + 1, # Radius
+                (0, 255, 0), # Color
+                2 # Thickness
+            )
+
+            # Annotate
+            color = color * (1 - mask) + mask * np.array([0, 0, 255])
             annotated = cv2.circle(
                 color,
                 (round(cx.n), round(cy.n)),
@@ -138,7 +192,7 @@ for i in itertools.count():
                 2 # Thickness
             )
             if i % 2 == 0:
-                cv2.imshow('Plume', annotated)
+                cv2.imshow('Plume', annotated[::-2, ::-2].astype(np.uint8))
 
             print(timestamp, f'plume {delay:.3f}')
 

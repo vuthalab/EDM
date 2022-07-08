@@ -54,6 +54,26 @@ class RigolDG4162(USBTMCDevice):
         self.send_command(f':SOURCE{self.active_channel}:FREQ {frequency:.3g}')
         self._frequency = frequency
 
+    @property
+    def phase(self) -> str:
+        """Return the phase of the currently active channel."""
+        return float(self.query(f':SOURCE{self.active_channel}:PHASE?'))
+
+    @phase.setter
+    def phase(self, phase: float) -> None:
+        """Set the waveform shape of the currently active channel."""
+        self.send_command(f':SOURCE{self.active_channel}:PHASE {phase:.4f}')
+
+    @property
+    def delay(self) -> str:
+        """Return the time delay of the burst feature, in seconds."""
+        return float(self.query(f':SOURCE{self.active_channel}:BURST:TDELAY?'))
+
+    @delay.setter
+    def delay(self, delay: float) -> None:
+        """Set the time delay of the currently active channel."""
+        self.send_command(f':SOURCE{self.active_channel}:BURST:TDELAY {delay:.8f}')
+
 
     @property
     def waveform(self) -> str:

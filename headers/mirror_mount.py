@@ -66,7 +66,7 @@ class microcontroller:
     ex: b'COMAND1;COMMAND2;COMMAND3 \n'
     Commands list can be found https://www.newport.com/medias/sys_master/images/images/h9a/h38/9100236390430/90066734D-8742-Manual.pdf
     """
-    def __init__(self, host: str = '192.168.0.100'):
+    def __init__(self, host: str = '192.168.0.109'):
         self.tn = Telnet(host) #initalize handshake with microcontroller
 
     def _get_int(self, command: str):

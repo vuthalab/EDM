@@ -3,6 +3,9 @@ Warms up the experiment to room temperature.
 
 You may want to melt off any neon before running (to prevent pressure spikes).
 """
+import os
+os.chdir('/home/labuser/googledrive/code/edm_control')
+
 import time
 
 from headers.pulse_tube import PulseTube
@@ -26,7 +29,7 @@ turbo = TurboPump()
 pt = PulseTube()
 
 # Optional pause
-#countdown_for(2 * HOUR + 20 * MINUTE)
+#countdown_for(4 * HOUR + 55 * MINUTE)
 
 # Turn off everything.
 mfc.off()
@@ -52,7 +55,7 @@ if True:
 
 # Wait for room temperature.
 wait_until_quantity(
-    ('temperatures', 'srb45k'), '>', 300,
+    ('temperatures', 'bott hs'), '>', 300,
     unit='K', source='ctc'
 )
 

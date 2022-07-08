@@ -1,4 +1,5 @@
 import time
+import subprocess
 
 from colorama import Fore, Style
 
@@ -15,17 +16,16 @@ from headers.wavemeter import WM
 from headers.usbtmc import USBTMCDevice
 from usb_power_meter.Power_meter_2 import PM16 
 
-from models.bandpass import target_angle, target_wavelength
-from models.polarization import power_and_polarization, eom_gain_from_angle, eom_angle_from_gain
+
 
 class EOM(RigolDG4162):
     def __init__(self):
         super().__init__()
         self.active_channel = 2
         self.waveform = 'square'
-        self.frequency = 1e6 # Hz
+#        self.frequency = 1e6 # Hz
 #        self.duty_cycle = 20 # %
-        self.duty_cycle = 50 # %
+#        self.duty_cycle = 50 # %
         self.enabled = True
 
         # Labjack gain controller
@@ -60,39 +60,32 @@ class EOM(RigolDG4162):
 
 
 
-class MountedBandpass(ElliptecRotationStage):
-    @property
-    def wavelength(self):
-        """Return the center wavelength of the bandpass."""
-        return target_wavelength(self.angle)
-
-    @wavelength.setter
-    def wavelength(self, target):
-        """Set the center wavelength of the bandpass."""
-        self.angle = target_angle(target).n
 
 
 # Selected laser for each wheel position 1-6
 WHEEL_DICT = [
     'tisaph-low',
     None,
-    'tisaph-vert', # Vertically polarized, high power
-    'tisaph-high-bad',
-    'tisaph-high-bad',
+#    'diode',
     'tisaph-high',
-#    'baf',
+    'tisaph-high-bad',
+    'tisaph-high-bad',
+    'tisaph-high-bad',
 ]
 class PumpLaser:
     def __init__(self):
         self.ti_saph = TiSapphire()
         self.wheel = FilterWheel()
-        self.qwp = ElliptecRotationStage(port='/dev/waveplate', offset=12078)
+        self.qwp = ElliptecRotationStage(port='/dev/waveplate', offset=11179)
         self.wm = WM()
         self.eom = EOM()
         self.pm = PM16('/dev/power_meter')
 
         self.polarization = 45
         self._update_optics()
+
+        self._diode_stage = ElliptecRotationStage(port='/dev/ttyUSB8', offset=-14415)
+        self._diode_stage.home()
 
     ##### Internal Methods #####
     @property
@@ -104,7 +97,6 @@ class PumpLaser:
     def _update_optics(self):
         """Adjust the bandpass and EOM to maintain desired passband and polarization."""
         wl = self.wavelength
-        self.polarization = self._target_polarization
         self.pm.set_wavelength(wl)
 
     def __str__(self):
@@ -148,8 +140,20 @@ class PumpLaser:
     def wavelength(self):
         """Return the wavelength of the currently selected source."""
         source = self.source
-        if source is None: return self.ti_saph.wavelength # To get rough power reading
+        if source is None:
+            return 860
+#            return self.ti_saph.wavelength # To get rough power reading
+
         if source == 'baf': return self._baf_wavelength
+
+        if source == 'diode':
+            for i in range(10):
+                try:
+                    return self._baf_wavelength
+                except:
+                    time.sleep(0.25)
+            raise ValueError('Diode not lasing!')
+
         if source.startswith('tisaph'): return self.ti_saph.wavelength
 
     @wavelength.setter
@@ -160,11 +164,16 @@ class PumpLaser:
         if source in ['baf']:
             raise ValueError(f'Cannot set the wavelength of laser {source}!')
 
+        if source == 'diode':
+            print(f'Setting 860 ECDL bandpass angle to {target:.2f} degrees.')
+            self._diode_stage.angle_unwrapped = target
+            return
+
         # Set wavelength
         self.ti_saph.wavelength = target
         time.sleep(0.5)
         self._update_optics()
-        time.sleep(2)
+        time.sleep(1)
 
 
     @property
@@ -188,21 +197,24 @@ class PumpLaser:
         """
         Return the power (in mW) from the power meter.
         """
-        return 1e3 * self.pm.power()
+        try:
+            return 1e3 * self.pm.power()
+        except:
+            print('Power meter died, resetting.')
+            subprocess.run(['usbreset', '001/027'])
+            time.sleep(2)
+            return self.pm_power
+
 
     @property
     def polarization(self):
         """Return the polarization angle out of QWP, in degrees."""
-        try:
-            return self.qwp.angle
-        except:
-            return self._target_polarization
+        return self.qwp.angle
 
     @polarization.setter
     def polarization(self, angle):
         """Set the polarization angle out of QWP, in degrees."""
         try:
-            self.qwp.angle = angle
-            self._target_polarization = angle
+            self.qwp.angle_unwrapped = angle
         except:
             pass

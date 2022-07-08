@@ -25,7 +25,7 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
 
     spec = QEProSpectrometer()
-    spec.exposure = 5E5 # us
+    spec.exposure = 1E6 # us
     spec.temperature = -29
 
     plt.ion()

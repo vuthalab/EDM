@@ -69,7 +69,7 @@ class Ximea:
         """Return maximum saturation in %."""
         # Percentile to ignore salt-and-pepper noise
 #        return 100 * np.percentile(self.background_subtracted_image, 99) / 4095
-        return 100 * np.percentile(self.image, 99) / 4095
+        return 100 * np.percentile(self.image, 99.9) / 4095
 
     @property
     def background_subtracted_image(self):
@@ -121,10 +121,16 @@ if __name__ == '__main__':
 
             rate_image = cam.rate_image
             resized = cv2.resize(rate_image, (968, 728))
+
             peak = np.percentile(resized, 99.9)
-#            peak = 4096 # Disable autoscale
+#            peak = 65536 # Disable autoscale
+
+            # Linear
             processed = np.maximum(np.minimum(256 * resized/(1.2*peak), 255), 0).astype(np.uint8)
+
+            # Log
 #            processed = np.maximum(np.minimum(30 * np.log(resized), 255), 0).astype(np.uint8)
+
             cv2.imshow('Image', processed)
             raw_rate = (cam.image/cam.exposure).sum()
             print(f'{raw_rate/1e6:.3f} Mcounts/s raw | {rate_image.sum()/1e6:.3f} Mcounts/s | Saturation: {cam.saturation:.2f} %')

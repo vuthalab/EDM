@@ -5,7 +5,8 @@ import uncertainties.unumpy as unp
 
 # Linear coefficients, from empirical fits
 neon_coeff = ufloat(0.359, 0.010)  # microns/min/sccm
-buffer_coeff = ufloat(0.060, 0.005) # microns/min/sccm
+#buffer_coeff = ufloat(0.060, 0.005) # microns/min/sccm
+buffer_coeff = ufloat(0.876, 0.005)  # microns/min/sccm. Measured.
 
 E_a = ufloat(15.94, 0.09) * 1e-3 # Neon binding energy, from fit
 k_B = 1.381e-23 / 1.61e-19 # Boltzmann constant, eV/K

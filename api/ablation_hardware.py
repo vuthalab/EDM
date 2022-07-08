@@ -20,8 +20,8 @@ def moving_average(a, n=3) :
     return ret[n - 1:] / n
 
 
-x_calibration = -0.01858 # pixels per mirror step
-y_calibration =  0.01871 # pixels per mirror step
+x_calibration = -1e-2 # pixels per mirror step
+y_calibration = -1e-2 # pixels per mirror step
 
 class AblationHardware:
     """Class for managing ablation with the Nd:YAG laser."""
@@ -64,7 +64,7 @@ class AblationHardware:
             print(f'Moving mirror motor {motor} for {steps} steps. Intensity: {intensity:.3f}', end='\r')
             time.sleep(0.2)
 
-        if intensity < 20:
+        if intensity < 15:
             print('Spot disappeared, retracing.')
             self.mirror.move(motor, -steps)
             time.sleep(duration)
@@ -134,16 +134,19 @@ class AblationHardware:
         Depending on how the scope in configured, may involve adding together multiple channels (AC/DC coupled).
         """
         self.scope.active_channel = 1
-        trace = self.scope.trace
+        trace1 = self.scope.trace
+#        return trace
+
         self.scope.active_channel = 2
         trace2 = self.scope.trace
-        return trace + trace2.mean()
+        return trace2 + np.median(trace1)
+
 
     @property
     def dip_size(self):
         """Return the size of the ablation dip, in percent."""
         trace = self.trace
-        trace = moving_average(trace, 7)
+        trace = moving_average(trace, 5)
         baseline = np.percentile(trace, 95)
         dip = np.min(trace)
         return 100 * (1 - dip/baseline)

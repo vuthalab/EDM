@@ -29,9 +29,10 @@ pt = PulseTube()
 mfc.off()
 assert not pt.is_on()
 
-# [Optional] Bake sorbs to reduce final pressure
-#T2.ramp_temperature('srb45k out', 320, 0.5)
-T2.ramp_temperature('heat cell', 4, 1)
+# [Optional] Bake sorbs to reduce final pressure.
+# Bake target to drive out moisture.
+T2.ramp_temperature('srb45k out', 320, 0.5)
+T2.ramp_temperature('heat cell', 320, 1)
 T2.enable_output()
 
 # [Optional] Pause to schedule cooldown
@@ -53,18 +54,24 @@ print('Turning on pulse tube.')
 pt.on()
 
 # Slowly ramp down the saph temperature to liquid nitrogen temp.
-T1.ramp_temperature('heat saph', 77, 1e-2)
-T1.ramp_temperature('heat mirror', 4, 1)
+if False: # 2022-06-18 disabled
+    T1.ramp_temperature('heat saph', 77, 1e-2)
+    T1.ramp_temperature('heat mirror', 15, 1)
+    T1.enable_output()
+else:
+    T1.disable_output()
+
+T2.ramp_temperature('heat cell', 4, 1)
 T2.ramp_temperature('srb45k out', 4, 1)
-T1.enable_output()
 T2.disable_output()
 
 
-# Wait for 45K plateto drop below 70 K, to get rid of all nitrogen.
-wait_until_quantity(
-    ('temperatures', '45k plate'), '<', 70,
-    unit='K', source='ctc',
-)
+if False: # 2022-06-18 disabled
+    # Wait for 45K plate to drop below 70 K, to get rid of all nitrogen.
+    wait_until_quantity(
+        ('temperatures', '45k plate'), '<', 70,
+        unit='K', source='ctc',
+    )
 
 
 # Let system cool naturally.

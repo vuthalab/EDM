@@ -4,14 +4,18 @@ class PowerStabilizer:
     def __init__(
             self,
             pump_laser,
-#            setpoint = 0.9, # mW
-#            sensitivity = 0.3, # mW/V
 
             setpoint = 2, # mW
             sensitivity = 1, # mW/V
 
+#            setpoint = 3, # mW
+#            sensitivity = 1.5, # mW/V
+
 #            setpoint = 15, # mW
 #            sensitivity = 10, # mW/V
+
+#            setpoint = 30, # mW
+#            sensitivity = 15, # mW/V
 
             P = 0.1,
             I = 0.3,
